@@ -1,0 +1,72 @@
+optimizer:
+  name: gxg_optimizer
+  seed: 42
+
+  adam:
+    type: adamw
+    lr: 3.0e-4
+    betas: [0.9, 0.999]
+    eps: 1.0e-8
+    weight_decay: 0.01
+    shadow_update_during_gn: true
+    variance_floor_ratio: 1.0
+
+  gn:
+    method: iclr2026_layerwise_gn
+    enabled: true
+    layer_partition: auto_transformer
+    inner_optimizer_matrix: muon
+    inner_optimizer_vector: adamw
+    inner_steps: 20
+    inner_lr: 1.0e-3
+    inner_weight_decay: 0.0
+    gradient_batch_multiplier: 8
+    initial_damping: 1.0e-3
+    damping_increase: 10.0
+    damping_decrease: 0.5
+    min_reduction_ratio: 0.25
+    strong_reduction_ratio: 0.75
+    line_search_alphas: [1.0, 0.70710678, 0.5, 0.35355339, 0.25, 0.0]
+    mixed_precision_curvature_dtype: float32
+    rejection_persistence: 2
+    relative_residual_tolerance: 1.0e-4
+    max_update_norm: 10.0
+
+  bridge:
+    length_adam_steps: 50
+    rho_start: 0.3
+    rho_end: 0.0
+    schedule: cosine
+    per_layer_norm_match: true
+    max_update_ratio: 1.5
+    use_secant_scale: true
+    secant_curvature_floor: 1.0e-12
+
+  # First rough experiment: one GN epoch followed by three Adam epochs,
+  # repeated deterministically. Adaptive probe routing is intentionally deferred.
+  duty_cycle:
+    gn_epochs: 1
+    adam_epochs: 3
+    start_phase: gn
+    bridge_on_gn_to_adam: true
+
+  final_mile:
+    enabled: true
+    metric_name: accuracy
+    metric_mode: max
+    metric_threshold: 0.90
+    eval_split: validation
+    min_metric_delta: 1.0e-4
+    max_recovery_attempts: 2
+    max_accepted_gn_steps: 10
+    patience_evaluations: 3
+    max_wall_time_seconds: null
+    damping_multiplier: 10.0
+    step_scale_multiplier: 0.5
+    update_norm_cap_multiplier: 0.5
+    restore_best_on_failure: true
+
+  checkpoint:
+    save_on_phase_change: true
+    save_best_validation: true
+    atomic: true
