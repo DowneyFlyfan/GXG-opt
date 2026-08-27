@@ -36,7 +36,7 @@ def test_metric_plot_titles_each_optimizer_wall_clock_duration(tmp_path: Path, m
         {"AdamW": 120.0, "Muon": 130.0},
     )
 
-    assert titles == ["Wall-clock time — AdamW: 2m 00s | Muon: 2m 10s"]
+    assert titles == ["Wall-clock time\nAdamW: 2m 00s | Muon: 2m 10s"]
 
 
 def test_trial_checkpoint_restores_epoch_elapsed_time_and_optimizer_state(tmp_path: Path):

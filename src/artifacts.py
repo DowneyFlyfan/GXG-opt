@@ -35,7 +35,7 @@ def write_metric_plot(
             minutes, remaining_seconds = divmod(remainder, 60)
             return f"{hours}h {minutes}m {remaining_seconds:02d}s" if hours else f"{minutes}m {remaining_seconds:02d}s"
 
-        axis.set_title(f"Wall-clock time — AdamW: {format_runtime(runtimes['AdamW'])} | Muon: {format_runtime(runtimes['Muon'])}")
+        axis.set_title(f"Wall-clock time\nAdamW: {format_runtime(runtimes['AdamW'])} | Muon: {format_runtime(runtimes['Muon'])}")
     axis.legend()
     figure.tight_layout()
     figure.savefig(output, dpi=160)
