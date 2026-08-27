@@ -46,3 +46,20 @@ continuation. Its validation character-error-rate values were 0.205850,
 0.150436, 0.126999, and 0.119186 for epochs one through four. They are kept as
 diagnostic evidence only; the formal pair restarts from epoch one in a durable
 local tmux session.
+
+## Formal paired result
+
+The completed paired runs used the same cached LibriSpeech split, fixed seed,
+one-utterance microbatch, eight accumulated microbatches, and eight validation
+epochs.  Character Error Rate is the evaluation metric, so lower is better.
+
+| Optimizer | Runtime | Peak memory | Final Character Error Rate | Best Character Error Rate |
+|---|---:|---:|---:|---:|
+| AdamW | 9,780.96 s | 2,825.84 MiB | 0.104833 | 0.104833 at epoch 8 |
+| Muon | 9,652.91 s | 2,657.36 MiB | 0.060501 | 0.059411 at epoch 7 |
+
+Muon completed 128.05 seconds faster than AdamW, while its final Character
+Error Rate was lower by 0.044331.  The final Muon epoch increased slightly
+from its epoch-seven minimum but remained substantially better than AdamW.
+There was no out-of-memory condition or optimizer divergence.  The paired
+metric-versus-epoch graph is `results/audio/audio_owsm_v3_1_base_metric_steps.png`.
