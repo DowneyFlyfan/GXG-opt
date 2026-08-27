@@ -12,9 +12,31 @@
 
 # Workflow
 
-1. For a non-pretrained model, run several rounds of Adam to linearlize its weight, else skip this step
-2. Then run several rounds of GN optimizer, build up the initial global gradient
-3. Store the GN's normalized gradient, start switching to Adam with a momentum derived from the stage of GN
-4. Run fast SGD with Adam, while sample a few layer's gradient and compare with the original GN's gradient. No full comparation for save the compute cost.
-5. When the gradient difference is too large, switch back to GN for several rounds to correct the gradient direction
-6. In final stage when the delta accuracy is too small, switch to GN to improve the final quality.
+## Adam warm-up for randomly initialized models
+Run AdamW until the model reaches a reasonably stable region and gradient/activation statistics settle.
+This does not linearize the weights; GN performs a fresh local model linearization during every GN outer step.
+For pretrained models, skip this phase or use a short calibration warm-up if the task head is new.
+## Layer-wise GN bootstrap
+Run several accepted layer-wise GN outer updates.
+GN computes a curvature-aware direction independently for each layer, merges those directions, and performs global line search.
+This establishes a reliable initial global update direction, not a stored “global gradient.”
+## GN-to-Adam bridge
+Store the accepted GN direction per layer, GN warm-start state, and before/after parameter-gradient pairs.
+Use the normalized GN direction only as a short, decaying directional prior.
+Do not insert it into Adam’s momentum buffers. Adam moments must be built from real gradients.
+## Fast Adam phase with low-cost monitoring
+Adam performs the normal training updates.
+Periodically sample a rotating, representative set of layers—early, middle, late, embedding, and output head.
+Combine sampled-layer noise with global loss progress and Adam/reference-gradient alignment.
+A sampled-layer warning alone must not trigger GN; confirm it with a larger reference-batch GN trial.
+## Recurrent GN correction
+Enter GN only when Adam is persistently noisy or poorly aligned, progress has stalled, and a GN trial produces a valid improvement.
+Run a bounded number of accepted GN corrections while continuing to update shadow Adam state from real gradients.
+Return through the GN-to-Adam bridge when shadow Adam is aligned again and its improvement per second approaches GN’s.
+## Final-mile GN recovery
+At the nominal end of training, check validation accuracy against:
+the configured target accuracy; and
+the configured minimum accuracy improvement over recent evaluations.
+If accuracy already meets the target, stop—even if its delta is small.
+If accuracy remains below target and has plateaued, restore the best checkpoint and run conservative GN recovery with stronger damping and smaller steps.
+Keep only validation-improving checkpoints and roll back if GN fails to improve quality.
