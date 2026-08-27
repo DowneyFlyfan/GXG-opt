@@ -12,11 +12,11 @@ from optimizers import Muon, build_optimizers, muon_parameter_names, qualify_rat
 from training import _evaluate, _loaders, _loss, _model, configure_reproducibility
 
 
-def test_formal_matrix_has_two_selected_tasks_and_four_baselines():
-    assert len(FORMAL_TASKS) == 2
-    assert sum(2 for _ in FORMAL_TASKS) == 4
-    assert {task.domain for task in FORMAL_TASKS} == {"nlp", "audio"}
-    assert {task.model for task in FORMAL_TASKS} == {"smollm2_135m", "owsm_v3.1_base"}
+def test_formal_matrix_has_three_active_tasks_and_six_baselines():
+    assert len(FORMAL_TASKS) == 3
+    assert sum(2 for _ in FORMAL_TASKS) == 6
+    assert {task.domain for task in FORMAL_TASKS} == {"nlp", "cv", "audio"}
+    assert {task.model for task in FORMAL_TASKS} == {"smollm2_135m", "dinov3_vitb16", "owsm_v3.1_base"}
 
 
 def test_declared_models_are_within_parameter_range():
@@ -34,6 +34,37 @@ def test_smollm2_loads_offline_from_the_project_cache():
     model = create_nlp_model("smollm2_135m")
 
     assert 130_000_000 <= parameter_count(model) <= 140_000_000
+
+
+def test_dinov3_vitb16_loads_offline_with_a_cifar100_classifier():
+    model = create_cv_model("dinov3_vitb16")
+
+    assert 85_000_000 <= parameter_count(model) <= 86_000_000
+    assert model(torch.zeros(1, 3, 224, 224)).shape == (1, 100)
+
+
+def test_dinov3_routes_patch_projection_and_classifier_to_adamw():
+    names = muon_parameter_names(create_cv_model("dinov3_vitb16"))
+
+    assert "backbone.embeddings.patch_embeddings.projection.weight" not in names
+    assert "classifier.weight" not in names
+    assert "backbone.layer.0.attention.q_proj.weight" in names
+
+
+def test_dinov3_freezes_the_patch_embedder_and_first_eight_transformer_blocks():
+    model = create_cv_model("dinov3_vitb16")
+
+    assert not any(parameter.requires_grad for parameter in model.backbone.embeddings.parameters())
+    assert not any(parameter.requires_grad for layer in model.backbone.layer[:8] for parameter in layer.parameters())
+    assert all(parameter.requires_grad for layer in model.backbone.layer[8:] for parameter in layer.parameters())
+    assert all(parameter.requires_grad for parameter in model.classifier.parameters())
+
+
+def test_dinov3_formal_task_uses_the_qualified_batch_and_learning_rates():
+    task = next(item for item in FORMAL_TASKS if item.identifier == "cv_dinov3_vitb16")
+
+    assert (task.estimated_epochs, task.micro_batch_size, task.gradient_accumulation) == (75, 8, 8)
+    assert (task.adamw_lr, task.muon_lr, task.muon_aux_lr) == (1e-4, 3e-4, 1e-4)
 
 
 def test_smollm2_task_uses_the_tokenizer_specific_loader(monkeypatch):

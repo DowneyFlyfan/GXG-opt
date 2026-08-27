@@ -59,6 +59,17 @@ def test_smollm2_loader_caches_tokenizer_specific_streams():
     assert len(validation.dataset) == 1
 
 
+def test_dinov3_cifar100_loader_emits_pretrained_model_resolution():
+    root = Path(__file__).resolve().parents[1]
+
+    train, validation = data.dinov3_cifar100_loaders(root, batch_size=1, workers=0)
+    image, target = next(iter(train))
+
+    assert image.shape == (1, 3, 224, 224)
+    assert target.shape == (1,)
+    assert len(validation.dataset) == 10_000
+
+
 def test_owsm_transcript_labels_include_the_asr_prefix(tmp_path):
     root = Path(__file__).resolve().parents[1]
 

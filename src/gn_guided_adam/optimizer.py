@@ -519,7 +519,7 @@ class GNGuidedAdamW(torch.optim.Optimizer):
         sampler=None,
         map_location=None,
     ) -> dict[str, Any]:
-        payload = torch.load(Path(path), map_location=map_location)
+        payload = torch.load(Path(path), map_location=map_location, weights_only=False)
         return restore_payload(
             payload,
             self.model,

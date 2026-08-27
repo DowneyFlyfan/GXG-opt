@@ -70,6 +70,22 @@ class AudioSpectrogramTransformer(nn.Module):
         return self.head(self.norm(self.blocks(hidden)))
 
 
+class DINOv3CIFAR100Classifier(nn.Module):
+    def __init__(self) -> None:
+        super().__init__()
+        from transformers import AutoModel
+
+        checkpoint = Path(__file__).resolve().parents[1] / ".cache" / "huggingface" / "models" / "DINOv3-ViT-B"
+        self.backbone = AutoModel.from_pretrained(checkpoint, local_files_only=True)
+        self.backbone.embeddings.requires_grad_(False)
+        for layer in self.backbone.layer[:8]:
+            layer.requires_grad_(False)
+        self.classifier = nn.Linear(self.backbone.config.hidden_size, 100)
+
+    def forward(self, images: torch.Tensor) -> torch.Tensor:
+        return self.classifier(self.backbone(pixel_values=images).pooler_output)
+
+
 def create_nlp_model(name: str) -> nn.Module:
     constructors = {
         "gpt_12x512": lambda: DecoderTransformer(width=512, heads=8, layers=12),
@@ -84,6 +100,8 @@ def create_nlp_model(name: str) -> nn.Module:
 
 
 def create_cv_model(name: str) -> nn.Module:
+    if name == "dinov3_vitb16":
+        return DINOv3CIFAR100Classifier()
     if name != "vit_base_12x768":
         raise ValueError(f"Unsupported CV model: {name}")
     return vision_models.VisionTransformer(

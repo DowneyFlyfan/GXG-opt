@@ -12,6 +12,7 @@ from artifacts import write_metric, write_metric_plot
 from config import FormalTask
 from data import (
     cifar100_loaders,
+    dinov3_cifar100_loaders,
     librispeech_loaders,
     owsm_decode_ctc_ids,
     owsm_librispeech_loaders,
@@ -50,6 +51,8 @@ def _loaders(task: FormalTask, root: Path, workers: int, seed: int = 1337):
             return smollm2_wikitext_loaders(root, task.micro_batch_size, workers, seed)
         return wikitext_loaders(root, task.micro_batch_size, workers, seed)
     if task.domain == "cv":
+        if task.model == "dinov3_vitb16":
+            return dinov3_cifar100_loaders(root, task.micro_batch_size, workers, seed)
         return cifar100_loaders(root, task.micro_batch_size, workers, seed)
     if task.domain == "audio":
         if task.model == "owsm_v3.1_base":
@@ -175,6 +178,42 @@ def _metric_label(domain: str) -> str:
     return {"nlp": "Validation next-token accuracy", "cv": "Validation top-1 accuracy", "audio": "Validation character error rate"}[domain]
 
 
+def _save_trial_checkpoint(
+    path: Path,
+    model: nn.Module,
+    optimizers: dict[str, torch.optim.Optimizer],
+    schedulers: dict[str, torch.optim.lr_scheduler.LRScheduler],
+    completed_epoch: int,
+    elapsed_seconds: float,
+) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    torch.save(
+        {
+            "model": model.state_dict(),
+            "optimizers": {name: optimizer.state_dict() for name, optimizer in optimizers.items()},
+            "schedulers": {name: scheduler.state_dict() for name, scheduler in schedulers.items()},
+            "completed_epoch": completed_epoch,
+            "elapsed_seconds": elapsed_seconds,
+        },
+        path,
+    )
+
+
+def _load_trial_checkpoint(
+    path: Path,
+    model: nn.Module,
+    optimizers: dict[str, torch.optim.Optimizer],
+    schedulers: dict[str, torch.optim.lr_scheduler.LRScheduler],
+) -> tuple[int, float]:
+    state = torch.load(path, map_location="cpu", weights_only=False)
+    model.load_state_dict(state["model"])
+    for name, optimizer in optimizers.items():
+        optimizer.load_state_dict(state["optimizers"][name])
+    for name, scheduler in schedulers.items():
+        scheduler.load_state_dict(state["schedulers"][name])
+    return int(state["completed_epoch"]), float(state["elapsed_seconds"])
+
+
 def run_trial(task: FormalTask, optimizer_name: str, root: Path, workers: int = 4, seed: int = 1337) -> dict:
     if not torch.cuda.is_available():
         raise RuntimeError("CUDA is required")
@@ -186,11 +225,16 @@ def run_trial(task: FormalTask, optimizer_name: str, root: Path, workers: int = 
     optimizers = build_optimizers(model, optimizer_name, learning_rate, task.weight_decay, task.muon_aux_lr)
     schedulers = {name: torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=task.estimated_epochs) for name, optimizer in optimizers.items()}
     metric_path = root / "metrics" / task.domain / f"{task.identifier}__{optimizer_name}.jsonl"
-    if metric_path.exists():
+    checkpoint_path = root / "results" / task.domain / f"{task.identifier}__{optimizer_name}.checkpoint.pt"
+    completed_epoch = 0
+    elapsed_seconds = 0.0
+    if checkpoint_path.exists():
+        completed_epoch, elapsed_seconds = _load_trial_checkpoint(checkpoint_path, model, optimizers, schedulers)
+    elif metric_path.exists():
         metric_path.unlink()
     torch.cuda.reset_peak_memory_stats(device)
     started = time.perf_counter()
-    for epoch in range(1, task.estimated_epochs + 1):
+    for epoch in range(completed_epoch + 1, task.estimated_epochs + 1):
         model.train()
         for batch_index, batch in enumerate(train_loader):
             if batch_index % task.gradient_accumulation == 0:
@@ -204,8 +248,10 @@ def run_trial(task: FormalTask, optimizer_name: str, root: Path, workers: int = 
             scheduler.step()
         metric = _evaluate(task, model, validation_loader, device)
         write_metric(metric_path, {"epoch": epoch, "metric": metric})
+        elapsed_seconds += time.perf_counter() - started
+        _save_trial_checkpoint(checkpoint_path, model, optimizers, schedulers, epoch, elapsed_seconds)
+        started = time.perf_counter()
         print(f"task={task.identifier} optimizer={optimizer_name} epoch={epoch}/{task.estimated_epochs} metric={metric:.6f}", flush=True)
-    seconds = time.perf_counter() - started
     result = {
         "task": task.identifier,
         "domain": task.domain,
@@ -215,16 +261,22 @@ def run_trial(task: FormalTask, optimizer_name: str, root: Path, workers: int = 
         "epochs": task.estimated_epochs,
         "micro_batch_size": task.micro_batch_size,
         "gradient_accumulation": task.gradient_accumulation,
-        "seconds": seconds,
+        "seconds": elapsed_seconds + time.perf_counter() - started,
         "peak_memory_mb": torch.cuda.max_memory_allocated(device) / 1024**2,
         "status": "completed",
     }
     result_path = root / "results" / task.domain / f"{task.identifier}__{optimizer_name}.json"
     result_path.parent.mkdir(parents=True, exist_ok=True)
     result_path.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n")
+    checkpoint_path.unlink(missing_ok=True)
     paired = root / "metrics" / task.domain / f"{task.identifier}__{'muon' if optimizer_name == 'adamw' else 'adamw'}.jsonl"
     if paired.exists():
         adamw = metric_path if optimizer_name == "adamw" else paired
         muon = metric_path if optimizer_name == "muon" else paired
-        write_metric_plot(adamw, muon, root / "results" / task.domain / f"{task.identifier}_metric_steps.png", _metric_label(task.domain))
+        paired_result = root / "results" / task.domain / f"{task.identifier}__{'muon' if optimizer_name == 'adamw' else 'adamw'}.json"
+        runtimes = None
+        if paired_result.exists():
+            other_seconds = json.loads(paired_result.read_text())["seconds"]
+            runtimes = {"AdamW": result["seconds"] if optimizer_name == "adamw" else other_seconds, "Muon": result["seconds"] if optimizer_name == "muon" else other_seconds}
+        write_metric_plot(adamw, muon, root / "results" / task.domain / f"{task.identifier}_metric_steps.png", _metric_label(task.domain), runtimes)
     return result

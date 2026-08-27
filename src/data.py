@@ -175,6 +175,21 @@ def cifar100_loaders(root: Path, batch_size: int, workers: int, seed: int = 1337
     )
 
 
+def dinov3_cifar100_loaders(root: Path, batch_size: int, workers: int, seed: int = 1337) -> tuple[DataLoader, DataLoader]:
+    normalize = transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
+    train_transform = transforms.Compose(
+        [transforms.RandomResizedCrop(224), transforms.RandomHorizontalFlip(), transforms.ToTensor(), normalize]
+    )
+    validation_transform = transforms.Compose([transforms.Resize(256), transforms.CenterCrop(224), transforms.ToTensor(), normalize])
+    cache = root / ".cache" / "cv"
+    train = datasets.CIFAR100(cache, train=True, download=False, transform=train_transform)
+    validation = datasets.CIFAR100(cache, train=False, download=False, transform=validation_transform)
+    return (
+        DataLoader(train, shuffle=True, **loader_options(batch_size, workers, seed)),
+        DataLoader(validation, shuffle=False, **loader_options(batch_size, workers, seed + 1)),
+    )
+
+
 def _transcript_tokens(text: str) -> torch.Tensor:
     return torch.tensor([CHARACTER_IDS[character] for character in text.lower() if character in CHARACTER_IDS] or [1])
 
