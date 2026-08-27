@@ -10,7 +10,14 @@ from torch import nn
 
 from artifacts import write_metric, write_metric_plot
 from config import FormalTask
-from data import cifar100_loaders, librispeech_loaders, owsm_decode_ctc_ids, owsm_librispeech_loaders, wikitext_loaders
+from data import (
+    cifar100_loaders,
+    librispeech_loaders,
+    owsm_decode_ctc_ids,
+    owsm_librispeech_loaders,
+    smollm2_wikitext_loaders,
+    wikitext_loaders,
+)
 from models import create_audio_model, create_cv_model, create_nlp_model, parameter_count
 from optimizers import build_optimizers
 
@@ -39,6 +46,8 @@ def _model(task: FormalTask) -> nn.Module:
 
 def _loaders(task: FormalTask, root: Path, workers: int, seed: int = 1337):
     if task.domain == "nlp":
+        if task.model == "smollm2_135m":
+            return smollm2_wikitext_loaders(root, task.micro_batch_size, workers, seed)
         return wikitext_loaders(root, task.micro_batch_size, workers, seed)
     if task.domain == "cv":
         return cifar100_loaders(root, task.micro_batch_size, workers, seed)
@@ -47,6 +56,11 @@ def _loaders(task: FormalTask, root: Path, workers: int, seed: int = 1337):
             return owsm_librispeech_loaders(root, task.micro_batch_size, workers, seed)
         return librispeech_loaders(root, task.micro_batch_size, workers, seed)
     raise ValueError(task.domain)
+
+
+def _model_logits(model: nn.Module, token_ids: torch.Tensor) -> torch.Tensor:
+    output = model(token_ids)
+    return output.logits if hasattr(output, "logits") else output
 
 
 def _audio_error(logits: torch.Tensor, targets: torch.Tensor, lengths: torch.Tensor) -> tuple[int, int]:
@@ -95,7 +109,7 @@ def _evaluate(task: FormalTask, model: nn.Module, loader, device: torch.device, 
         if task.domain == "nlp":
             token_ids, targets = (value.to(device, non_blocking=True) for value in batch)
             with torch.autocast("cuda", dtype=torch.bfloat16):
-                logits = model(token_ids)
+                logits = _model_logits(model, token_ids)
             correct += (logits.argmax(dim=-1) == targets).sum().item()
             total += targets.numel()
         elif task.domain == "cv":
@@ -134,7 +148,7 @@ def _loss(task: FormalTask, model: nn.Module, batch, device: torch.device) -> to
     if task.domain == "nlp":
         token_ids, targets = (value.to(device, non_blocking=True) for value in batch)
         with torch.autocast("cuda", dtype=torch.bfloat16):
-            logits = model(token_ids)
+            logits = _model_logits(model, token_ids)
             return functional.cross_entropy(logits.reshape(-1, logits.size(-1)), targets.reshape(-1))
     if task.domain == "cv":
         images, targets = (value.to(device, non_blocking=True) for value in batch)

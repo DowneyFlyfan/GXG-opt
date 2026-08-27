@@ -36,3 +36,13 @@ Both optimizers used the same data order and eight accumulated microbatches.
 AdamW at update 30 had mean speech-to-text loss 695.38. Muon at update 30 had
 mean loss 704.98. Neither run diverged, so the listed learning rates are used
 for the formal pair.
+
+## Interrupted first attempt
+
+The first AdamW formal attempt was interrupted by the local non-persistent
+terminal after four completed epochs. It did not save model or optimizer state,
+so it cannot be resumed from epoch five without misrepresenting a new model as
+continuation. Its validation character-error-rate values were 0.205850,
+0.150436, 0.126999, and 0.119186 for epochs one through four. They are kept as
+diagnostic evidence only; the formal pair restarts from epoch one in a durable
+local tmux session.

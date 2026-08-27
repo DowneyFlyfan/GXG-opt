@@ -19,6 +19,22 @@ CHARACTER_IDS = {character: index + 1 for index, character in enumerate(CHARACTE
 
 
 @lru_cache(maxsize=1)
+def _smollm2_tokenizer(project_root: Path):
+    from transformers import AutoTokenizer
+
+    checkpoint = project_root / ".cache" / "huggingface" / "models" / "SmolLM2-135M"
+    return AutoTokenizer.from_pretrained(checkpoint, local_files_only=True)
+
+
+def smollm2_tokenize(project_root: Path, texts: list[str]) -> torch.Tensor:
+    tokenizer = _smollm2_tokenizer(project_root.resolve())
+    encoded = tokenizer(texts, add_special_tokens=False, return_attention_mask=False)["input_ids"]
+    end_of_text = tokenizer.eos_token_id
+    token_stream = [token for sequence in encoded for token in (*sequence, end_of_text)]
+    return torch.tensor(token_stream, dtype=torch.long)
+
+
+@lru_cache(maxsize=1)
 def _owsm_tokenizer_and_converter(project_root: Path):
     import yaml
     from espnet2.text.build_tokenizer import build_tokenizer
@@ -97,6 +113,47 @@ def wikitext_loaders(root: Path, batch_size: int, workers: int, seed: int = 1337
         torch.save(_byte_tokens(dataset["train"]["text"], 100_000_000), train_cache)
         torch.save(_byte_tokens(dataset["validation"]["text"], 10_000_000), validation_cache)
     train, validation = TokenStreamDataset(torch.load(train_cache, weights_only=True)), TokenStreamDataset(torch.load(validation_cache, weights_only=True))
+    return (
+        DataLoader(train, shuffle=True, **loader_options(batch_size, workers, seed)),
+        DataLoader(validation, shuffle=False, **loader_options(batch_size, workers, seed + 1)),
+    )
+
+
+def _smollm2_token_stream(project_root: Path, texts, maximum_tokens: int) -> torch.Tensor:
+    tokenizer = _smollm2_tokenizer(project_root.resolve())
+    tokens: list[int] = []
+    for text in texts:
+        tokens.extend(tokenizer(text, add_special_tokens=False)["input_ids"])
+        tokens.append(tokenizer.eos_token_id)
+        if len(tokens) >= maximum_tokens:
+            break
+    return torch.tensor(tokens[:maximum_tokens], dtype=torch.long)
+
+
+def smollm2_wikitext_loaders(
+    root: Path,
+    batch_size: int,
+    workers: int,
+    seed: int = 1337,
+    train_tokens: int = 100_000_000,
+    validation_tokens: int = 10_000_000,
+) -> tuple[DataLoader, DataLoader]:
+    cache = root / ".cache" / "nlp"
+    cache.mkdir(parents=True, exist_ok=True)
+    train_cache = cache / f"smollm2_wikitext103_train_{train_tokens}.pt"
+    validation_cache = cache / f"smollm2_wikitext103_validation_{validation_tokens}.pt"
+    if not train_cache.exists() or not validation_cache.exists():
+        dataset = load_dataset(
+            "Salesforce/wikitext",
+            "wikitext-103-raw-v1",
+            cache_dir=str(cache / "hf"),
+        )
+        if not train_cache.exists():
+            torch.save(_smollm2_token_stream(root, dataset["train"]["text"], train_tokens), train_cache)
+        if not validation_cache.exists():
+            torch.save(_smollm2_token_stream(root, dataset["validation"]["text"], validation_tokens), validation_cache)
+    train = TokenStreamDataset(torch.load(train_cache, weights_only=True))
+    validation = TokenStreamDataset(torch.load(validation_cache, weights_only=True))
     return (
         DataLoader(train, shuffle=True, **loader_options(batch_size, workers, seed)),
         DataLoader(validation, shuffle=False, **loader_options(batch_size, workers, seed + 1)),

@@ -33,6 +33,32 @@ def test_seeded_loader_options_reproduce_shuffled_token_batches():
     assert torch.equal(first[1], second[1])
 
 
+def test_smollm2_tokenizer_uses_the_local_checkpoint_vocabulary():
+    root = Path(__file__).resolve().parents[1]
+
+    token_ids = data.smollm2_tokenize(root, ["A short deterministic sentence."])
+
+    assert token_ids.dtype == torch.long
+    assert token_ids.numel() > 1
+    assert token_ids.max().item() < 49_152
+
+
+def test_smollm2_loader_caches_tokenizer_specific_streams():
+    root = Path(__file__).resolve().parents[1]
+    train, validation = data.smollm2_wikitext_loaders(
+        root,
+        batch_size=1,
+        workers=0,
+        train_tokens=4_096,
+        validation_tokens=2_048,
+    )
+
+    inputs, labels = next(iter(train))
+
+    assert inputs.shape == labels.shape == (1, data.CONTEXT_LENGTH)
+    assert len(validation.dataset) == 1
+
+
 def test_owsm_transcript_labels_include_the_asr_prefix(tmp_path):
     root = Path(__file__).resolve().parents[1]
 

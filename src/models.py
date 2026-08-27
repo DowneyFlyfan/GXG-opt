@@ -75,6 +75,11 @@ def create_nlp_model(name: str) -> nn.Module:
         "gpt_12x512": lambda: DecoderTransformer(width=512, heads=8, layers=12),
         "gpt_12x768": lambda: DecoderTransformer(width=768, heads=12, layers=12),
     }
+    if name == "smollm2_135m":
+        from transformers import AutoModelForCausalLM
+
+        checkpoint = Path(__file__).resolve().parents[1] / ".cache" / "huggingface" / "models" / "SmolLM2-135M"
+        return AutoModelForCausalLM.from_pretrained(checkpoint, local_files_only=True)
     return constructors[name]()
 
 

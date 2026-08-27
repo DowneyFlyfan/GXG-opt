@@ -5,6 +5,7 @@ import pytest
 import torch
 from torch import nn
 
+import training
 from config import FORMAL_TASKS
 from models import create_audio_model, create_cv_model, create_nlp_model, parameter_count
 from optimizers import Muon, build_optimizers, muon_parameter_names, qualify_ratio
@@ -27,6 +28,35 @@ def test_declared_models_are_within_parameter_range():
     )
     for model in models:
         assert 10_000_000 <= parameter_count(model) <= 200_000_000
+
+
+def test_smollm2_loads_offline_from_the_project_cache():
+    model = create_nlp_model("smollm2_135m")
+
+    assert 130_000_000 <= parameter_count(model) <= 140_000_000
+
+
+def test_smollm2_task_uses_the_tokenizer_specific_loader(monkeypatch):
+    task = next(task for task in FORMAL_TASKS if task.model == "smollm2_135m")
+    expected = object()
+    observed = {}
+
+    def loader(root, batch_size, workers, seed):
+        observed.update(root=root, batch_size=batch_size, workers=workers, seed=seed)
+        return expected
+
+    monkeypatch.setattr(training, "smollm2_wikitext_loaders", loader)
+
+    assert training._loaders(task, Path("/tmp/project"), workers=3, seed=19) is expected
+    assert observed == {"root": Path("/tmp/project"), "batch_size": 2, "workers": 3, "seed": 19}
+
+
+def test_smollm2_logits_are_extracted_from_the_causal_language_model_output():
+    model = create_nlp_model("smollm2_135m")
+
+    logits = training._model_logits(model, torch.tensor([[1, 2, 3]], dtype=torch.long))
+
+    assert logits.shape == (1, 3, 49_152)
 
 
 def test_cnn_selection_excludes_first_and_degenerate_convolutions():
