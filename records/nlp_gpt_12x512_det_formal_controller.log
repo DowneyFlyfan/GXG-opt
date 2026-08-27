@@ -1,0 +1,11 @@
+gate adamw=0.670967 muon=0.725788
+task=nlp_gpt_12x512 optimizer=adamw epoch=1/5 metric=0.631744
+task=nlp_gpt_12x512 optimizer=adamw epoch=2/5 metric=0.674274
+task=nlp_gpt_12x512 optimizer=adamw epoch=3/5 metric=0.693958
+task=nlp_gpt_12x512 optimizer=adamw epoch=4/5 metric=0.705212
+task=nlp_gpt_12x512 optimizer=adamw epoch=5/5 metric=0.711754
+task=nlp_gpt_12x512 optimizer=muon epoch=1/5 metric=0.697289
+task=nlp_gpt_12x512 optimizer=muon epoch=2/5 metric=0.716557
+task=nlp_gpt_12x512 optimizer=muon epoch=3/5 metric=0.730698
+task=nlp_gpt_12x512 optimizer=muon epoch=4/5 metric=0.743656
+task=nlp_gpt_12x512 optimizer=muon epoch=5/5 metric=0.752193

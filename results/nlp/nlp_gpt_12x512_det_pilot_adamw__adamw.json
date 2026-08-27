@@ -1,0 +1,13 @@
+{
+  "domain": "nlp",
+  "epochs": 2,
+  "gradient_accumulation": 2,
+  "micro_batch_size": 4,
+  "model": "gpt_12x512",
+  "optimizer": "adamw",
+  "parameters": 54682624,
+  "peak_memory_mb": 4824.486328125,
+  "seconds": 4014.039628902916,
+  "status": "completed",
+  "task": "nlp_gpt_12x512_det_pilot_adamw"
+}
