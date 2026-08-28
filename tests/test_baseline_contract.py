@@ -64,7 +64,7 @@ def test_dinov3_formal_task_uses_the_qualified_batch_and_learning_rates():
     task = next(item for item in FORMAL_TASKS if item.identifier == "cv_dinov3_vitb16")
 
     assert (task.estimated_epochs, task.micro_batch_size, task.gradient_accumulation) == (75, 8, 8)
-    assert (task.adamw_lr, task.muon_lr, task.muon_aux_lr) == (1e-4, 3e-4, 1e-4)
+    assert (task.adamw_lr, task.muon_lr, task.muon_aux_lr) == (1e-4, 1e-4, 1e-4)
 
 
 def test_smollm2_task_uses_the_tokenizer_specific_loader(monkeypatch):

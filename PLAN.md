@@ -9,7 +9,7 @@ the measured wall-clock time for both optimizers.
 |---|---|---:|---|---|---|
 | Natural Language Processing | GPT 12x512 | 54.68M | complete | complete | retained baseline |
 | Natural Language Processing | SmolLM2-135M | 134.52M | pending | pending | offline adapter complete |
-| Computer Vision | DINOv3 ViT-B/16 | 85.74M with head | running | queued | qualified; AdamW formal run in progress |
+| Computer Vision | DINOv3 ViT-B/16 | 85.74M with head | complete | complete | tuned formal pair; time-annotated metric graph complete |
 | Audio | OWSM v3.1 Base | 101.18M | complete | complete | committed paired result |
 
 ## Execution gates
@@ -29,7 +29,6 @@ the measured wall-clock time for both optimizers.
 
 ## Immediate work
 
-Complete the DINOv3 ViT-B/16 AdamW formal baseline from the qualified cached
-model. It uses a frozen patch embedder and first eight Transformer layers;
-the matched Muon baseline is queued and will produce the paired time-annotated
-metric-versus-epoch graph after both result files exist.
+Profile and tune the cached SmolLM2-135M baseline before starting its formal
+AdamW and Muon pair. DINOv3 is complete, including its time-annotated paired
+metric-versus-epoch graph.
