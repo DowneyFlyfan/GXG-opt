@@ -8,7 +8,7 @@ the measured wall-clock time for both optimizers.
 | Domain | Model | Parameters | AdamW | Muon | Current state |
 |---|---|---:|---|---|---|
 | Natural Language Processing | GPT 12x512 | 54.68M | complete | complete | retained baseline |
-| Natural Language Processing | SmolLM2-135M | 134.52M | pending | pending | offline adapter complete |
+| Natural Language Processing | SmolLM2-135M | 134.52M | complete | complete | tuned formal pair; time-annotated metric graph complete |
 | Computer Vision | DINOv3 ViT-B/16 | 85.74M with head | complete | complete | tuned formal pair; time-annotated metric graph complete |
 | Audio | OWSM v3.1 Base | 101.18M | complete | complete | committed paired result |
 
@@ -29,6 +29,5 @@ the measured wall-clock time for both optimizers.
 
 ## Immediate work
 
-Profile and tune the cached SmolLM2-135M baseline before starting its formal
-AdamW and Muon pair. DINOv3 is complete, including its time-annotated paired
-metric-versus-epoch graph.
+Audit the four completed Transformer baseline pairs and verify that every
+metric-versus-epoch graph includes the paired wall-clock times.

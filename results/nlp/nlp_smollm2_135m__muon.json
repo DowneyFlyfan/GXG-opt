@@ -1,0 +1,13 @@
+{
+  "domain": "nlp",
+  "epochs": 2,
+  "gradient_accumulation": 8,
+  "micro_batch_size": 2,
+  "model": "smollm2_135m",
+  "optimizer": "muon",
+  "parameters": 134515008,
+  "peak_memory_mb": 7255.10595703125,
+  "seconds": 12252.520210677758,
+  "status": "completed",
+  "task": "nlp_smollm2_135m"
+}
