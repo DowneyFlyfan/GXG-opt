@@ -1,5 +1,7 @@
 # Ideas
 
+The repository-native implementation of the Kronecker GGN baseline and its signed low-rank relative-residual correction is documented in [KRONECKER_GGN_README.md](KRONECKER_GGN_README.md).
+
 - [x] Adaptive Dropout Rate for each layer
 
 - Alternative Update: Adam -> GN -> Adam (With momentum saved) -> GN -> ...

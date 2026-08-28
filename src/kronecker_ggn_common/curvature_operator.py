@@ -1,0 +1,182 @@
+from __future__ import annotations
+
+import random
+from contextlib import contextmanager
+from dataclasses import dataclass, field
+from typing import Any
+
+import torch
+from torch import Tensor, nn
+from torch.func import functional_call, grad, jvp, vjp
+
+from .layer_registry import LayerRegistry
+
+
+class GGNOperatorError(RuntimeError):
+    pass
+
+
+@contextmanager
+def _preserve_execution_state(model: nn.Module):
+    modes = [(module, module.training) for module in model.modules()]
+    buffers = {name: value.detach().clone() for name, value in model.named_buffers()}
+    python_rng = random.getstate()
+    cpu_rng = torch.random.get_rng_state()
+    cuda_rng = torch.cuda.get_rng_state_all() if torch.cuda.is_available() else None
+    try:
+        model.eval()
+        yield
+    finally:
+        for module, training in modes:
+            module.train(training)
+        with torch.no_grad():
+            current_buffers = dict(model.named_buffers())
+            for name, value in buffers.items():
+                current_buffers[name].copy_(value)
+        random.setstate(python_rng)
+        torch.random.set_rng_state(cpu_rng)
+        if cuda_rng is not None and torch.cuda.is_available():
+            torch.cuda.set_rng_state_all(cuda_rng)
+
+
+@dataclass(frozen=True)
+class FunctionalCurvatureBatch:
+    args: tuple[Any, ...]
+    loss_fn: Any
+    kwargs: dict[str, Any] = field(default_factory=dict)
+    batch_id: str | None = None
+
+
+def _tree_is_finite(value: Any) -> bool:
+    if isinstance(value, Tensor):
+        return bool(torch.isfinite(value).all().item())
+    if isinstance(value, (tuple, list)):
+        return all(_tree_is_finite(item) for item in value)
+    if isinstance(value, dict):
+        return all(_tree_is_finite(item) for item in value.values())
+    return True
+
+
+class GGNLinearOperator:
+    """Matrix-free layer-local J^T H_loss J for registered nn.Linear weights."""
+
+    def __init__(
+        self, model: nn.Module, registry: LayerRegistry, batch: FunctionalCurvatureBatch
+    ) -> None:
+        self.model = model
+        self.registry = registry
+        self.batch = batch
+        self.matvec_count = 0
+        self._parameter_names = {
+            id(parameter): name for name, parameter in model.named_parameters()
+        }
+
+    def _functions(self, layer_id: str):
+        layer = self.registry.by_id(layer_id)
+        if not layer.supported:
+            raise GGNOperatorError(
+                f"Unsupported layer {layer_id}: {layer.fallback_reason}"
+            )
+        parameter_name = self._parameter_names[id(layer.weight)]
+        state = dict(self.model.named_parameters())
+        state.update(
+            {name: value.detach().clone() for name, value in self.model.named_buffers()}
+        )
+        base = state[parameter_name]
+
+        def layer_function(weight: Tensor) -> Any:
+            candidate = dict(state)
+            candidate[parameter_name] = weight
+            return functional_call(
+                self.model,
+                candidate,
+                self.batch.args,
+                dict(self.batch.kwargs),
+                strict=False,
+            )
+
+        return layer, base, layer_function
+
+    def matvec(self, layer_id: str, vector: Tensor) -> Tensor:
+        layer, base, layer_function = self._functions(layer_id)
+        if tuple(vector.shape) != layer.matrix_shape:
+            raise ValueError(
+                f"Vector for {layer_id} must have shape {layer.matrix_shape}"
+            )
+        tangent = vector.to(device=base.device, dtype=base.dtype)
+        with _preserve_execution_state(self.model):
+            try:
+                output, pullback = vjp(layer_function, base)
+                loss = self.batch.loss_fn(output)
+                output_gradient_fn = grad(self.batch.loss_fn)
+                output_gradient = output_gradient_fn(output)
+                if not torch.isfinite(loss).all() or not _tree_is_finite(
+                    output_gradient
+                ):
+                    raise GGNOperatorError(
+                        "Curvature loss or output gradient is non-finite"
+                    )
+                _, output_tangent = jvp(layer_function, (base,), (tangent,))
+                _, output_hvp = jvp(output_gradient_fn, (output,), (output_tangent,))
+                product = pullback(output_hvp)[0]
+            except RuntimeError as error:
+                raise GGNOperatorError(
+                    "Exact GGN functional transforms failed; stateful/in-place modules are unsupported"
+                ) from error
+        dtype = torch.float64 if product.dtype == torch.float64 else torch.float32
+        result = (
+            product.detach()
+            .to(device=vector.device, dtype=dtype)
+            .reshape(layer.matrix_shape)
+        )
+        self.matvec_count += 1
+        if not torch.isfinite(result).all():
+            raise GGNOperatorError("GGN product is non-finite")
+        return result.to(dtype=vector.dtype)
+
+    def double_autograd_matvec(self, layer_id: str, vector: Tensor) -> Tensor:
+        """Slow Tensor-output reference used only by tiny correctness tests."""
+        layer, base, layer_function = self._functions(layer_id)
+        if tuple(vector.shape) != layer.matrix_shape:
+            raise ValueError(
+                f"Vector for {layer_id} must have shape {layer.matrix_shape}"
+            )
+        with _preserve_execution_state(self.model):
+            weight = base.detach().clone().requires_grad_(True)
+            output = layer_function(weight)
+            if not isinstance(output, Tensor):
+                raise GGNOperatorError(
+                    "Double-autograd reference requires a Tensor model output"
+                )
+            output_gradient = torch.autograd.grad(
+                self.batch.loss_fn(output), output, create_graph=True
+            )[0]
+            tangent = torch.autograd.functional.jvp(
+                layer_function,
+                weight,
+                vector.to(weight),
+                create_graph=False,
+                strict=True,
+            )[1]
+            output_hvp = torch.autograd.grad(
+                output_gradient, output, grad_outputs=tangent, retain_graph=True
+            )[0]
+            product = torch.autograd.grad(output, weight, grad_outputs=output_hvp)[0]
+        return product.detach().to(vector)
+
+    def explicit_matrix_for_testing(
+        self, layer_id: str, maximum_elements: int = 256
+    ) -> Tensor:
+        layer = self.registry.by_id(layer_id)
+        count = layer.weight.numel()
+        if count > maximum_elements:
+            raise ValueError(
+                "Explicit GGN construction is test-only and limited to tiny layers"
+            )
+        dtype = torch.float64 if layer.weight.dtype == torch.float64 else torch.float32
+        identity = torch.eye(count, device=layer.weight.device, dtype=dtype)
+        columns = [
+            self.matvec(layer_id, identity[:, index].reshape(layer.matrix_shape))
+            for index in range(count)
+        ]
+        return torch.stack([column.reshape(-1) for column in columns], dim=1)

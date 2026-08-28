@@ -1,0 +1,15 @@
+{
+  "accelerator_hours": 0.0,
+  "baseline_inverse_seconds": 6.165720005810727e-05,
+  "columns": 64,
+  "corrected_inverse_seconds": 0.00023278879998542835,
+  "corrected_over_baseline_ratio": 3.775533105071953,
+  "device": "cpu",
+  "dtype": "float32",
+  "estimated_working_memory_mb": 0.171875,
+  "peak_allocated_mb": 0.0,
+  "rank": 4,
+  "repeats": 5,
+  "rows": 64,
+  "scope": "optimizer_inverse_action_microbenchmark_not_training"
+}

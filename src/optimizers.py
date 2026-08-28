@@ -7,6 +7,8 @@ from dataclasses import dataclass
 import torch
 from torch import nn
 
+from optimizer_registry import OPTIMIZER_REGISTRY, build_optimizer
+
 
 @torch.compile
 def _compiled_zero_power(update: torch.Tensor, steps: int) -> torch.Tensor:
