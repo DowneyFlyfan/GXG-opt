@@ -30,14 +30,15 @@ a one-sequence, 128-token curvature batch completed one exact product in
 0.453 seconds with 1,857 MB peak allocated GPU memory, so an exact
 Hessian-free implementation is feasible on the local 16 GB GPU.
 
-The same probe found that the current decoder's default initialization gives
-logit standard deviation 22.784 and an exactly zero numerical GGN product for
-a random full-parameter direction: the softmax Hessian is saturated at the
-start. This is a property of the current baseline initialization, not an
-out-of-memory limitation. The next qualification must therefore test a
-properly damped first step and its actual reduction before committing to a
-four-hour run. Kronecker tuning results below are not used to set full-GGN CG
-parameters.
+The same probe found that the original decoder initialization gives logit
+standard deviation 22.756 and an exactly zero numerical GGN product for a
+unit gradient direction: the softmax Hessian is saturated at the start. A
+standard GPT-style initialization changes those two measurements to 0.455 and
+46.139 respectively. The runner now applies that initialization to each fresh
+local GPT baseline, so future AdamW, Muon, and GGN traces can be compared from
+the same nonsaturated state. The existing AdamW/Muon files were produced
+before this correction and are not a fair comparator for the corrected GGN
+trace.
 
 ## Full-GGN batch-size qualification
 
@@ -60,41 +61,34 @@ length 600.  It uses the largest observed stable configuration, leaving about
 selection follows the requested near-full-GPU policy without treating an OOM
 as an acceptable normal operating condition.
 
-## Fixed-damping pilots
+## Pure full-GGN retuning evidence
 
-| Step scale | Initial damping | Step 512 | Final pilot metric | Decision |
-|---:|---:|---:|---:|---|
-| 0.03 | 0.03 | 0.250790 | 0.198177 at 1,362 steps | superseded |
-| 0.10 | 0.03 | 0.222050 | 0.262875 at 1,272 steps | selected for full run |
-| 0.10 | 0.10 | 0.149731 | 0.225246 at 1,359 steps | rejected |
+All values below are NLP validation token accuracy.  Each full-GGN candidate
+uses the same cached WikiText-103 stream and Armijo/Levenberg--Marquardt logic.
 
-The Martens-scale initial damping of 0.1 was materially worse here.  This does
-not contradict the reference method: its exact GGN plus a full linear solve is
-not the same curvature model as the local Kronecker approximation.
+| Initialization | Curvature update | Damping | Metric evidence | Decision |
+|---|---|---|---|---|
+| original | 4 x 600, CG 1 | 200 then floor 20 | 0.26485 at 256; 0.27463 at 512 | rejected: saturated curvature and slow progress |
+| GPT-style | 4 x 600, CG 1 | 1 then floor 0.001 | 0.19261 at 32, 64, and 96 | rejected: one CG iterate does not change predictions |
+| GPT-style | 4 x 600, CG 2 | 1 then floor 0.001 | 0.28365 at 256; 0.28709 at 512 | rejected: only +0.00344 in 268.6 seconds |
+| GPT-style | 4 x 600, CG 2 | 1 then floor 0.1 | 0.19236 at 32; 0.24235 at 64 | rejected: stronger damping is worse |
+| GPT-style | 4 x 512 x 2 sequential windows, CG 2 | 1 then floor 0.001 | 0.19261 at 32 | rejected: lower throughput and no early gain |
 
-## Actual-versus-predicted reduction control
+The two-CG case has accepted Armijo steps and faithful curvature prediction
+(reduction ratios 0.861 at step 256 and 0.988 at step 512), so this is not a
+line-search failure.  It is a time-to-metric failure of exact full GGN on this
+54.68M vocabulary-softmax language model. It cannot honestly be called better
+than the retained pre-correction Muon metric of 0.75219; moreover that Muon
+trace must be rerun after the initialization correction before a fair claim is
+possible.
 
-The baseline now supports an optional Levenberg--Marquardt damping update.  At
-each requested interval, it evaluates the pre-update loss and the candidate
-loss over the same accumulated training micro-batches, computes the damped
-quadratic prediction, and updates every layer's spectral operator after a
-damping change.  Unit coverage verifies that an agreeing scalar GGN quadratic
-reduces damping.
+## Required next decision
 
-The first language-model pilot at step scale 0.10 and initial damping 0.03 was
-rejected after 512 steps: predicted reduction was 12.2773, actual reduction
-was 0.7623, ratio 0.0621, and the repeated damping increases reduced validation
-metric to 0.156555.  The factorized local model is too miscalibrated for this
-adaptive rule at that cadence, so it is not used for the final fixed-damping
-run.
-
-## Active run
-
-The retraining run started from a fresh model state with micro batch four,
-accumulation two, step scale 0.10, damping 0.03, and relative per-parameter
-trust cap 0.02.  It has a 14,400-second training limit and writes checkpoints
-to `.cache/nlp/checkpoints`, metrics to `metrics/nlp`, and the required PNG
-plots to `results/nlp`.
+The pure-GGN tuning space has exhausted the supported batch, CG, damping, and
+curvature-window variants without evidence it can win inside four hours.
+Continuing requires either an explicit switch to a GGN-guided first-order
+method or permission to report the negative pure-GGN result. Neither choice is
+made by this record.
 
 ## Sources
 
