@@ -182,6 +182,7 @@ def write_gn_comparison_plots(root: Path) -> tuple[Path, Path] | None:
     names = (
         ("AdamW", "adamw"),
         ("Muon", "muon"),
+        ("Full GGN", "full_ggn"),
         ("Kronecker GGN", "kronecker_ggn"),
         ("Low-rank DG-GN", "low_rank_corrected_kronecker_ggn"),
     )

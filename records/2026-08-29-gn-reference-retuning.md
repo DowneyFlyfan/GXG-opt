@@ -2,10 +2,11 @@
 
 ## Scope
 
-This record replaces an incorrect K-FAC interpretation.  The retrained NLP
+This record replaces an incorrect K-FAC interpretation. The retrained NLP
 baseline is the 54,682,624-parameter `gpt_12x512` causal language model on the
-cached WikiText-103 task.  It is a Kronecker approximation to generalized
-Gauss--Newton (GGN), not a K-FAC optimizer.
+cached WikiText-103 task. The earlier layer-wise Kronecker approximation is an
+ablation, not the original Gauss--Newton solver; the active reference path is
+matrix-free full generalized Gauss--Newton (GGN).
 
 ## Sources used
 
@@ -18,7 +19,25 @@ Gauss--Newton (GGN), not a K-FAC optimizer.
   adaptive damping, CG warm starts, backtracking, and line search.
 
 The original sources do **not** prescribe K-FAC's factored damping or its
-gradient-space momentum.  Those changes were not applied.
+gradient-space momentum. Those changes are excluded from the reference path.
+
+## Exact full-GGN feasibility and initialization check
+
+An all-parameter matrix-free operator now computes \(Gv = J^T H_\ell Jv\)
+with forward- and reverse-mode automatic differentiation. Its small linear
+least-squares test matches the analytic Hessian exactly. On the 54.68M model,
+a one-sequence, 128-token curvature batch completed one exact product in
+0.453 seconds with 1,857 MB peak allocated GPU memory, so an exact
+Hessian-free implementation is feasible on the local 16 GB GPU.
+
+The same probe found that the current decoder's default initialization gives
+logit standard deviation 22.784 and an exactly zero numerical GGN product for
+a random full-parameter direction: the softmax Hessian is saturated at the
+start. This is a property of the current baseline initialization, not an
+out-of-memory limitation. The next qualification must therefore test a
+properly damped first step and its actual reduction before committing to a
+four-hour run. Kronecker tuning results below are not used to set full-GGN CG
+parameters.
 
 ## Batch-size qualification
 

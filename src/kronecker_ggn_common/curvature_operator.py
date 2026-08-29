@@ -180,3 +180,98 @@ class GGNLinearOperator:
             for index in range(count)
         ]
         return torch.stack([column.reshape(-1) for column in columns], dim=1)
+
+
+class GGNFullOperator:
+    """Matrix-free generalized Gauss--Newton product over all trainable parameters."""
+
+    def __init__(self, model: nn.Module, batch: FunctionalCurvatureBatch) -> None:
+        self.model = model
+        self.batch = batch
+        named = tuple(
+            (name, parameter)
+            for name, parameter in model.named_parameters()
+            if parameter.requires_grad
+        )
+        if not named:
+            raise ValueError("GGNFullOperator requires trainable parameters")
+        self.parameter_names = tuple(name for name, _ in named)
+        self.parameters = tuple(parameter for _, parameter in named)
+        self._sizes = tuple(parameter.numel() for parameter in self.parameters)
+        self.matvec_count = 0
+
+    @property
+    def numel(self) -> int:
+        return sum(self._sizes)
+
+    def _functions(self):
+        state = dict(self.model.named_parameters())
+        state.update(
+            {name: value.detach().clone() for name, value in self.model.named_buffers()}
+        )
+        base = tuple(state[name] for name in self.parameter_names)
+
+        def model_function(*values: Tensor) -> Any:
+            candidate = dict(state)
+            candidate.update(zip(self.parameter_names, values, strict=True))
+            return functional_call(
+                self.model,
+                candidate,
+                self.batch.args,
+                dict(self.batch.kwargs),
+                strict=False,
+            )
+
+        return base, model_function
+
+    def _unflatten(self, vector: Tensor, base: tuple[Tensor, ...]) -> tuple[Tensor, ...]:
+        if vector.numel() != self.numel:
+            raise ValueError("Full GGN vector has the wrong size")
+        values = []
+        offset = 0
+        for size, parameter in zip(self._sizes, base, strict=True):
+            values.append(
+                vector[offset : offset + size]
+                .reshape_as(parameter)
+                .to(device=parameter.device, dtype=parameter.dtype)
+            )
+            offset += size
+        return tuple(values)
+
+    @staticmethod
+    def _flatten(values: tuple[Tensor, ...], *, dtype: torch.dtype) -> Tensor:
+        return torch.cat(
+            tuple(value.detach().reshape(-1).to(dtype=dtype) for value in values)
+        )
+
+    def gradient(self) -> Tensor:
+        with _preserve_execution_state(self.model):
+            base, model_function = self._functions()
+            output, pullback = vjp(model_function, *base)
+            loss = self.batch.loss_fn(output)
+            output_gradient = grad(self.batch.loss_fn)(output)
+            if not torch.isfinite(loss).all() or not _tree_is_finite(output_gradient):
+                raise GGNOperatorError("Curvature loss or output gradient is non-finite")
+            values = pullback(output_gradient)
+        dtype = torch.float64 if base[0].dtype == torch.float64 else torch.float32
+        return self._flatten(values, dtype=dtype)
+
+    def matvec(self, vector: Tensor) -> Tensor:
+        with _preserve_execution_state(self.model):
+            base, model_function = self._functions()
+            tangent = self._unflatten(vector, base)
+            output, pullback = vjp(model_function, *base)
+            loss = self.batch.loss_fn(output)
+            output_gradient_fn = grad(self.batch.loss_fn)
+            output_gradient = output_gradient_fn(output)
+            if not torch.isfinite(loss).all() or not _tree_is_finite(output_gradient):
+                raise GGNOperatorError("Curvature loss or output gradient is non-finite")
+            _, output_tangent = jvp(model_function, base, tangent)
+            _, output_hvp = jvp(output_gradient_fn, (output,), (output_tangent,))
+            values = pullback(output_hvp)
+        dtype = torch.float64 if vector.dtype == torch.float64 else torch.float32
+        result = self._flatten(values, dtype=dtype).to(device=vector.device)
+        self.matvec_count += 1
+        if not torch.isfinite(result).all():
+            raise GGNOperatorError("GGN product is non-finite")
+        return result

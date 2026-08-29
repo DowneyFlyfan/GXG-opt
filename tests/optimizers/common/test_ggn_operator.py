@@ -1,6 +1,7 @@
 import torch
 from torch import nn
 
+import kronecker_ggn_common.curvature_operator as curvature_operator
 from kronecker_ggn_common.curvature_operator import (
     FunctionalCurvatureBatch,
     GGNLinearOperator,
@@ -58,6 +59,27 @@ def test_linear_mse_ggn_has_exact_reduction_scaling():
     assert torch.allclose(
         meaned.matvec("<root>", vector), summed.matvec("<root>", vector) / 2
     )
+
+
+def test_full_matrix_free_ggn_matches_the_linear_least_squares_hessian():
+    model = nn.Linear(2, 1, bias=True).double()
+    inputs = torch.tensor([[1.0, 2.0], [3.0, 4.0]], dtype=torch.float64)
+    targets = torch.tensor([[1.0], [2.0]], dtype=torch.float64)
+    assert hasattr(curvature_operator, "GGNFullOperator")
+    operator = curvature_operator.GGNFullOperator(
+        model,
+        FunctionalCurvatureBatch(
+            (inputs,), lambda output: 0.5 * (output - targets).square().sum()
+        ),
+    )
+    vector = torch.tensor([0.2, -0.1, 0.3], dtype=torch.float64)
+
+    actual = operator.matvec(vector)
+    design = torch.tensor([[1.0, 2.0, 1.0], [3.0, 4.0, 1.0]], dtype=torch.float64)
+
+    assert operator.numel == vector.numel()
+    assert torch.allclose(actual, design.T @ design @ vector, atol=1.0e-10)
+    assert torch.dot(vector, actual).item() >= -1.0e-10
 
 
 def test_tiny_transformer_linear_registration_and_token_cross_entropy_ggn():
