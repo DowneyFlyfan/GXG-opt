@@ -13,7 +13,11 @@ import torch.nn.functional as functional
 from artifacts import write_metric
 from full_ggn import FullGGNConfig, FullGGNState, full_ggn_step
 from gn_experiment import LANGUAGE_MODEL_GN_TASK, artifact_paths, write_gn_comparison_plots
-from kronecker_ggn_common.curvature_operator import FunctionalCurvatureBatch, GGNFullOperator
+from kronecker_ggn_common.curvature_operator import (
+    AveragedGGNOperator,
+    FunctionalCurvatureBatch,
+    GGNFullOperator,
+)
 from training import _evaluate, _loaders, _model, configure_reproducibility
 
 
@@ -28,6 +32,15 @@ def full_gn_task(*, batch_size: int):
     )
 
 
+def full_gn_config(*, maximum_cg_iterations: int, minimum_damping: float) -> FullGGNConfig:
+    if minimum_damping <= 0:
+        raise ValueError("minimum_damping must be positive")
+    return FullGGNConfig(
+        maximum_cg_iterations=maximum_cg_iterations,
+        minimum_damping=minimum_damping,
+    )
+
+
 def prepare_full_gn_batch(
     batch: tuple[torch.Tensor, torch.Tensor], *, batch_size: int, sequence_length: int
 ) -> tuple[torch.Tensor, torch.Tensor]:
@@ -38,6 +51,28 @@ def prepare_full_gn_batch(
     if token_ids.size(0) < batch_size or token_ids.size(1) < sequence_length:
         raise ValueError("Loader batch is smaller than the requested GGN batch")
     return token_ids[:batch_size, :sequence_length], targets[:batch_size, :sequence_length]
+
+
+def prepare_full_gn_batches(
+    batch: tuple[torch.Tensor, torch.Tensor],
+    *,
+    batch_size: int,
+    sequence_length: int,
+    curvature_batches: int,
+) -> tuple[tuple[torch.Tensor, torch.Tensor], ...]:
+    if curvature_batches <= 0:
+        raise ValueError("curvature_batches must be positive")
+    token_ids, targets = batch
+    required_length = sequence_length * curvature_batches
+    if token_ids.size(0) < batch_size or token_ids.size(1) < required_length:
+        raise ValueError("Loader batch is smaller than the requested GGN windows")
+    return tuple(
+        (
+            token_ids[:batch_size, offset : offset + sequence_length],
+            targets[:batch_size, offset : offset + sequence_length],
+        )
+        for offset in range(0, required_length, sequence_length)
+    )
 
 
 def _loss(model, token_ids: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
@@ -99,8 +134,10 @@ def run_full_gn_trial(
     *,
     batch_size: int,
     sequence_length: int = 1024,
+    curvature_batches: int = 1,
     initial_damping: float,
     maximum_cg_iterations: int,
+    minimum_damping: float = 1.0e-6,
     maximum_seconds: float = 14_400.0,
     evaluation_interval_steps: int = 256,
     workers: int = 4,
@@ -132,7 +169,10 @@ def run_full_gn_trial(
         )
     elif paths.metric.exists():
         paths.metric.unlink()
-    config = FullGGNConfig(maximum_cg_iterations=maximum_cg_iterations)
+    config = full_gn_config(
+        maximum_cg_iterations=maximum_cg_iterations,
+        minimum_damping=minimum_damping,
+    )
     torch.cuda.reset_peak_memory_stats(device)
     started = time.perf_counter()
     for epoch in range(next_epoch, task.estimated_epochs + 1):
@@ -140,28 +180,40 @@ def run_full_gn_trial(
         for batch_index, batch in enumerate(train_loader):
             if epoch == next_epoch and batch_index < resume_batch:
                 continue
-            token_ids, targets = (
-                value.to(device, non_blocking=True)
-                for value in prepare_full_gn_batch(
-                    batch, batch_size=batch_size, sequence_length=sequence_length
+            windows = tuple(
+                tuple(value.to(device, non_blocking=True) for value in window)
+                for window in prepare_full_gn_batches(
+                    batch,
+                    batch_size=batch_size,
+                    sequence_length=sequence_length,
+                    curvature_batches=curvature_batches,
                 )
             )
-            operator = GGNFullOperator(
-                model,
-                FunctionalCurvatureBatch(
-                    args=(token_ids,),
-                    loss_fn=lambda output: functional.cross_entropy(
-                        (output.logits if hasattr(output, "logits") else output)
-                        .float()
-                        .reshape(-1, (output.logits if hasattr(output, "logits") else output).size(-1)),
-                        targets.reshape(-1),
-                    ),
-                    batch_id=f"full-gn-{completed_steps}",
-                ),
+            operator = AveragedGGNOperator(
+                tuple(
+                    GGNFullOperator(
+                        model,
+                        FunctionalCurvatureBatch(
+                            args=(token_ids,),
+                            loss_fn=lambda output, selected_targets=targets: functional.cross_entropy(
+                                (output.logits if hasattr(output, "logits") else output)
+                                .float()
+                                .reshape(
+                                    -1,
+                                    (output.logits if hasattr(output, "logits") else output).size(-1),
+                                ),
+                                selected_targets.reshape(-1),
+                            ),
+                            batch_id=f"full-gn-{completed_steps}",
+                        ),
+                    )
+                    for token_ids, targets in windows
+                )
             )
             step = full_ggn_step(
                 operator,
-                lambda: _loss(model, token_ids, targets),
+                lambda: sum(_loss(model, token_ids, targets) for token_ids, targets in windows)
+                / len(windows),
                 state=state,
                 config=config,
             )
@@ -209,7 +261,9 @@ def run_full_gn_trial(
                     "parameters": sum(parameter.numel() for parameter in model.parameters()),
                     "batch_size": batch_size,
                     "sequence_length": sequence_length,
+                    "curvature_batches": curvature_batches,
                     "maximum_cg_iterations": maximum_cg_iterations,
+                    "minimum_damping": minimum_damping,
                     "completed_steps": completed_steps,
                     "seconds": elapsed_seconds,
                     "peak_memory_mb": torch.cuda.max_memory_allocated(device) / 1024**2,
@@ -228,7 +282,9 @@ def run_full_gn_trial(
         "parameters": sum(parameter.numel() for parameter in model.parameters()),
         "batch_size": batch_size,
         "sequence_length": sequence_length,
+        "curvature_batches": curvature_batches,
         "maximum_cg_iterations": maximum_cg_iterations,
+        "minimum_damping": minimum_damping,
         "completed_steps": completed_steps,
         "seconds": elapsed_seconds,
         "peak_memory_mb": torch.cuda.max_memory_allocated(device) / 1024**2,

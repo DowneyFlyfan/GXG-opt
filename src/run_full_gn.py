@@ -13,7 +13,9 @@ def main() -> None:
     )
     parser.add_argument("--batch-size", type=int, required=True)
     parser.add_argument("--sequence-length", type=int, default=1024)
+    parser.add_argument("--curvature-batches", type=int, default=1)
     parser.add_argument("--initial-damping", type=float, required=True)
+    parser.add_argument("--minimum-damping", type=float, default=1.0e-6)
     parser.add_argument("--maximum-cg-iterations", type=int, required=True)
     parser.add_argument("--maximum-seconds", type=float, default=14_400.0)
     parser.add_argument("--evaluation-interval-steps", type=int, default=256)
@@ -25,7 +27,9 @@ def main() -> None:
         Path(__file__).resolve().parents[1],
         batch_size=args.batch_size,
         sequence_length=args.sequence_length,
+        curvature_batches=args.curvature_batches,
         initial_damping=args.initial_damping,
+        minimum_damping=args.minimum_damping,
         maximum_cg_iterations=args.maximum_cg_iterations,
         maximum_seconds=args.maximum_seconds,
         evaluation_interval_steps=args.evaluation_interval_steps,

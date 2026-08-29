@@ -275,3 +275,39 @@ class GGNFullOperator:
         if not torch.isfinite(result).all():
             raise GGNOperatorError("GGN product is non-finite")
         return result
+
+
+class AveragedGGNOperator:
+    """Average several exact full-GGN mini-batch operators without extra peak memory."""
+
+    def __init__(self, operators: tuple[GGNFullOperator, ...]) -> None:
+        if not operators:
+            raise ValueError("AveragedGGNOperator requires at least one operator")
+        first = operators[0]
+        parameter_ids = tuple(id(parameter) for parameter in first.parameters)
+        if any(
+            tuple(id(parameter) for parameter in operator.parameters) != parameter_ids
+            for operator in operators[1:]
+        ):
+            raise ValueError("All averaged GGN operators must share parameters")
+        self.operators = operators
+        self.parameters = first.parameters
+        self._sizes = first._sizes
+
+    @property
+    def numel(self) -> int:
+        return self.operators[0].numel
+
+    def gradient(self) -> Tensor:
+        total = None
+        for operator in self.operators:
+            gradient = operator.gradient()
+            total = gradient if total is None else total.add(gradient.to(total))
+        assert total is not None
+        return total / len(self.operators)
+
+    def matvec(self, vector: Tensor) -> Tensor:
+        total = torch.zeros_like(vector)
+        for operator in self.operators:
+            total.add_(operator.matvec(vector).to(total))
+        return total / len(self.operators)

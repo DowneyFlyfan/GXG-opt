@@ -53,3 +53,30 @@ def test_full_ggn_step_accepts_a_damped_descent_and_adapts_damping():
     assert result.final_loss < result.initial_loss
     assert 0 < result.reduction_ratio
     assert state.damping < 1.0
+
+
+def test_averaged_full_ggn_operator_averages_gradient_and_curvature_products():
+    import kronecker_ggn_common.curvature_operator as curvature_operator
+    from kronecker_ggn_common.curvature_operator import FunctionalCurvatureBatch, GGNFullOperator
+
+    assert hasattr(curvature_operator, "AveragedGGNOperator")
+    model = torch.nn.Linear(1, 1, bias=False).double()
+    first = GGNFullOperator(
+        model,
+        FunctionalCurvatureBatch(
+            (torch.tensor([[1.0]], dtype=torch.float64),),
+            lambda output: 0.5 * (output - 1.0).square().sum(),
+        ),
+    )
+    second = GGNFullOperator(
+        model,
+        FunctionalCurvatureBatch(
+            (torch.tensor([[3.0]], dtype=torch.float64),),
+            lambda output: 0.5 * (output - 2.0).square().sum(),
+        ),
+    )
+    averaged = curvature_operator.AveragedGGNOperator((first, second))
+    vector = torch.tensor([0.25], dtype=torch.float64)
+
+    assert torch.allclose(averaged.gradient(), 0.5 * (first.gradient() + second.gradient()))
+    assert torch.allclose(averaged.matvec(vector), 0.5 * (first.matvec(vector) + second.matvec(vector)))
