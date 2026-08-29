@@ -49,3 +49,19 @@ def test_full_gn_batches_partition_contiguous_token_windows():
     assert len(selected) == 2
     assert torch.equal(selected[0][0], tokens[:2, :4])
     assert torch.equal(selected[1][0], tokens[:2, 4:8])
+
+
+def test_full_gn_accumulation_uses_distinct_loader_batches_without_changing_window_shape():
+    from full_gn_experiment import prepare_accumulated_full_gn_batches
+    import torch
+
+    first = (torch.arange(24).reshape(3, 8), torch.arange(24).reshape(3, 8) + 1)
+    second = (torch.arange(24, 48).reshape(3, 8), torch.arange(24, 48).reshape(3, 8) + 1)
+
+    selected = prepare_accumulated_full_gn_batches(
+        (first, second), batch_size=2, sequence_length=4, curvature_batches=1
+    )
+
+    assert len(selected) == 2
+    assert torch.equal(selected[0][0], first[0][:2, :4])
+    assert torch.equal(selected[1][0], second[0][:2, :4])

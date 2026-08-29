@@ -75,6 +75,28 @@ def prepare_full_gn_batches(
     )
 
 
+def prepare_accumulated_full_gn_batches(
+    batches: tuple[tuple[torch.Tensor, torch.Tensor], ...],
+    *,
+    batch_size: int,
+    sequence_length: int,
+    curvature_batches: int,
+) -> tuple[tuple[torch.Tensor, torch.Tensor], ...]:
+    """Accumulate fixed-shape curvature windows from distinct loader batches."""
+    if not batches:
+        raise ValueError("at least one loader batch is required")
+    return tuple(
+        window
+        for batch in batches
+        for window in prepare_full_gn_batches(
+            batch,
+            batch_size=batch_size,
+            sequence_length=sequence_length,
+            curvature_batches=curvature_batches,
+        )
+    )
+
+
 def _loss(model, token_ids: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
     logits = model(token_ids)
     if hasattr(logits, "logits"):
@@ -135,6 +157,7 @@ def run_full_gn_trial(
     batch_size: int,
     sequence_length: int = 1024,
     curvature_batches: int = 1,
+    gradient_accumulation_batches: int = 1,
     initial_damping: float,
     maximum_cg_iterations: int,
     minimum_damping: float = 1.0e-6,
@@ -148,6 +171,8 @@ def run_full_gn_trial(
     """Train the retained model with exact full-GGN Hessian-free updates."""
     if not torch.cuda.is_available():
         raise RuntimeError("CUDA is required for the full-GGN experiment")
+    if gradient_accumulation_batches <= 0:
+        raise ValueError("gradient_accumulation_batches must be positive")
     task = full_gn_task(batch_size=batch_size)
     configure_reproducibility(seed)
     device = torch.device("cuda")
@@ -177,13 +202,23 @@ def run_full_gn_trial(
     started = time.perf_counter()
     for epoch in range(next_epoch, task.estimated_epochs + 1):
         model.train()
-        for batch_index, batch in enumerate(train_loader):
-            if epoch == next_epoch and batch_index < resume_batch:
-                continue
+        loader_iterator = enumerate(train_loader)
+        while True:
+            accumulated_batches: list[tuple[torch.Tensor, torch.Tensor]] = []
+            batch_index = resume_batch
+            for candidate_index, batch in loader_iterator:
+                if epoch == next_epoch and candidate_index < resume_batch:
+                    continue
+                accumulated_batches.append(batch)
+                batch_index = candidate_index
+                if len(accumulated_batches) == gradient_accumulation_batches:
+                    break
+            if len(accumulated_batches) != gradient_accumulation_batches:
+                break
             windows = tuple(
                 tuple(value.to(device, non_blocking=True) for value in window)
-                for window in prepare_full_gn_batches(
-                    batch,
+                for window in prepare_accumulated_full_gn_batches(
+                    tuple(accumulated_batches),
                     batch_size=batch_size,
                     sequence_length=sequence_length,
                     curvature_batches=curvature_batches,

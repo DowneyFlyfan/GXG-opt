@@ -14,6 +14,7 @@ def main() -> None:
     parser.add_argument("--batch-size", type=int, required=True)
     parser.add_argument("--sequence-length", type=int, default=1024)
     parser.add_argument("--curvature-batches", type=int, default=1)
+    parser.add_argument("--gradient-accumulation-batches", type=int, default=1)
     parser.add_argument("--initial-damping", type=float, required=True)
     parser.add_argument("--minimum-damping", type=float, default=1.0e-6)
     parser.add_argument("--maximum-cg-iterations", type=int, required=True)
@@ -28,6 +29,7 @@ def main() -> None:
         batch_size=args.batch_size,
         sequence_length=args.sequence_length,
         curvature_batches=args.curvature_batches,
+        gradient_accumulation_batches=args.gradient_accumulation_batches,
         initial_damping=args.initial_damping,
         minimum_damping=args.minimum_damping,
         maximum_cg_iterations=args.maximum_cg_iterations,
