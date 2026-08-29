@@ -73,6 +73,7 @@ uses the same cached WikiText-103 stream and Armijo/Levenberg--Marquardt logic.
 | GPT-style | 4 x 600, CG 2 | 1 then floor 0.001 | 0.28365 at 256; 0.28709 at 512 | rejected: only +0.00344 in 268.6 seconds |
 | GPT-style | 4 x 600, CG 2 | 1 then floor 0.1 | 0.19236 at 32; 0.24235 at 64 | rejected: stronger damping is worse |
 | GPT-style | 4 x 512 x 2 sequential windows, CG 2 | 1 then floor 0.001 | 0.19261 at 32 | rejected: lower throughput and no early gain |
+| GPT-style | 4 x 600, four-loader-batch gradient/GGN accumulation, CG 2 | 1 then floor 0.001 | 0.26110 at 69 outer steps / 240.61 s | rejected: 9,600-token statistics but slower time-to-metric |
 
 The two-CG case has accepted Armijo steps and faithful curvature prediction
 (reduction ratios 0.861 at step 256 and 0.988 at step 512), so this is not a
@@ -81,6 +82,12 @@ line-search failure.  It is a time-to-metric failure of exact full GGN on this
 than the retained pre-correction Muon metric of 0.75219; moreover that Muon
 trace must be rerun after the initialization correction before a fair claim is
 possible.
+
+The accumulation implementation holds the GGN matrix fixed across each CG run
+and averages four distinct loader mini-batches sequentially. It reached 15.80
+GB device usage (96.9%) without an OOM. Thus the negative result is not caused
+by unused GPU memory; it shows that this four-batch accumulation alone is
+insufficient.
 
 ## Required next decision
 
