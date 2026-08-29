@@ -28,6 +28,7 @@ class KroneckerGGNConfig:
     linear_algebra_dtype: str = "float32"
     gradient_clip_norm: float | None = None
     trust_clip: float | None = None
+    global_trust_clip: float | None = None
     adaptive_damping: bool = False
     damping_adaptation_interval: int = 64
     minimum_damping: float = 1.0e-6
@@ -72,10 +73,12 @@ class KroneckerGGNConfig:
             )
         if self.fallback_learning_rate is not None and self.fallback_learning_rate <= 0:
             raise ValueError("fallback_learning_rate must be positive when set")
-        for name in ("gradient_clip_norm", "trust_clip"):
+        for name in ("gradient_clip_norm", "trust_clip", "global_trust_clip"):
             value = getattr(self, name)
             if value is not None and value <= 0:
                 raise ValueError(f"{name} must be positive when set")
+        if self.trust_clip is not None and self.global_trust_clip is not None:
+            raise ValueError("trust_clip and global_trust_clip are mutually exclusive")
 
     @classmethod
     def from_dict(cls, value: dict[str, Any]) -> KroneckerGGNConfig:

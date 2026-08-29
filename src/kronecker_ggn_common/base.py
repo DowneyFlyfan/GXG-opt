@@ -229,6 +229,7 @@ class LayerwiseCurvatureOptimizer(torch.optim.Optimizer, ABC):
             id(layer.weight): layer for layer in self.registry.supported
         }
         gradient_square = update_square = 0.0
+        parameter_square = 0.0
         fallback_count = 0
         for name, parameter in self.model.named_parameters():
             if parameter.grad is None:
@@ -236,6 +237,7 @@ class LayerwiseCurvatureOptimizer(torch.optim.Optimizer, ABC):
             gradient = parameter.grad.detach()
             require_finite(gradient, f"gradient {name}")
             gradient_square += float(gradient.float().square().sum().item())
+            parameter_square += float(parameter.detach().float().square().sum().item())
             layer = curvature_parameter_ids.get(id(parameter))
             if layer is not None:
                 direction, statistics = self._curvature_direction(
@@ -258,6 +260,15 @@ class LayerwiseCurvatureOptimizer(torch.optim.Optimizer, ABC):
                     direction = direction * (maximum / norm)
             directions[name] = direction
             update_square += float(direction.float().square().sum().item())
+        if self.config.global_trust_clip is not None:
+            maximum = self.config.global_trust_clip * math.sqrt(parameter_square)
+            norm = math.sqrt(update_square)
+            if norm > maximum:
+                scale = maximum / norm
+                directions = {
+                    name: direction * scale for name, direction in directions.items()
+                }
+                update_square *= scale * scale
         if self.config.gradient_clip_norm is not None:
             norm = math.sqrt(gradient_square)
             if norm > self.config.gradient_clip_norm:

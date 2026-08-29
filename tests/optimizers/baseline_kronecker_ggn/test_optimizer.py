@@ -109,6 +109,33 @@ def test_lm_damping_decreases_when_ggn_quadratic_agrees_with_loss():
     assert optimizer.get_metrics()["damping/reduction_ratio"] > 0.75
 
 
+def test_global_trust_region_scales_the_full_ggn_direction_once():
+    model = nn.Linear(2, 2, bias=False).double()
+    optimizer = KroneckerGGN(
+        model,
+        KroneckerGGNConfig(
+            curvature_mode="exact_ggn",
+            learning_rate=1.0,
+            damping=0.3,
+            factor_decay=0.0,
+            spectral_update_interval=1,
+            linear_algebra_dtype="float64",
+            global_trust_clip=0.1,
+        ),
+    )
+    initialize(optimizer)
+    model.weight.grad = torch.tensor(
+        [[0.2, -0.1], [0.5, 0.3]], dtype=torch.float64
+    )
+    raw = optimizer.baseline_direction_for_layer("<root>", model.weight.grad)
+
+    direction = optimizer.compute_direction().directions["weight"]
+
+    expected_norm = 0.1 * model.weight.detach().norm()
+    assert torch.isclose(direction.norm(), expected_norm, atol=1.0e-12)
+    assert torch.allclose(direction / direction.norm(), raw / raw.norm(), atol=1.0e-12)
+
+
 def test_unsupported_parameters_are_registered_and_logged(caplog):
     model = nn.Sequential(nn.Embedding(8, 2), nn.Linear(2, 2))
 
