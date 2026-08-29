@@ -85,7 +85,10 @@ def conjugate_gradient(
             raise RuntimeError("Damped GGN system is not positive definite")
         step = squared_residual / denominator
         direction = direction + step * search
-        candidates.append(direction.detach().clone())
+        # The Hessian-free backtracking policy needs every CG iterate, but
+        # retaining 54M-parameter copies on the GPU can exhaust otherwise
+        # usable curvature-batch memory.  Keep only the active solve on GPU.
+        candidates.append(direction.detach().to("cpu", copy=True))
         residual = residual - step * system_search
         next_squared_residual = torch.dot(residual, residual)
         residual_norm = next_squared_residual.sqrt()
@@ -157,7 +160,7 @@ def full_ggn_step(
         if loss < candidate_loss:
             candidate_loss = loss
             candidate_direction = candidate
-    direction = candidate_direction
+    direction = candidate_direction.to(gradient)
     curvature_direction = operator.matvec(direction)
     gradient_dot_direction = float(torch.dot(gradient, direction).item())
     curvature_quadratic = float(torch.dot(direction, curvature_direction).item())

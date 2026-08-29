@@ -1,5 +1,6 @@
 import importlib.util
 
+import pytest
 import torch
 
 
@@ -24,6 +25,23 @@ def test_conjugate_gradient_solves_damped_positive_system():
     assert torch.allclose(result.candidates[-1], result.direction, atol=1.0e-12)
     assert torch.allclose(result.direction, expected, atol=1.0e-12)
     assert result.residual_norm < 1.0e-12
+
+
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="checks CUDA candidate residency")
+def test_conjugate_gradient_offloads_backtracking_candidates_from_cuda():
+    import full_ggn
+
+    right_hand_side = torch.ones(4, device="cuda")
+    result = full_ggn.conjugate_gradient(
+        lambda vector: vector,
+        right_hand_side,
+        damping=1.0,
+        maximum_iterations=2,
+    )
+
+    assert result.direction.is_cuda
+    assert result.candidates
+    assert all(candidate.device.type == "cpu" for candidate in result.candidates)
 
 
 def test_full_ggn_step_accepts_a_damped_descent_and_adapts_damping():

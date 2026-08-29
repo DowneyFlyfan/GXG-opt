@@ -10,6 +10,7 @@ from torch import nn
 
 from artifacts import write_metric, write_metric_plot
 from config import FormalTask
+from decoder_initialization import initialize_decoder_transformer
 from data import (
     cifar100_loaders,
     dinov3_cifar100_loaders,
@@ -37,7 +38,10 @@ def configure_reproducibility(seed: int) -> None:
 
 def _model(task: FormalTask) -> nn.Module:
     if task.domain == "nlp":
-        return create_nlp_model(task.model)
+        model = create_nlp_model(task.model)
+        if task.model.startswith("gpt_"):
+            initialize_decoder_transformer(model)
+        return model
     if task.domain == "cv":
         return create_cv_model(task.model)
     if task.domain == "audio":
