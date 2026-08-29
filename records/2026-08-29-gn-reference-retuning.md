@@ -39,19 +39,26 @@ properly damped first step and its actual reduction before committing to a
 four-hour run. Kronecker tuning results below are not used to set full-GGN CG
 parameters.
 
-## Batch-size qualification
+## Full-GGN batch-size qualification
 
-All candidates use eight sequences per optimizer update.
+The older table below this section belongs to the rejected Kronecker ablation;
+it must not determine the exact full-GGN batch size.  Full GGN has a much
+larger matrix-free curvature footprint, so each candidate was tested with a
+complete damped-CG update on the local 16,303 MB GPU.
 
-| Micro batch | Accumulation | Peak allocated memory | Steps/s | Metric at step 512 |
-|---:|---:|---:|---:|---:|
-| 2 | 4 | 4,974 MB | 4.472 | 0.172356 |
-| 4 | 2 | 7,517 MB | 4.538 | 0.250790 |
-| 8 | 1 | 12,573 MB | 4.407 | 0.247593 |
+| Batch x sequence length | Tokens / GGN update | Peak allocated memory | Result |
+|---:|---:|---:|---|
+| 2 x 512 | 1,024 | 9,108 MB | stable, but leaves excessive memory unused |
+| 2 x 768 | 1,536 | 13,000 MB | stable, slower than 2 x 512 |
+| 4 x 512 | 2,048 | 12,807 MB | stable |
+| 4 x 600 | 2,400 | 15,175 MB (93.1%) | stable; selected |
+| 4 x 640 | 2,560 | 15,260 MB before a further 210 MB allocation | out of memory |
 
-Micro batch four with accumulation two was selected before all hyperparameter
-sweeps: it was fastest, had the best fixed-step metric, and retains more than
-8 GB of GPU-memory headroom.
+The selected full-GGN configuration is therefore batch size four and sequence
+length 600.  It uses the largest observed stable configuration, leaving about
+1.13 GB of physical-device headroom for transient allocator requests.  This
+selection follows the requested near-full-GPU policy without treating an OOM
+as an acceptable normal operating condition.
 
 ## Fixed-damping pilots
 

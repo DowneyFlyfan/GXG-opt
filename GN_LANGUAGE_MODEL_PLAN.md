@@ -32,15 +32,16 @@ optimization rather than K-FAC:
   conjugate gradient, retains candidate CG iterates for backtracking, and uses
   an Armijo line search.
 
-The first sweep fixed the effective batch at eight sequences and selected
-micro-batch four with accumulation two. The full-GGN memory probe uses a
-single 128-token curvature sequence and only 1.86 GB peak allocated memory.
-It also revealed that the current default decoder initialization produces
-logit standard deviation 22.8 and an effectively zero initial GGN product
-because softmax is saturated. The next gate is therefore a damped CG
-qualification: establish a finite, descending first update and use the
-actual-versus-predicted reduction ratio to adapt damping. K-FAC-specific
-momentum and factorized-damping settings are out of scope.
+The exact full-GGN batch qualification selected batch size four and sequence
+length 600 (2,400 tokens per curvature update). It has a measured 15.18 GB
+peak on the 16.30 GB local GPU; the next larger tested configuration (4 x 640)
+exhausted memory. The initial 128-token probe also revealed that the current
+default decoder initialization produces logit standard deviation 22.8 and an
+effectively zero initial GGN product because softmax is saturated. The next
+gate is therefore a damped CG qualification: establish a finite, descending
+first update and use the actual-versus-predicted reduction ratio to adapt
+damping. K-FAC-specific momentum and factorized-damping settings are out of
+scope.
 
 Sources: [Schraudolph 2002](https://nic.schraudolph.org/pubs/Schraudolph02.pdf),
 [Martens 2010](https://www.cs.utoronto.ca/~jmartens/docs/Deep_HessianFree.pdf),
