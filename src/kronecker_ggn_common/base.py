@@ -43,6 +43,7 @@ class LayerwiseCurvatureOptimizer(torch.optim.Optimizer, ABC):
         self.last_direction_stats: DirectionStats | None = None
         self.last_curvature_stats: CurvatureStats | None = None
         self.last_step_wall_time_seconds = 0.0
+        self._last_damping_measurements: dict[str, float] = {}
         self.fallback_events: list[dict[str, str]] = []
         for name, _parameter, reason in self.registry.fallback_parameters:
             event = {
@@ -148,6 +149,53 @@ class LayerwiseCurvatureOptimizer(torch.optim.Optimizer, ABC):
         self, layer_id: str, gradient: Tensor
     ) -> tuple[Tensor | None, LayerDirectionStats]: ...
 
+    def _predicted_reduction(
+        self, directions: Mapping[str, Tensor], step_scale: float
+    ) -> float | None:
+        """Return the damped local-quadratic reduction for a candidate step."""
+        return None
+
+    def _adapt_damping(self, reduction_ratio: float) -> None:
+        """Apply a subclass-specific Levenberg--Marquardt damping update."""
+        return None
+
+    @torch.no_grad()
+    def _observe_damping_agreement(
+        self, statistics: DirectionStats, acceptance_closure
+    ) -> None:
+        predicted = self._predicted_reduction(
+            statistics.directions, self.config.learning_rate
+        )
+        if predicted is None or predicted <= 0 or not math.isfinite(predicted):
+            self._last_damping_measurements = {
+                "damping/predicted_reduction": 0.0,
+                "damping/actual_reduction": 0.0,
+                "damping/reduction_ratio": 0.0,
+            }
+            self._adapt_damping(0.0)
+            return
+        parameters = dict(self.model.named_parameters())
+        snapshots = {
+            name: parameters[name].detach().clone() for name in statistics.directions
+        }
+        initial = float(acceptance_closure().detach().float().item())
+        candidate = math.inf
+        try:
+            for name, direction in statistics.directions.items():
+                parameters[name].add_(direction, alpha=self.config.learning_rate)
+            candidate = float(acceptance_closure().detach().float().item())
+        finally:
+            for name, value in snapshots.items():
+                parameters[name].copy_(value)
+        actual = initial - candidate
+        ratio = actual / predicted if math.isfinite(actual) else -math.inf
+        self._last_damping_measurements = {
+            "damping/predicted_reduction": predicted,
+            "damping/actual_reduction": actual,
+            "damping/reduction_ratio": ratio,
+        }
+        self._adapt_damping(ratio)
+
     def _fallback_direction(self, parameter: nn.Parameter, gradient: Tensor) -> Tensor:
         config = self.config
         fallback_lr = config.fallback_learning_rate or config.learning_rate
@@ -229,13 +277,19 @@ class LayerwiseCurvatureOptimizer(torch.optim.Optimizer, ABC):
         return result
 
     @torch.no_grad()
-    def step(self, closure=None):
+    def step(self, closure=None, *, acceptance_closure=None):
         started = time.perf_counter()
         loss = None
         if closure is not None:
             with torch.enable_grad():
                 loss = closure()
         statistics = self.compute_direction()
+        if (
+            acceptance_closure is not None
+            and self.config.adaptive_damping
+            and self._step_count % self.config.damping_adaptation_interval == 0
+        ):
+            self._observe_damping_agreement(statistics, acceptance_closure)
         parameters = dict(self.model.named_parameters())
         for parameter, (first, second, step) in self._pending_fallback_state.items():
             state = self.state[parameter]
@@ -290,6 +344,7 @@ class LayerwiseCurvatureOptimizer(torch.optim.Optimizer, ABC):
                 metrics[f"{prefix}/relative_update_difference"] = (
                     layer.relative_update_difference
                 )
+        metrics.update(self._last_damping_measurements)
         if self.last_curvature_stats is not None:
             metrics.update(
                 {

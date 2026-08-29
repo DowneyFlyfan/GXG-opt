@@ -28,6 +28,12 @@ class KroneckerGGNConfig:
     linear_algebra_dtype: str = "float32"
     gradient_clip_norm: float | None = None
     trust_clip: float | None = None
+    adaptive_damping: bool = False
+    damping_adaptation_interval: int = 64
+    minimum_damping: float = 1.0e-6
+    maximum_damping: float = 1.0e4
+    damping_increase: float = 1.5
+    damping_decrease: float = 2.0 / 3.0
 
     def __post_init__(self) -> None:
         if self.curvature_mode not in _CURVATURE_MODES:
@@ -48,6 +54,12 @@ class KroneckerGGNConfig:
             raise ValueError("factor_decay must be in [0, 1)")
         if self.factor_update_interval <= 0 or self.spectral_update_interval <= 0:
             raise ValueError("factor and spectral update intervals must be positive")
+        if self.damping_adaptation_interval <= 0:
+            raise ValueError("damping_adaptation_interval must be positive")
+        if not self.minimum_damping <= self.damping <= self.maximum_damping:
+            raise ValueError("damping must satisfy minimum_damping <= damping <= maximum_damping")
+        if self.damping_increase <= 1 or not 0 < self.damping_decrease <= 1:
+            raise ValueError("damping increase/decrease values are invalid")
         if self.factor_eigenvalue_floor <= 0 or self.joint_eigenvalue_floor <= 0:
             raise ValueError("eigenvalue floors must be positive")
         if len(self.fallback_betas) != 2 or any(

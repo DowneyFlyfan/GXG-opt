@@ -76,6 +76,39 @@ def test_state_round_trip_produces_same_next_update():
     assert torch.equal(first_model.bias, second_model.bias)
 
 
+def test_lm_damping_decreases_when_ggn_quadratic_agrees_with_loss():
+    model = nn.Linear(1, 1, bias=False).double()
+    with torch.no_grad():
+        model.weight.fill_(1.0)
+    optimizer = KroneckerGGN(
+        model,
+        KroneckerGGNConfig(
+            curvature_mode="exact_ggn",
+            learning_rate=1.0,
+            damping=0.3,
+            factor_decay=0.0,
+            spectral_update_interval=1,
+            linear_algebra_dtype="float64",
+            adaptive_damping=True,
+        ),
+    )
+    optimizer.update_curvature(
+        lambda *_: CurvatureUpdate(
+            "exact_ggn",
+            {"<root>": (torch.ones((1, 1), dtype=torch.float64),) * 2},
+        )
+    )
+    model.weight.grad = torch.ones_like(model.weight)
+    initial_damping = optimizer.layer_state["<root>"].damping
+
+    optimizer.step(
+        acceptance_closure=lambda: 0.5 * model.weight.square().sum()
+    )
+
+    assert optimizer.layer_state["<root>"].damping < initial_damping
+    assert optimizer.get_metrics()["damping/reduction_ratio"] > 0.75
+
+
 def test_unsupported_parameters_are_registered_and_logged(caplog):
     model = nn.Sequential(nn.Embedding(8, 2), nn.Linear(2, 2))
 

@@ -147,6 +147,45 @@ class KroneckerGGN(LayerwiseCurvatureOptimizer):
             state.spectral, gradient.reshape(self.registry.by_id(layer_id).matrix_shape)
         )
 
+    def _predicted_reduction(self, directions, step_scale: float) -> float | None:
+        named_parameters = dict(self.model.named_parameters())
+        direction_by_parameter = {
+            id(named_parameters[name]): direction for name, direction in directions.items()
+        }
+        reduction = 0.0
+        used_layer = False
+        for layer in self.registry.supported:
+            direction = direction_by_parameter.get(id(layer.weight))
+            gradient = layer.weight.grad
+            spectral = self.layer_state[layer.layer_id].spectral
+            if direction is None or gradient is None or spectral is None:
+                continue
+            direction_matrix = direction.reshape(layer.matrix_shape)
+            gradient_matrix = gradient.detach().reshape(layer.matrix_shape)
+            curvature_action = spectral.matvec(direction_matrix)
+            reduction += -step_scale * float(
+                (gradient_matrix * direction_matrix).sum().item()
+            ) - 0.5 * step_scale**2 * float(
+                (direction_matrix * curvature_action).sum().item()
+            )
+            used_layer = True
+        return reduction if used_layer else None
+
+    def _adapt_damping(self, reduction_ratio: float) -> None:
+        if reduction_ratio < 0.25:
+            multiplier = self.config.damping_increase
+        elif reduction_ratio > 0.75:
+            multiplier = self.config.damping_decrease
+        else:
+            return
+        for state in self.layer_state.values():
+            state.damping = min(
+                max(state.damping * multiplier, self.config.minimum_damping),
+                self.config.maximum_damping,
+            )
+            if state.activation is not None and state.output is not None:
+                state.spectral = self._new_spectral(state)
+
     def _age_curvature_state(self) -> None:
         for state in self.layer_state.values():
             state.factor_age += 1
