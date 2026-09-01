@@ -1,48 +1,50 @@
-# Language-model GN experiment plan
+# Paper-faithful Full Gauss-Newton reproduction plan
 
-Run the 54.68M GPT-12x512 language model on cached WikiText-103 with an exact,
-matrix-free generalized Gauss–Newton (GGN) baseline and the project's
-low-rank DG-GN comparison. Existing AdamW and Muon runs remain comparison
-baselines. The earlier layer-wise Kronecker experiment is retained only as an
-ablation; it is not the reference Gauss–Newton solver.
+Run the retained 54.68M GPT-12x512 language model on cached WikiText-103 with
+the algorithm from *The Potential of Second-Order Optimization for LLMs: A
+Study with Full Gauss-Newton*. This is a scaled reproduction on the current
+baseline task, not a claim to reproduce the paper's C4/LLaMA/H100 numbers.
+Existing AdamW and Muon traces remain historical comparisons; the controlled
+comparison starts all three methods from one AdamW warmup checkpoint.
 
 | Phase | Deliverable | Gate |
 |---|---|---|
-| Integration | Cached NLP full-GGN operator, conjugate-gradient solve, and resumable runner | exact \(Gv=J^T H_{\ell}Jv\) is exercised over every trainable parameter |
-| Qualification | One-step GPU memory/time and curvature-scale measurements | no OOM; nonzero curvature or a documented damping-only start |
-| Runs | GN and DG-GN metric records, checkpoints, and result JSON | completed or safely checkpointed at the four-hour boundary |
-| Reporting | Metric-step and metric-time PNGs plus a `records` report | all four optimizer traces are identified and reproducible |
+| Integration | Matrix-free quadratic gradient and Muon inner solver | each inner gradient equals \(g_0+G_{GN}(\theta-\theta_0)\) |
+| Paper controls | Persistent inner optimizer, pre-line-search warm start, held-out line search | behavior matches the official implementation |
+| Qualification | One outer step with memory/time and exact batch accounting | no OOM; effective batch is at least 60 sequences |
+| Runs | Paper-GN, AdamW, and Muon records from one warmup checkpoint | each run stops and checkpoints at four hours |
+| Reporting | Metric-step and metric-time PNGs plus a `records` report | all traces and wall-clock measurements are reproducible |
 
-The first implementation test will assert that a causal language-model batch
-produces factors for supported linear layers and an exact residual operator
-only when the low-rank correction requests it.  The production runs use only
-data already under `.cache`.
+The production path uses only data and checkpoints under `.cache`. It keeps
+the model, tokenizer, validation metric, sequence length, seed, and data order
+fixed. The GGN matrix is never materialized.
 
-## Gauss--Newton tuning basis
+## Paper algorithm contract
 
-The reference baseline follows generalized Gauss--Newton/Hessian-free
-optimization rather than K-FAC:
+At outer parameters \(\theta_0\), each fresh inner mini-batch supplies the
+matrix-free gradient of the quadratic Taylor model,
+\(g_0+J_0^T H_L J_0(\theta-\theta_0)\). Muon updates eligible hidden matrices;
+AdamW updates embeddings, normalization parameters, position parameters, and
+the tied language-model head. Inner optimizer state persists across outer
+steps, and the next inner solve starts from the previous pre-line-search end
+point.
 
-- Schraudolph (2002) supplies the positive-semidefinite generalized
-  Gauss--Newton construction used for classification losses.
-- Martens (2010) supplies the large-model optimization procedure: damp the
-  curvature system, solve a local quadratic model, compare predicted against
-  actual reduction, and adapt damping with a Levenberg--Marquardt rule.
-- The reference Hessian-free implementation additionally warm-starts
-  conjugate gradient, retains candidate CG iterates for backtracking, and uses
-  an Armijo line search.
+After the inner loop, evaluate step sizes
+\(1,1/\sqrt{2},1/2,1/(2\sqrt{2}),1/4\) on entirely new mini-batches and accept
+the one with minimum true nonlinear loss. Apply outer exponential weight
+averaging only as a separately labelled ablation. Use the paper's initial
+inner settings as the first qualification point: Muon learning rate 0.01,
+momentum 0.95, weight decay 0.001 on Adam-routed parameters and zero on Muon
+matrices, gradient clipping 1, and an inner cosine schedule.
 
-The exact full-GGN batch qualification selected batch size four and sequence
-length 600 (2,400 tokens per curvature update). It has a measured 15.18 GB
-peak on the 16.30 GB local GPU; the next larger tested configuration (4 x 640)
-exhausted memory. The initial 128-token probe also revealed that the current
-default decoder initialization produces logit standard deviation 22.8 and an
-effectively zero initial GGN product because softmax is saturated. The next
-gate is therefore a damped CG qualification: establish a finite, descending
-first update and use the actual-versus-predicted reduction ratio to adapt
-damping. K-FAC-specific momentum and factorized-damping settings are out of
-scope.
+The paper's 45M template uses 122 inner steps with 32 sequences per step,
+roughly four million tokens per outer update. That exact batch is not expected
+to fit a four-hour RTX 5070 Ti run, so qualification first measures the largest
+safe physical mini-batch and then increases the outer batch with inner steps
+and gradient accumulation. A result is called paper-faithful only if the
+algorithmic contract above is preserved; reduced inner count is reported as a
+scaled local reproduction.
 
-Sources: [Schraudolph 2002](https://nic.schraudolph.org/pubs/Schraudolph02.pdf),
-[Martens 2010](https://www.cs.utoronto.ca/~jmartens/docs/Deep_HessianFree.pdf),
-and the [PyTorch Hessian-free reference implementation](https://github.com/ltatzel/PyTorchHessianFree).
+Source: `THE POTENTIAL OF SECOND-ORDER OPTIMIZATION FOR LLMS: A STUDY WITH
+FULL GAUSS-NEWTON.pdf` and the cached official repository at
+`.cache/reference/full-gauss-newton`.
