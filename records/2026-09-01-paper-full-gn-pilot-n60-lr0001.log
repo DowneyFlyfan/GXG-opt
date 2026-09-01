@@ -1,0 +1,11 @@
+task=nlp_gpt_12x512 optimizer=paper_full_gn step=1 metric=0.673447 line_search_step=0.5
+task=nlp_gpt_12x512 optimizer=paper_full_gn step=2 metric=0.674866 line_search_step=0.353553
+task=nlp_gpt_12x512 optimizer=paper_full_gn step=3 metric=0.676498 line_search_step=0.353553
+task=nlp_gpt_12x512 optimizer=paper_full_gn step=4 metric=0.676804 line_search_step=0.25
+task=nlp_gpt_12x512 optimizer=paper_full_gn step=5 metric=0.677597 line_search_step=0.25
+task=nlp_gpt_12x512 optimizer=paper_full_gn step=6 metric=0.677612 line_search_step=0.25
+task=nlp_gpt_12x512 optimizer=paper_full_gn step=7 metric=0.678864 line_search_step=0.25
+task=nlp_gpt_12x512 optimizer=paper_full_gn step=8 metric=0.679398 line_search_step=0.25
+task=nlp_gpt_12x512 optimizer=paper_full_gn step=9 metric=0.679764 line_search_step=0.25
+task=nlp_gpt_12x512 optimizer=paper_full_gn step=10 metric=0.679794 line_search_step=0.25
+{"completed_outer_steps": 10, "consumed_training_batches": 1200, "domain": "nlp", "gradient_clip": 1.0, "inner_effective_batch_size": 1, "inner_gradient_accumulation": 1, "inner_learning_rate": 0.001, "inner_steps": 60, "line_search_effective_batch_size": 60, "line_search_range": 5, "micro_batch_size": 1, "model": "gpt_12x512", "optimizer": "paper_full_gn", "optimizer_weight_decay": 0.001, "outer_effective_batch_size": 60, "outer_effective_tokens": 61440, "parameters": 54682624, "peak_memory_mb": 8874.115234375, "post_warmup_seconds": 120.35451993532479, "seconds": 1226.9745447109453, "sequence_length": 1024, "status": "completed", "task": "nlp_gpt_12x512", "warmup_tokens": 54685696}

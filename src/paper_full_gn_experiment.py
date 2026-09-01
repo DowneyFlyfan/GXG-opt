@@ -27,6 +27,13 @@ MINIMUM_OUTER_EFFECTIVE_BATCH_SIZE = 60
 COMMON_WARMUP_NAME = "nlp_gpt_12x512__paper_common_adamw_warmup.pt"
 
 
+def paper_gn_time_limit_reached(
+    elapsed_seconds: float, maximum_seconds: float
+) -> bool:
+    """Return whether a completed operation has exhausted the run budget."""
+    return elapsed_seconds >= maximum_seconds
+
+
 def validate_paper_gn_contract(
     *,
     micro_batch_size: int,
@@ -403,6 +410,15 @@ def run_paper_full_gn_trial(
                 gradient_clip=gradient_clip,
             )
             del accumulated
+            progress_interval = max(inner_steps // 10, 1)
+            if (inner_step + 1) % progress_interval == 0:
+                print(
+                    f"task={task.identifier} optimizer=paper_full_gn "
+                    f"outer_step={completed_outer_steps + 1} "
+                    f"inner_step={inner_step + 1}/{inner_steps} "
+                    f"inner_gradient_norm={final_inner_gradient_norm:.6g}",
+                    flush=True,
+                )
 
         held_out_batches = tuple(
             language_model_curvature_batch(next(batches), device)
@@ -419,7 +435,7 @@ def run_paper_full_gn_trial(
         completed_outer_steps += 1
         elapsed_seconds += time.perf_counter() - started
         started = time.perf_counter()
-        timed_out = elapsed_seconds >= maximum_seconds
+        timed_out = paper_gn_time_limit_reached(elapsed_seconds, maximum_seconds)
         should_evaluate = (
             completed_outer_steps % evaluation_interval_steps == 0 or timed_out
         )
@@ -427,6 +443,9 @@ def run_paper_full_gn_trial(
             metric = _evaluate(task, outer_model, validation_loader, device)
             elapsed_seconds += time.perf_counter() - started
             started = time.perf_counter()
+            timed_out = paper_gn_time_limit_reached(
+                elapsed_seconds, maximum_seconds
+            )
             write_metric(
                 paths.metric,
                 {
@@ -450,7 +469,7 @@ def run_paper_full_gn_trial(
                 consumed_training_batches=consumed_training_batches,
                 elapsed_seconds=elapsed_seconds,
             )
-            write_gn_comparison_plots(root, full_ggn_run_label=label)
+            write_gn_comparison_plots(root, paper_full_gn_run_label=label)
             print(
                 f"task={task.identifier} optimizer=paper_full_gn "
                 f"step={completed_outer_steps} metric={metric:.6f} "

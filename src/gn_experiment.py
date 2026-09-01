@@ -187,9 +187,14 @@ def write_gn_comparison_plots(
     *,
     guided_run_label: str | None = None,
     full_ggn_run_label: str | None = None,
+    paper_full_gn_run_label: str | None = None,
 ) -> tuple[Path, Path] | None:
     names = [("AdamW", "adamw", None), ("Muon", "muon", None)]
-    if guided_run_label is None:
+    if paper_full_gn_run_label is not None:
+        names.append(
+            ("Paper Full GN", "paper_full_gn", paper_full_gn_run_label)
+        )
+    elif guided_run_label is None:
         names.extend(
             [
                 ("Full GGN", "full_ggn", full_ggn_run_label),
@@ -234,7 +239,13 @@ def write_gn_comparison_plots(
                     for item in records
                 ]
                 axis.plot(x_values, [item["metric"] for item in records], label=label)
+        if record_name == "step" and paper_full_gn_run_label is not None:
+            axis.set_xscale("log")
         axis.set(xlabel=axis_name, ylabel="Validation next-token accuracy")
+        if paper_full_gn_run_label is not None:
+            axis.set_title(
+                "Paper Full GN after common warmup vs historical baselines"
+            )
         axis.grid(alpha=0.2)
         axis.legend()
         figure.tight_layout()

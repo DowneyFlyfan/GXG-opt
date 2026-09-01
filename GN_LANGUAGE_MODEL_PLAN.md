@@ -38,12 +38,11 @@ momentum 0.95, weight decay 0.001 on Adam-routed parameters and zero on Muon
 matrices, gradient clipping 1, and an inner cosine schedule.
 
 The paper's 45M template uses 122 inner steps with 32 sequences per step,
-roughly four million tokens per outer update. That exact batch is not expected
-to fit a four-hour RTX 5070 Ti run, so qualification first measures the largest
-safe physical mini-batch and then increases the outer batch with inner steps
-and gradient accumulation. A result is called paper-faithful only if the
-algorithmic contract above is preserved; reduced inner count is reported as a
-scaled local reproduction.
+roughly four million tokens per outer update. Qualification showed that this
+exact statistical batch fits the RTX 5070 Ti by using one physical sequence and
+32-way accumulation for both the gradient and the curvature term. A result is
+called paper-faithful only if the algorithmic contract above is preserved;
+reduced inner count is reported as a scaled local reproduction.
 
 Source: `THE POTENTIAL OF SECOND-ORDER OPTIMIZATION FOR LLMS: A STUDY WITH
 FULL GAUSS-NEWTON.pdf` and the cached official repository at

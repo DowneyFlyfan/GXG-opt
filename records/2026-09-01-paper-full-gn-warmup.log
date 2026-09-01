@@ -1,0 +1,1 @@
+{"checkpoint": "/home/downeyflyfan/Research_Projects/AI/Optimizers/New_Optimizer/.cache/nlp/checkpoints/nlp_gpt_12x512__paper_common_adamw_warmup.pt", "metric": 0.6567001342773438, "processed_tokens": 54685696, "seconds": 1106.6200247756205, "status": "complete", "target_tokens": 54682624}

@@ -3,6 +3,64 @@ import torch
 import torch.nn.functional as functional
 
 
+def test_time_limit_is_rechecked_after_evaluation():
+    from paper_full_gn_experiment import paper_gn_time_limit_reached
+
+    assert not paper_gn_time_limit_reached(13_199.9, 13_200.0)
+    assert paper_gn_time_limit_reached(13_200.0, 13_200.0)
+    assert paper_gn_time_limit_reached(13_201.0, 13_200.0)
+
+
+def test_paper_comparison_uses_log_steps_and_only_requested_traces(
+    tmp_path, monkeypatch
+):
+    import json
+
+    import matplotlib.axes
+
+    from gn_experiment import artifact_paths, write_gn_comparison_plots
+
+    for optimizer, metric in (("adamw", 0.60), ("muon", 0.65)):
+        path = artifact_paths(tmp_path, optimizer).metric
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(
+            json.dumps({"step": 10, "metric": metric, "elapsed_seconds": 20.0})
+            + "\n",
+            encoding="utf-8",
+        )
+    paper = artifact_paths(
+        tmp_path, "paper_full_gn", run_label="paper-template"
+    ).metric
+    paper.write_text(
+        json.dumps({"step": 1, "metric": 0.70, "elapsed_seconds": 22.0})
+        + "\n",
+        encoding="utf-8",
+    )
+    scales = []
+    labels = []
+    original_set_xscale = matplotlib.axes.Axes.set_xscale
+    original_plot = matplotlib.axes.Axes.plot
+
+    def record_scale(axis, value, *args, **kwargs):
+        scales.append(value)
+        return original_set_xscale(axis, value, *args, **kwargs)
+
+    def record_plot(axis, *args, **kwargs):
+        labels.append(kwargs.get("label"))
+        return original_plot(axis, *args, **kwargs)
+
+    monkeypatch.setattr(matplotlib.axes.Axes, "set_xscale", record_scale)
+    monkeypatch.setattr(matplotlib.axes.Axes, "plot", record_plot)
+
+    outputs = write_gn_comparison_plots(
+        tmp_path, paper_full_gn_run_label="paper-template"
+    )
+
+    assert outputs is not None
+    assert scales == ["log"]
+    assert set(labels) == {"AdamW", "Muon", "Paper Full GN"}
+
+
 def test_formal_contract_counts_every_accumulated_inner_sequence():
     from paper_full_gn_experiment import validate_paper_gn_contract
 
