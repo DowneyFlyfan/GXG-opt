@@ -306,8 +306,60 @@ class AveragedGGNOperator:
         assert total is not None
         return total / len(self.operators)
 
+    def gradient_statistics(self) -> tuple[Tensor, Tensor]:
+        total = None
+        squared_total = None
+        for operator in self.operators:
+            gradient = operator.gradient()
+            if total is None:
+                total = gradient
+                squared_total = gradient.square()
+            else:
+                total.add_(gradient.to(total))
+                assert squared_total is not None
+                squared_total.add_(gradient.to(squared_total).square())
+        assert total is not None and squared_total is not None
+        count = len(self.operators)
+        return total / count, squared_total / count
+
     def matvec(self, vector: Tensor) -> Tensor:
         total = torch.zeros_like(vector)
         for operator in self.operators:
             total.add_(operator.matvec(vector).to(total))
         return total / len(self.operators)
+
+
+class SplitBatchGGNOperator:
+    """Use a large gradient batch and a smaller fixed curvature batch."""
+
+    def __init__(
+        self,
+        *,
+        gradient_operator: AveragedGGNOperator,
+        curvature_operator: AveragedGGNOperator,
+    ) -> None:
+        gradient_parameter_ids = tuple(
+            id(parameter) for parameter in gradient_operator.parameters
+        )
+        curvature_parameter_ids = tuple(
+            id(parameter) for parameter in curvature_operator.parameters
+        )
+        if gradient_parameter_ids != curvature_parameter_ids:
+            raise ValueError("Gradient and curvature operators must share parameters")
+        self.gradient_operator = gradient_operator
+        self.curvature_operator = curvature_operator
+        self.parameters = gradient_operator.parameters
+        self._sizes = gradient_operator._sizes
+
+    @property
+    def numel(self) -> int:
+        return self.gradient_operator.numel
+
+    def gradient(self) -> Tensor:
+        return self.gradient_operator.gradient()
+
+    def gradient_statistics(self) -> tuple[Tensor, Tensor]:
+        return self.gradient_operator.gradient_statistics()
+
+    def matvec(self, vector: Tensor) -> Tensor:
+        return self.curvature_operator.matvec(vector)

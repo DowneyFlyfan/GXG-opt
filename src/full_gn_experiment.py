@@ -17,8 +17,38 @@ from kronecker_ggn_common.curvature_operator import (
     AveragedGGNOperator,
     FunctionalCurvatureBatch,
     GGNFullOperator,
+    SplitBatchGGNOperator,
 )
+from models import CONTEXT_LENGTH
 from training import _evaluate, _loaders, _model, configure_reproducibility
+
+
+MINIMUM_FORMAL_EFFECTIVE_BATCH_SIZE = 60
+
+
+def validate_formal_full_gn_contract(
+    *,
+    batch_size: int,
+    sequence_length: int,
+    gradient_accumulation_batches: int,
+    curvature_accumulation_batches: int,
+) -> dict[str, int]:
+    """Reject GGN runs that silently change the retained baseline task."""
+    if sequence_length != CONTEXT_LENGTH:
+        raise ValueError(
+            f"sequence_length must remain {CONTEXT_LENGTH} for the formal baseline"
+        )
+    gradient_effective_batch_size = batch_size * gradient_accumulation_batches
+    if gradient_effective_batch_size < MINIMUM_FORMAL_EFFECTIVE_BATCH_SIZE:
+        raise ValueError("gradient effective batch must be at least 60")
+    curvature_effective_batch_size = batch_size * curvature_accumulation_batches
+    if curvature_effective_batch_size < MINIMUM_FORMAL_EFFECTIVE_BATCH_SIZE:
+        raise ValueError("curvature effective batch must be at least 60")
+    return {
+        "sequence_length": sequence_length,
+        "gradient_effective_batch_size": gradient_effective_batch_size,
+        "curvature_effective_batch_size": curvature_effective_batch_size,
+    }
 
 
 def full_gn_task(*, batch_size: int):
@@ -32,12 +62,28 @@ def full_gn_task(*, batch_size: int):
     )
 
 
-def full_gn_config(*, maximum_cg_iterations: int, minimum_damping: float) -> FullGGNConfig:
+def full_gn_config(
+    *,
+    maximum_cg_iterations: int,
+    minimum_damping: float,
+    initial_step_scale: float = 1.0,
+    preconditioner_exponent: float | None = None,
+    cg_warm_start_decay: float = 0.95,
+) -> FullGGNConfig:
     if minimum_damping <= 0:
         raise ValueError("minimum_damping must be positive")
+    if initial_step_scale <= 0:
+        raise ValueError("initial_step_scale must be positive")
+    if preconditioner_exponent is not None and preconditioner_exponent <= 0:
+        raise ValueError("preconditioner_exponent must be positive")
+    if not 0.0 <= cg_warm_start_decay <= 1.0:
+        raise ValueError("cg_warm_start_decay must be between zero and one")
     return FullGGNConfig(
         maximum_cg_iterations=maximum_cg_iterations,
         minimum_damping=minimum_damping,
+        initial_step_scale=initial_step_scale,
+        preconditioner_exponent=preconditioner_exponent,
+        cg_warm_start_decay=cg_warm_start_decay,
     )
 
 
@@ -59,11 +105,14 @@ def prepare_full_gn_batches(
     batch_size: int,
     sequence_length: int,
     curvature_batches: int,
+    window_offset: int = 0,
 ) -> tuple[tuple[torch.Tensor, torch.Tensor], ...]:
     if curvature_batches <= 0:
         raise ValueError("curvature_batches must be positive")
+    if window_offset < 0:
+        raise ValueError("window_offset must be non-negative")
     token_ids, targets = batch
-    required_length = sequence_length * curvature_batches
+    required_length = window_offset + sequence_length * curvature_batches
     if token_ids.size(0) < batch_size or token_ids.size(1) < required_length:
         raise ValueError("Loader batch is smaller than the requested GGN windows")
     return tuple(
@@ -71,8 +120,23 @@ def prepare_full_gn_batches(
             token_ids[:batch_size, offset : offset + sequence_length],
             targets[:batch_size, offset : offset + sequence_length],
         )
-        for offset in range(0, required_length, sequence_length)
+        for offset in range(
+            window_offset, required_length, sequence_length
+        )
     )
+
+
+def rotating_window_offset(
+    *, completed_steps: int, full_length: int, selected_length: int
+) -> int:
+    if completed_steps < 0:
+        raise ValueError("completed_steps must be non-negative")
+    if full_length <= 0 or selected_length <= 0:
+        raise ValueError("full_length and selected_length must be positive")
+    if selected_length > full_length:
+        raise ValueError("selected_length cannot exceed full_length")
+    available_offsets = full_length - selected_length + 1
+    return (completed_steps * selected_length) % available_offsets
 
 
 def prepare_accumulated_full_gn_batches(
@@ -81,6 +145,7 @@ def prepare_accumulated_full_gn_batches(
     batch_size: int,
     sequence_length: int,
     curvature_batches: int,
+    window_offset: int = 0,
 ) -> tuple[tuple[torch.Tensor, torch.Tensor], ...]:
     """Accumulate fixed-shape curvature windows from distinct loader batches."""
     if not batches:
@@ -93,7 +158,30 @@ def prepare_accumulated_full_gn_batches(
             batch_size=batch_size,
             sequence_length=sequence_length,
             curvature_batches=curvature_batches,
+            window_offset=window_offset,
         )
+    )
+
+
+def build_split_full_gn_operator(
+    operators: tuple[GGNFullOperator, ...],
+    *,
+    curvature_accumulation_batches: int,
+    curvature_batches: int,
+) -> SplitBatchGGNOperator:
+    """Estimate the gradient broadly while keeping one fixed CG curvature batch."""
+    if curvature_accumulation_batches <= 0:
+        raise ValueError("curvature_accumulation_batches must be positive")
+    if curvature_batches <= 0:
+        raise ValueError("curvature_batches must be positive")
+    curvature_operator_count = curvature_accumulation_batches * curvature_batches
+    if curvature_operator_count > len(operators):
+        raise ValueError("Curvature batch count exceeds the accumulated gradient batch")
+    return SplitBatchGGNOperator(
+        gradient_operator=AveragedGGNOperator(operators),
+        curvature_operator=AveragedGGNOperator(
+            operators[:curvature_operator_count]
+        ),
     )
 
 
@@ -158,9 +246,14 @@ def run_full_gn_trial(
     sequence_length: int = 1024,
     curvature_batches: int = 1,
     gradient_accumulation_batches: int = 1,
+    curvature_accumulation_batches: int = 1,
     initial_damping: float,
     maximum_cg_iterations: int,
     minimum_damping: float = 1.0e-6,
+    initial_step_scale: float = 1.0,
+    preconditioner_exponent: float | None = None,
+    rotate_token_window: bool = False,
+    cg_warm_start_decay: float = 0.95,
     maximum_seconds: float = 14_400.0,
     evaluation_interval_steps: int = 256,
     workers: int = 4,
@@ -169,10 +262,21 @@ def run_full_gn_trial(
     label: str | None = None,
 ) -> dict:
     """Train the retained model with exact full-GGN Hessian-free updates."""
+    formal_contract = validate_formal_full_gn_contract(
+        batch_size=batch_size,
+        sequence_length=sequence_length,
+        gradient_accumulation_batches=gradient_accumulation_batches,
+        curvature_accumulation_batches=curvature_accumulation_batches,
+    )
     if not torch.cuda.is_available():
         raise RuntimeError("CUDA is required for the full-GGN experiment")
     if gradient_accumulation_batches <= 0:
         raise ValueError("gradient_accumulation_batches must be positive")
+    if not 0 < curvature_accumulation_batches <= gradient_accumulation_batches:
+        raise ValueError(
+            "curvature_accumulation_batches must be between one and "
+            "gradient_accumulation_batches"
+        )
     task = full_gn_task(batch_size=batch_size)
     configure_reproducibility(seed)
     device = torch.device("cuda")
@@ -197,6 +301,9 @@ def run_full_gn_trial(
     config = full_gn_config(
         maximum_cg_iterations=maximum_cg_iterations,
         minimum_damping=minimum_damping,
+        initial_step_scale=initial_step_scale,
+        preconditioner_exponent=preconditioner_exponent,
+        cg_warm_start_decay=cg_warm_start_decay,
     )
     torch.cuda.reset_peak_memory_stats(device)
     started = time.perf_counter()
@@ -222,10 +329,18 @@ def run_full_gn_trial(
                     batch_size=batch_size,
                     sequence_length=sequence_length,
                     curvature_batches=curvature_batches,
+                    window_offset=(
+                        rotating_window_offset(
+                            completed_steps=completed_steps,
+                            full_length=accumulated_batches[0][0].size(1),
+                            selected_length=sequence_length * curvature_batches,
+                        )
+                        if rotate_token_window
+                        else 0
+                    ),
                 )
             )
-            operator = AveragedGGNOperator(
-                tuple(
+            batch_operators = tuple(
                     GGNFullOperator(
                         model,
                         FunctionalCurvatureBatch(
@@ -244,6 +359,10 @@ def run_full_gn_trial(
                     )
                     for token_ids, targets in windows
                 )
+            operator = build_split_full_gn_operator(
+                batch_operators,
+                curvature_accumulation_batches=curvature_accumulation_batches,
+                curvature_batches=curvature_batches,
             )
             step = full_ggn_step(
                 operator,
@@ -281,7 +400,7 @@ def run_full_gn_trial(
                     completed_steps=completed_steps,
                     elapsed_seconds=elapsed_seconds,
                 )
-                write_gn_comparison_plots(root)
+                write_gn_comparison_plots(root, full_ggn_run_label=label)
                 print(
                     f"task={task.identifier} optimizer=full_ggn step={completed_steps} "
                     f"metric={metric:.6f} damping={state.damping:.6g}",
@@ -297,8 +416,15 @@ def run_full_gn_trial(
                     "batch_size": batch_size,
                     "sequence_length": sequence_length,
                     "curvature_batches": curvature_batches,
+                    "gradient_accumulation_batches": gradient_accumulation_batches,
+                    "curvature_accumulation_batches": curvature_accumulation_batches,
+                    **formal_contract,
                     "maximum_cg_iterations": maximum_cg_iterations,
                     "minimum_damping": minimum_damping,
+                    "initial_step_scale": initial_step_scale,
+                    "preconditioner_exponent": preconditioner_exponent,
+                    "rotate_token_window": rotate_token_window,
+                    "cg_warm_start_decay": cg_warm_start_decay,
                     "completed_steps": completed_steps,
                     "seconds": elapsed_seconds,
                     "peak_memory_mb": torch.cuda.max_memory_allocated(device) / 1024**2,
@@ -318,8 +444,15 @@ def run_full_gn_trial(
         "batch_size": batch_size,
         "sequence_length": sequence_length,
         "curvature_batches": curvature_batches,
+        "gradient_accumulation_batches": gradient_accumulation_batches,
+        "curvature_accumulation_batches": curvature_accumulation_batches,
+        **formal_contract,
         "maximum_cg_iterations": maximum_cg_iterations,
         "minimum_damping": minimum_damping,
+        "initial_step_scale": initial_step_scale,
+        "preconditioner_exponent": preconditioner_exponent,
+        "rotate_token_window": rotate_token_window,
+        "cg_warm_start_decay": cg_warm_start_decay,
         "completed_steps": completed_steps,
         "seconds": elapsed_seconds,
         "peak_memory_mb": torch.cuda.max_memory_allocated(device) / 1024**2,
@@ -328,5 +461,5 @@ def run_full_gn_trial(
     paths.result.parent.mkdir(parents=True, exist_ok=True)
     paths.result.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n")
     paths.checkpoint.unlink(missing_ok=True)
-    write_gn_comparison_plots(root)
+    write_gn_comparison_plots(root, full_ggn_run_label=label)
     return result

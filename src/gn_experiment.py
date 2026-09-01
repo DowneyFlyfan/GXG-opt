@@ -6,8 +6,8 @@ import time
 from dataclasses import dataclass, replace
 from pathlib import Path
 
-os.environ.setdefault(
-    "MPLCONFIGDIR", str(Path(__file__).resolve().parents[1] / ".cache" / "matplotlib")
+os.environ["MPLCONFIGDIR"] = str(
+    Path(__file__).resolve().parents[1] / ".cache" / "matplotlib"
 )
 os.environ.setdefault("MPLBACKEND", "Agg")
 
@@ -163,11 +163,14 @@ def _read_metrics(path: Path) -> list[dict]:
     return [json.loads(line) for line in path.read_text().splitlines() if line]
 
 
-def _comparison_records(root: Path, optimizer_name: str) -> list[dict]:
-    records = _read_metrics(artifact_paths(root, optimizer_name).metric)
+def _comparison_records(
+    root: Path, optimizer_name: str, *, run_label: str | None = None
+) -> list[dict]:
+    paths = artifact_paths(root, optimizer_name, run_label=run_label)
+    records = _read_metrics(paths.metric)
     if not records or "step" in records[0]:
         return records
-    result = json.loads(artifact_paths(root, optimizer_name).result.read_text())
+    result = json.loads(paths.result.read_text())
     steps_per_epoch = 12_207
     return [
         {
@@ -179,19 +182,34 @@ def _comparison_records(root: Path, optimizer_name: str) -> list[dict]:
     ]
 
 
-def write_gn_comparison_plots(root: Path) -> tuple[Path, Path] | None:
-    names = (
-        ("AdamW", "adamw"),
-        ("Muon", "muon"),
-        ("Full GGN", "full_ggn"),
-        ("Kronecker GGN", "kronecker_ggn"),
-        ("Low-rank DG-GN", "low_rank_corrected_kronecker_ggn"),
-    )
+def write_gn_comparison_plots(
+    root: Path,
+    *,
+    guided_run_label: str | None = None,
+    full_ggn_run_label: str | None = None,
+) -> tuple[Path, Path] | None:
+    names = [("AdamW", "adamw", None), ("Muon", "muon", None)]
+    if guided_run_label is None:
+        names.extend(
+            [
+                ("Full GGN", "full_ggn", full_ggn_run_label),
+                ("Kronecker GGN", "kronecker_ggn", None),
+                ("Low-rank DG-GN", "low_rank_corrected_kronecker_ggn", None),
+            ]
+        )
     traces = []
-    for label, name in names:
-        path = artifact_paths(root, name).metric
+    for label, name, run_label in names:
+        path = artifact_paths(root, name, run_label=run_label).metric
         if path.exists():
-            traces.append((label, _comparison_records(root, name)))
+            traces.append(
+                (label, _comparison_records(root, name, run_label=run_label))
+            )
+    if guided_run_label is not None:
+        guided_path = artifact_paths(
+            root, "gn_guided_adamw", run_label=guided_run_label
+        ).metric
+        if guided_path.exists():
+            traces.append(("GGN-guided AdamW", _read_metrics(guided_path)))
     if len(traces) < 3:
         return None
     output_root = root / "results" / "nlp"
@@ -306,10 +324,12 @@ def run_gn_trial(
                 == 0
             ):
                 acceptance_batches = tuple(step_batches)
-                acceptance_closure = lambda: sum(
-                    _loss(task, model, item, device)
-                    for item in acceptance_batches
-                ) / len(acceptance_batches)
+
+                def acceptance_closure():
+                    return sum(
+                        _loss(task, model, item, device)
+                        for item in acceptance_batches
+                    ) / len(acceptance_batches)
             optimizer.step(acceptance_closure=acceptance_closure)
             completed_steps += 1
             elapsed_seconds += time.perf_counter() - started

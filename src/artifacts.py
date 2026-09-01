@@ -1,7 +1,12 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
+
+os.environ["MPLCONFIGDIR"] = str(
+    Path(__file__).resolve().parents[1] / ".cache" / "matplotlib"
+)
 
 import matplotlib.pyplot as plot
 

@@ -14,6 +14,26 @@ VOCABULARY_SIZE = 32_000
 CONTEXT_LENGTH = 1_024
 
 
+def _attention(
+    query: torch.Tensor,
+    key: torch.Tensor,
+    value: torch.Tensor,
+    *,
+    causal: bool,
+) -> torch.Tensor:
+    """Use forward-AD-compatible math attention only for exact GGN products."""
+    if torch.autograd.forward_ad.unpack_dual(query).tangent is None:
+        return functional.scaled_dot_product_attention(query, key, value, is_causal=causal)
+    scores = (query @ key.transpose(-2, -1)) * query.size(-1) ** -0.5
+    if causal:
+        sequence = query.size(-2)
+        mask = torch.ones(
+            sequence, sequence, dtype=torch.bool, device=query.device
+        ).triu(1)
+        scores = scores.masked_fill(mask, float("-inf"))
+    return scores.softmax(dim=-1) @ value
+
+
 class TransformerBlock(nn.Module):
     def __init__(self, width: int, heads: int, causal: bool) -> None:
         super().__init__()
@@ -30,11 +50,11 @@ class TransformerBlock(nn.Module):
         batch, sequence, width = hidden.shape
         qkv = self.qkv(self.norm1(hidden)).view(batch, sequence, 3, self.heads, width // self.heads)
         query, key, value = qkv.unbind(dim=2)
-        attention = functional.scaled_dot_product_attention(
+        attention = _attention(
             query.transpose(1, 2),
             key.transpose(1, 2),
             value.transpose(1, 2),
-            is_causal=self.causal,
+            causal=self.causal,
         )
         hidden = hidden + self.projection(attention.transpose(1, 2).reshape(batch, sequence, width))
         feedforward = self.feedforward_out(functional.gelu(self.feedforward_in(self.norm2(hidden)), approximate="tanh"))

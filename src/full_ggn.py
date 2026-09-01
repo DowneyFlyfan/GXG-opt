@@ -22,6 +22,8 @@ class FullGGNConfig:
     maximum_cg_iterations: int = 4
     relative_cg_tolerance: float = 1.0e-8
     cg_warm_start_decay: float = 0.95
+    initial_step_scale: float = 1.0
+    preconditioner_exponent: float | None = None
     armijo_coefficient: float = 1.0e-4
     line_search_decay: float = 0.5
     maximum_line_search_steps: int = 8
@@ -56,6 +58,7 @@ def conjugate_gradient(
     maximum_iterations: int,
     initial_direction: Tensor | None = None,
     relative_tolerance: float = 1.0e-8,
+    preconditioner: Callable[[Tensor], Tensor] | None = None,
 ) -> ConjugateGradientResult:
     """Solve ``(G + damping I) direction = right_hand_side`` by CG."""
     if damping <= 0:
@@ -74,36 +77,54 @@ def conjugate_gradient(
         return curvature_matvec(vector) + damping * vector
 
     residual = right_hand_side - system_matvec(direction)
-    search = residual.clone()
-    squared_residual = torch.dot(residual, residual)
-    initial_norm = squared_residual.sqrt().clamp_min(torch.finfo(residual.dtype).eps)
+    preconditioned_residual = (
+        residual.clone() if preconditioner is None else preconditioner(residual)
+    )
+    search = preconditioned_residual.clone()
+    residual_inner_product = torch.dot(residual, preconditioned_residual)
+    if not torch.isfinite(residual_inner_product) or residual_inner_product <= 0:
+        raise RuntimeError("Preconditioner must be positive definite")
+    initial_norm = residual.norm().clamp_min(torch.finfo(residual.dtype).eps)
     candidates: list[Tensor] = []
     for iteration in range(1, maximum_iterations + 1):
         system_search = system_matvec(search)
         denominator = torch.dot(search, system_search)
         if not torch.isfinite(denominator) or denominator <= 0:
             raise RuntimeError("Damped GGN system is not positive definite")
-        step = squared_residual / denominator
+        step = residual_inner_product / denominator
         direction = direction + step * search
         # The Hessian-free backtracking policy needs every CG iterate, but
         # retaining 54M-parameter copies on the GPU can exhaust otherwise
         # usable curvature-batch memory.  Keep only the active solve on GPU.
         candidates.append(direction.detach().to("cpu", copy=True))
         residual = residual - step * system_search
-        next_squared_residual = torch.dot(residual, residual)
-        residual_norm = next_squared_residual.sqrt()
+        residual_norm = residual.norm()
         if not torch.isfinite(residual_norm):
             raise RuntimeError("Conjugate gradient residual is non-finite")
         if residual_norm <= relative_tolerance * initial_norm:
             return ConjugateGradientResult(
                 direction, iteration, float(residual_norm.item()), tuple(candidates)
             )
-        search = residual + (next_squared_residual / squared_residual) * search
-        squared_residual = next_squared_residual
+        next_preconditioned_residual = (
+            residual.clone() if preconditioner is None else preconditioner(residual)
+        )
+        next_residual_inner_product = torch.dot(
+            residual, next_preconditioned_residual
+        )
+        if (
+            not torch.isfinite(next_residual_inner_product)
+            or next_residual_inner_product <= 0
+        ):
+            raise RuntimeError("Preconditioner must be positive definite")
+        search = next_preconditioned_residual + (
+            next_residual_inner_product / residual_inner_product
+        ) * search
+        preconditioned_residual = next_preconditioned_residual
+        residual_inner_product = next_residual_inner_product
     return ConjugateGradientResult(
         direction,
         maximum_iterations,
-        float(squared_residual.sqrt().item()),
+        float(residual.norm().item()),
         tuple(candidates),
     )
 
@@ -120,7 +141,18 @@ def full_ggn_step(
         raise ValueError("state damping must be positive")
     with torch.no_grad():
         initial_loss = float(loss_closure().item())
-    gradient = operator.gradient()
+    preconditioner = None
+    if config.preconditioner_exponent is None:
+        gradient = operator.gradient()
+    else:
+        if config.preconditioner_exponent <= 0:
+            raise ValueError("preconditioner_exponent must be positive")
+        gradient, gradient_second_moment = operator.gradient_statistics()
+        preconditioner_diagonal = (gradient_second_moment + state.damping).pow(
+            config.preconditioner_exponent
+        )
+        del gradient_second_moment
+        preconditioner = lambda residual: residual / preconditioner_diagonal
     initial_direction = (
         None
         if state.previous_direction is None
@@ -133,6 +165,7 @@ def full_ggn_step(
         maximum_iterations=config.maximum_cg_iterations,
         initial_direction=initial_direction,
         relative_tolerance=config.relative_cg_tolerance,
+        preconditioner=preconditioner,
     )
     originals = tuple(parameter.detach().clone() for parameter in operator.parameters)
 
@@ -161,12 +194,15 @@ def full_ggn_step(
             candidate_loss = loss
             candidate_direction = candidate
     direction = candidate_direction.to(gradient)
+    assign(direction, 0.0)
     curvature_direction = operator.matvec(direction)
     gradient_dot_direction = float(torch.dot(gradient, direction).item())
     curvature_quadratic = float(torch.dot(direction, curvature_direction).item())
     accepted = False
     final_loss = initial_loss
-    scale = 1.0
+    if config.initial_step_scale <= 0:
+        raise ValueError("initial_step_scale must be positive")
+    scale = config.initial_step_scale
     for _ in range(config.maximum_line_search_steps):
         assign(direction, scale)
         with torch.no_grad():
