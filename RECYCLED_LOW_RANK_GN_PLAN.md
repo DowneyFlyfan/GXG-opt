@@ -77,4 +77,4 @@ ablation because they are computationally impractical at equal batch size.
 - [x] Run CPU tests and local-GPU memory/numerical qualifications.
 - [x] Run the controlled same-duration local-GPU experiment.
 - [x] Draw metric-step and metric-time PNGs and write the experiment record.
-- [ ] Run final verification and push only the method-specific changes/results.
+- [x] Run final verification and push only the method-specific changes/results.
