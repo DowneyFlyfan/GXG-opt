@@ -45,6 +45,7 @@ class FunctionalCurvatureBatch:
     loss_fn: Any
     kwargs: dict[str, Any] = field(default_factory=dict)
     batch_id: str | None = None
+    output_hvp_fn: Any | None = None
 
 
 def _tree_is_finite(value: Any) -> bool:
@@ -261,13 +262,24 @@ class GGNFullOperator:
             base, model_function = self._functions()
             tangent = self._unflatten(vector, base)
             output, pullback = vjp(model_function, *base)
-            loss = self.batch.loss_fn(output)
-            output_gradient_fn = grad(self.batch.loss_fn)
-            output_gradient = output_gradient_fn(output)
-            if not torch.isfinite(loss).all() or not _tree_is_finite(output_gradient):
-                raise GGNOperatorError("Curvature loss or output gradient is non-finite")
             _, output_tangent = jvp(model_function, base, tangent)
-            _, output_hvp = jvp(output_gradient_fn, (output,), (output_tangent,))
+            if self.batch.output_hvp_fn is None:
+                loss = self.batch.loss_fn(output)
+                output_gradient_fn = grad(self.batch.loss_fn)
+                output_gradient = output_gradient_fn(output)
+                if not torch.isfinite(loss).all() or not _tree_is_finite(
+                    output_gradient
+                ):
+                    raise GGNOperatorError(
+                        "Curvature loss or output gradient is non-finite"
+                    )
+                _, output_hvp = jvp(
+                    output_gradient_fn, (output,), (output_tangent,)
+                )
+            else:
+                output_hvp = self.batch.output_hvp_fn(output, output_tangent)
+                if not _tree_is_finite(output_hvp):
+                    raise GGNOperatorError("Analytic output Hessian product is non-finite")
             values = pullback(output_hvp)
         dtype = torch.float64 if vector.dtype == torch.float64 else torch.float32
         result = self._flatten(values, dtype=dtype).to(device=vector.device)

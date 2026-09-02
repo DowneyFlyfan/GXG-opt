@@ -89,7 +89,34 @@ def language_model_curvature_batch(
             selected_targets.reshape(-1),
         )
 
-    return FunctionalCurvatureBatch(args=(token_ids,), loss_fn=loss_fn)
+    def output_hvp_fn(output, output_tangent):
+        if not isinstance(output, torch.Tensor) or not isinstance(
+            output_tangent, torch.Tensor
+        ):
+            raise TypeError("Analytic language-model HVP requires Tensor logits")
+        logits = output.reshape(-1, output.size(-1))
+        tangent = output_tangent.reshape_as(logits)
+        result = torch.empty_like(tangent)
+        compute_dtype = (
+            torch.float64 if logits.dtype == torch.float64 else torch.float32
+        )
+        token_count = logits.shape[0]
+        chunk_size = 128
+        for start in range(0, token_count, chunk_size):
+            stop = min(start + chunk_size, token_count)
+            selected_logits = logits[start:stop].to(compute_dtype)
+            selected_tangent = tangent[start:stop].to(compute_dtype)
+            probabilities = selected_logits.softmax(dim=-1)
+            expectation = (probabilities * selected_tangent).sum(
+                dim=-1, keepdim=True
+            )
+            product = probabilities * (selected_tangent - expectation)
+            result[start:stop].copy_((product / token_count).to(result.dtype))
+        return result.reshape_as(output_tangent)
+
+    return FunctionalCurvatureBatch(
+        args=(token_ids,), loss_fn=loss_fn, output_hvp_fn=output_hvp_fn
+    )
 
 
 def save_paper_gn_checkpoint(

@@ -114,6 +114,31 @@ def test_language_model_curvature_batch_uses_cross_entropy_on_all_tokens():
     )
 
 
+def test_language_model_curvature_batch_has_exact_chunked_cross_entropy_hvp():
+    from paper_full_gn_experiment import language_model_curvature_batch
+
+    logits = torch.tensor(
+        [[[2.0, 0.0, -1.0], [0.5, 1.5, -0.5]]], dtype=torch.float64
+    )
+    targets = torch.tensor([[0, 1]])
+    tangent = torch.tensor(
+        [[[0.2, -0.4, 0.3], [0.1, 0.7, -0.2]]], dtype=torch.float64
+    )
+    batch = language_model_curvature_batch((logits, targets), torch.device("cpu"))
+
+    assert batch.output_hvp_fn is not None
+    actual = batch.output_hvp_fn(logits, tangent)
+    expected = torch.autograd.functional.hvp(
+        lambda value: functional.cross_entropy(
+            value.reshape(-1, value.size(-1)), targets.reshape(-1)
+        ),
+        logits,
+        tangent,
+    )[1]
+
+    assert torch.allclose(actual, expected, atol=1e-12, rtol=1e-12)
+
+
 def test_checkpoint_restores_outer_inner_and_persistent_optimizer_state(tmp_path):
     from paper_full_gn_experiment import load_paper_gn_checkpoint
     from paper_full_gn_experiment import save_paper_gn_checkpoint
