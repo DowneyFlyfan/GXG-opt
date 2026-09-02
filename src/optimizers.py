@@ -7,7 +7,7 @@ from dataclasses import dataclass
 import torch
 from torch import nn
 
-from optimizer_registry import OPTIMIZER_REGISTRY, build_optimizer
+from stiefel_muon import StiefelMuon
 
 
 @torch.compile
@@ -109,13 +109,17 @@ def build_optimizers(
 ) -> dict[str, torch.optim.Optimizer]:
     if optimizer == "adamw":
         return {"adamw": torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=weight_decay, betas=(0.9, 0.95))}
-    if optimizer != "muon":
+    if optimizer not in {"muon", "stiefel_muon"}:
         raise ValueError(f"Unsupported optimizer: {optimizer}")
     selected = muon_parameter_names(model)
     muon_parameters = [parameter for name, parameter in model.named_parameters() if name in selected]
     selected_ids = {id(parameter) for parameter in muon_parameters}
     auxiliary = [parameter for parameter in model.parameters() if id(parameter) not in selected_ids]
+    if optimizer == "stiefel_muon":
+        matrix_optimizer: torch.optim.Optimizer = StiefelMuon(muon_parameters, lr=lr)
+    else:
+        matrix_optimizer = Muon(muon_parameters, lr=lr, weight_decay=weight_decay)
     return {
-        "muon": Muon(muon_parameters, lr=lr, weight_decay=weight_decay),
+        optimizer: matrix_optimizer,
         "adamw_aux": torch.optim.AdamW(auxiliary, lr=auxiliary_lr, weight_decay=weight_decay, betas=(0.9, 0.95)),
     }

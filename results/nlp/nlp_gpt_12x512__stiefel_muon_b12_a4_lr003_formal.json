@@ -1,0 +1,18 @@
+{
+  "completed_steps": 10170,
+  "domain": "nlp",
+  "final_metric": 0.722632090250651,
+  "gradient_accumulation": 4,
+  "learning_rate": 0.003,
+  "micro_batch_size": 12,
+  "model": "gpt_12x512",
+  "momentum": 0.95,
+  "ns_steps": 5,
+  "optimizer": "stiefel_muon",
+  "parameters": 54682624,
+  "peak_memory_mb": 12294.923828125,
+  "seconds": 13768.634126296733,
+  "status": "completed",
+  "stiefel_matrix_count": 48,
+  "task": "nlp_gpt_12x512"
+}
