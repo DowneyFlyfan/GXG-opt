@@ -99,3 +99,38 @@ def test_optimizer_preserves_initial_column_scale_while_enforcing_stiefel_geomet
     actual_scale = parameter.norm() / parameter.shape[1] ** 0.5
     torch.testing.assert_close(actual_scale, expected_scale)
     assert _orthogonality_error(parameter / actual_scale) < 2.0e-4
+
+
+def test_hybrid_optimizer_uses_muon_for_first_last_blocks_and_stiefel_interior():
+    from models import DecoderTransformer
+    from optimizers import build_optimizers, hybrid_muon_parameter_names, muon_parameter_names
+
+    model = DecoderTransformer(width=16, heads=4, layers=3, vocabulary_size=64)
+    optimizers = build_optimizers(
+        model,
+        "hybrid_stiefel_muon",
+        lr=0.0003,
+        stiefel_lr=0.003,
+        weight_decay=0.01,
+        auxiliary_lr=0.0003,
+    )
+    edge_names, middle_names = hybrid_muon_parameter_names(model)
+    named = dict(model.named_parameters())
+    selected = muon_parameter_names(model)
+
+    edge_ids = {id(parameter) for group in optimizers["muon_edge"].param_groups for parameter in group["params"]}
+    middle_ids = {
+        id(parameter)
+        for group in optimizers["stiefel_muon_middle"].param_groups
+        for parameter in group["params"]
+    }
+    assert edge_names == {
+        name
+        for name in selected
+        if name.startswith("blocks.0.") or name.startswith("blocks.2.")
+    }
+    assert middle_names == {name for name in selected if name.startswith("blocks.1.")}
+    assert edge_ids == {id(named[name]) for name in edge_names}
+    assert middle_ids == {id(named[name]) for name in middle_names}
+    assert optimizers["muon_edge"].param_groups[0]["lr"] == 0.0003
+    assert optimizers["stiefel_muon_middle"].param_groups[0]["lr"] == 0.003

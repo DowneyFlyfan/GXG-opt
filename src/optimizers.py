@@ -104,13 +104,56 @@ def muon_parameter_names(model: nn.Module) -> set[str]:
     return selected
 
 
+def hybrid_muon_parameter_names(model: nn.Module) -> tuple[set[str], set[str]]:
+    """Split eligible Transformer matrices into edge-Muon and inner-Stiefel sets."""
+    selected = muon_parameter_names(model)
+    block_indices = sorted(
+        {
+            int(name.split(".", 2)[1])
+            for name in selected
+            if name.startswith("blocks.") and name.split(".", 2)[1].isdigit()
+        }
+    )
+    if len(block_indices) < 3:
+        raise ValueError("Hybrid Stiefel-Muon requires at least three Transformer blocks")
+    edge_indices = {block_indices[0], block_indices[-1]}
+    edge = {
+        name
+        for name in selected
+        if name.startswith("blocks.") and int(name.split(".", 2)[1]) in edge_indices
+    }
+    middle = selected - edge
+    return edge, middle
+
+
 def build_optimizers(
-    model: nn.Module, optimizer: str, lr: float, weight_decay: float, auxiliary_lr: float = 3e-4
+    model: nn.Module,
+    optimizer: str,
+    lr: float,
+    weight_decay: float,
+    auxiliary_lr: float = 3e-4,
+    stiefel_lr: float | None = None,
 ) -> dict[str, torch.optim.Optimizer]:
     if optimizer == "adamw":
         return {"adamw": torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=weight_decay, betas=(0.9, 0.95))}
-    if optimizer not in {"muon", "stiefel_muon"}:
+    if optimizer not in {"muon", "stiefel_muon", "hybrid_stiefel_muon"}:
         raise ValueError(f"Unsupported optimizer: {optimizer}")
+    if optimizer == "hybrid_stiefel_muon":
+        if stiefel_lr is None or stiefel_lr <= 0:
+            raise ValueError("Hybrid Stiefel-Muon requires a positive stiefel_lr")
+        edge_names, middle_names = hybrid_muon_parameter_names(model)
+        named = dict(model.named_parameters())
+        edge = [named[name] for name in edge_names]
+        middle = [named[name] for name in middle_names]
+        selected_ids = {id(parameter) for parameter in (*edge, *middle)}
+        auxiliary = [parameter for parameter in model.parameters() if id(parameter) not in selected_ids]
+        return {
+            "muon_edge": Muon(edge, lr=lr, weight_decay=weight_decay),
+            "stiefel_muon_middle": StiefelMuon(middle, lr=stiefel_lr),
+            "adamw_aux": torch.optim.AdamW(
+                auxiliary, lr=auxiliary_lr, weight_decay=weight_decay, betas=(0.9, 0.95)
+            ),
+        }
     selected = muon_parameter_names(model)
     muon_parameters = [parameter for name, parameter in model.named_parameters() if name in selected]
     selected_ids = {id(parameter) for parameter in muon_parameters}
