@@ -120,8 +120,12 @@ def run_hybrid_stiefel_muon_trial(
     label: str,
     muon_learning_rate: float,
     stiefel_learning_rate: float,
+    stiefel_square_learning_rate: float | None = None,
+    stiefel_rectangular_learning_rate: float | None = None,
+    stiefel_nesterov: bool = False,
     momentum: float = 0.95,
     ns_steps: int = 5,
+    scheduler_t_max: int | None = None,
     workers: int = 4,
     maximum_seconds: float = 14_400.0,
     maximum_steps: int | None = None,
@@ -134,8 +138,13 @@ def run_hybrid_stiefel_muon_trial(
     """Train a 12-block decoder with ordinary Muon on blocks 0/11 only."""
     if min(muon_learning_rate, stiefel_learning_rate) <= 0:
         raise ValueError("Both learning rates must be positive")
+    for rate in (stiefel_square_learning_rate, stiefel_rectangular_learning_rate):
+        if rate is not None and rate <= 0:
+            raise ValueError("Geometry-specific Stiefel learning rates must be positive")
     if not 0 <= momentum < 1 or ns_steps <= 0:
         raise ValueError("momentum and Newton--Schulz steps are invalid")
+    if scheduler_t_max is not None and scheduler_t_max <= 0:
+        raise ValueError("scheduler_t_max must be positive when provided")
     if maximum_seconds <= 0 or evaluation_interval_steps <= 0:
         raise ValueError("time and evaluation intervals must be positive")
     if maximum_steps is not None and maximum_steps <= 0:
@@ -164,14 +173,18 @@ def run_hybrid_stiefel_muon_trial(
         task.weight_decay,
         task.muon_aux_lr,
         stiefel_lr=stiefel_learning_rate,
+        stiefel_square_lr=stiefel_square_learning_rate,
+        stiefel_rectangular_lr=stiefel_rectangular_learning_rate,
+        stiefel_nesterov=stiefel_nesterov,
     )
     for name in ("muon_edge", "stiefel_muon_middle"):
         for group in optimizers[name].param_groups:
             group["momentum"] = momentum
             group["ns_steps"] = ns_steps
+    scheduler_horizon = task.estimated_epochs if scheduler_t_max is None else scheduler_t_max
     schedulers = {
         name: torch.optim.lr_scheduler.CosineAnnealingLR(
-            optimizer, T_max=task.estimated_epochs
+            optimizer, T_max=scheduler_horizon
         )
         for name, optimizer in optimizers.items()
     }
@@ -299,8 +312,12 @@ def run_hybrid_stiefel_muon_trial(
         "stiefel_middle_matrix_count": len(middle_names),
         "muon_learning_rate": muon_learning_rate,
         "stiefel_learning_rate": stiefel_learning_rate,
+        "stiefel_square_learning_rate": stiefel_square_learning_rate,
+        "stiefel_rectangular_learning_rate": stiefel_rectangular_learning_rate,
+        "stiefel_nesterov": stiefel_nesterov,
         "momentum": momentum,
         "ns_steps": ns_steps,
+        "scheduler_t_max": scheduler_horizon,
         "micro_batch_size": task.micro_batch_size,
         "gradient_accumulation": task.gradient_accumulation,
         "completed_steps": steps,

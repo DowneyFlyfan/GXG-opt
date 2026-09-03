@@ -1,4 +1,7 @@
+import math
+
 import torch
+import pytest
 
 
 def _orthogonality_error(matrix: torch.Tensor) -> torch.Tensor:
@@ -134,3 +137,76 @@ def test_hybrid_optimizer_uses_muon_for_first_last_blocks_and_stiefel_interior()
     assert middle_ids == {id(named[name]) for name in middle_names}
     assert optimizers["muon_edge"].param_groups[0]["lr"] == 0.0003
     assert optimizers["stiefel_muon_middle"].param_groups[0]["lr"] == 0.003
+    assert optimizers["stiefel_muon_middle"].param_groups[0]["nesterov"] is False
+
+
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="Triton kernel requires CUDA")
+def test_triton_newton_schulz_polynomial_matches_dense_reference():
+    """A stride or polynomial-coefficient bug must not change the NS iterate."""
+    from stiefel_muon import triton_newton_schulz_polynomial
+
+    torch.manual_seed(19)
+    value = torch.randn(32, 16, device="cuda")
+    gram = value.T @ value
+    gram_squared = gram @ gram
+    expected = 3.4445 * value + value @ (-4.775 * gram + 2.0315 * gram_squared)
+
+    actual = triton_newton_schulz_polynomial(value, gram, gram_squared)
+
+    torch.testing.assert_close(actual, expected, rtol=2e-4, atol=2e-4)
+
+
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="Triton kernel requires CUDA")
+def test_matrix_sign_takes_the_triton_square_path_without_changing_the_polar_factor():
+    from stiefel_muon import _matrix_sign
+
+    torch.manual_seed(23)
+    matrix = torch.randn(32, 32, device="cuda")
+    value = matrix / matrix.norm()
+    for _ in range(3):
+        gram = value.T @ value
+        value = 3.4445 * value + value @ (-4.775 * gram + 2.0315 * (gram @ gram))
+
+    actual = _matrix_sign(matrix, ns_steps=3, use_triton=True)
+
+    torch.testing.assert_close(actual, value, rtol=3e-4, atol=3e-4)
+
+
+def test_hybrid_optimizer_can_tune_square_and_rectangular_stiefel_groups_separately():
+    from models import DecoderTransformer
+    from optimizers import build_optimizers
+
+    model = DecoderTransformer(width=16, heads=4, layers=3, vocabulary_size=64)
+    optimizers = build_optimizers(
+        model,
+        "hybrid_stiefel_muon",
+        lr=0.0003,
+        stiefel_lr=0.003,
+        stiefel_square_lr=0.004,
+        stiefel_rectangular_lr=0.002,
+        stiefel_nesterov=True,
+        weight_decay=0.01,
+        auxiliary_lr=0.0003,
+    )
+    groups = optimizers["stiefel_muon_middle"].param_groups
+
+    assert len(groups) == 2
+    assert groups[0]["lr"] == 0.004
+    assert groups[1]["lr"] == 0.002
+    assert groups[0]["nesterov"] is True
+    assert {tuple(parameter.shape) for parameter in groups[0]["params"]} == {(16, 16)}
+    assert {tuple(parameter.shape) for parameter in groups[1]["params"]} == {(48, 16), (64, 16), (16, 64)}
+
+
+def test_square_closed_form_retraction_matches_blog_formula():
+    from stiefel_muon import square_closed_form_retraction
+
+    weight = torch.eye(2)
+    rotation = torch.tensor([[0.0, -1.0], [1.0, 0.0]])
+    step_size = 0.2
+
+    updated = square_closed_form_retraction(weight, rotation, step_size=step_size)
+    expected = (torch.eye(2) - step_size * rotation) / math.sqrt(1.0 + step_size**2)
+
+    torch.testing.assert_close(updated, expected)
+    torch.testing.assert_close(updated.T @ updated, torch.eye(2))

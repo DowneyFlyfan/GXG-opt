@@ -133,6 +133,9 @@ def build_optimizers(
     weight_decay: float,
     auxiliary_lr: float = 3e-4,
     stiefel_lr: float | None = None,
+    stiefel_square_lr: float | None = None,
+    stiefel_rectangular_lr: float | None = None,
+    stiefel_nesterov: bool = False,
 ) -> dict[str, torch.optim.Optimizer]:
     if optimizer == "adamw":
         return {"adamw": torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=weight_decay, betas=(0.9, 0.95))}
@@ -144,12 +147,39 @@ def build_optimizers(
         edge_names, middle_names = hybrid_muon_parameter_names(model)
         named = dict(model.named_parameters())
         edge = [named[name] for name in edge_names]
-        middle = [named[name] for name in middle_names]
+        middle_square = [
+            named[name]
+            for name in middle_names
+            if named[name].shape[0] == named[name].shape[1]
+        ]
+        middle_rectangular = [
+            named[name]
+            for name in middle_names
+            if named[name].shape[0] != named[name].shape[1]
+        ]
+        for rate in (stiefel_square_lr, stiefel_rectangular_lr):
+            if rate is not None and rate <= 0:
+                raise ValueError("Geometry-specific Stiefel learning rates must be positive")
+        middle = [*middle_square, *middle_rectangular]
         selected_ids = {id(parameter) for parameter in (*edge, *middle)}
         auxiliary = [parameter for parameter in model.parameters() if id(parameter) not in selected_ids]
+        stiefel_groups = [
+            {
+                "params": middle_square,
+                "lr": stiefel_lr if stiefel_square_lr is None else stiefel_square_lr,
+            },
+            {
+                "params": middle_rectangular,
+                "lr": stiefel_lr
+                if stiefel_rectangular_lr is None
+                else stiefel_rectangular_lr,
+            },
+        ]
         return {
             "muon_edge": Muon(edge, lr=lr, weight_decay=weight_decay),
-            "stiefel_muon_middle": StiefelMuon(middle, lr=stiefel_lr),
+            "stiefel_muon_middle": StiefelMuon(
+                stiefel_groups, lr=stiefel_lr, nesterov=stiefel_nesterov
+            ),
             "adamw_aux": torch.optim.AdamW(
                 auxiliary, lr=auxiliary_lr, weight_decay=weight_decay, betas=(0.9, 0.95)
             ),

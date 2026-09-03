@@ -51,6 +51,28 @@ used the former, momentum 0.95, five Newton--Schulz iterations, seed 1337, and
 the same cached WikiText-103/data order/five-epoch target as all retained
 baselines.
 
+## Active exact-formula follow-up
+
+The later equal-time tuning keeps the same task, seed, physical batch 12, and
+accumulation 4, while adding only choices derived from articles 11215 and
+11864:
+
+| Change | Rationale | Status |
+|---|---|---|
+| Fused Triton Newton--Schulz polynomial for 512-by-512 square matrices | evaluates the same (3.4445X+X(-4.775G+2.0315G^2)) iteration | verified against dense PyTorch |
+| Separate square/rectangular Stiefel learning rates | square and rectangular closed forms have different update geometry | selected (0.004/0.0025) after short probes |
+| Cosine horizon (T_{\max}=8) | avoids decaying the interior rate before the equal-time endpoint | running |
+| Equation (16) square retraction from article 11215 | replaces the second square polar iteration with the blog's closed form | running |
+| Momentum source choice | article 11864 explicitly discusses EMA-gradient momentum; ordinary Muon Nesterov is retained as a tuned alternative | strict EMA rejected at epoch 1; Nesterov running |
+
+The strict EMA candidate reached 0.649839 at optimizer step 2,034 and 2,546.5
+seconds.  The Nesterov candidate with the exact square retraction reached
+0.654348 at the same step and 2,547.0 seconds, exceeding the prior candidate's
+first-epoch value 0.653915 while using 32 seconds less measured training time.
+Its four-epoch checkpoint is configured to resume automatically to the retained
+Muon wall-clock budget of 10,418.2065 seconds.  This is an active experiment,
+not a final result.
+
 ## Final result
 
 | Optimizer | Final validation next-token accuracy | Time |
