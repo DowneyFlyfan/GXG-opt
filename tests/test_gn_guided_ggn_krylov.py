@@ -13,6 +13,46 @@ from gn_guided_adam.oracle import GNOracle, run_oracle_probe
 from gn_guided_adam.types import FunctionalBatch
 
 
+def test_averaged_block_operator_uses_every_curvature_microbatch():
+    import gn_guided_adam.ggn_operator as ggn_operator
+
+    assert hasattr(ggn_operator, "AveragedGGNBlockOperator")
+    AveragedGGNBlockOperator = ggn_operator.AveragedGGNBlockOperator
+    model = torch.nn.Linear(1, 1, bias=False).double()
+    with torch.no_grad():
+        model.weight.zero_()
+    block = BlockRegistry(model, GNConfig(min_block_numel=1)).enabled[0]
+    first = GGNBlockOperator(
+        model,
+        block,
+        FunctionalBatch(
+            args=(torch.tensor([[1.0]], dtype=torch.float64),),
+            loss_fn=lambda output: 0.5 * (output - 1.0).square().sum(),
+            batch_id="first",
+        ),
+    )
+    second = GGNBlockOperator(
+        model,
+        block,
+        FunctionalBatch(
+            args=(torch.tensor([[3.0]], dtype=torch.float64),),
+            loss_fn=lambda output: 0.5 * (output - 2.0).square().sum(),
+            batch_id="second",
+        ),
+    )
+
+    averaged = AveragedGGNBlockOperator((first, second))
+
+    assert averaged.batch_ids == ("first", "second")
+    assert torch.allclose(
+        averaged.gradient(), torch.tensor([-3.5], dtype=torch.float64)
+    )
+    assert torch.allclose(
+        averaged.matvec(torch.tensor([0.25], dtype=torch.float64)),
+        torch.tensor([1.25], dtype=torch.float64),
+    )
+
+
 def linear_operator(reduction="sum"):
     model = nn.Linear(2, 1, bias=False).double()
     inputs = torch.tensor([[1.0, 2.0], [3.0, 4.0]], dtype=torch.float64)

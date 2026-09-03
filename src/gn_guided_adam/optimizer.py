@@ -20,14 +20,14 @@ from .checkpointing import (
     save_atomic,
 )
 from .config import GuidedAdamConfig
-from .ggn_operator import GGNBlockOperator
+from .ggn_operator import AveragedGGNBlockOperator, GGNBlockOperator
 from .krylov import KrylovError, build_krylov_basis, reduced_gn_solve
 from .metrics import OptimizerEvent, OptimizerMetrics
 from .staleness import staleness_weight
 from .state import BlockGuidanceState
 from .tensor_ops import map_norm, subspace_overlap
 from .trust_region import apply_trust_limits, decrease_damping, increase_damping
-from .types import GuidedStepContext, GuidedStepResult
+from .types import FunctionalBatch, GuidedStepContext, GuidedStepResult
 
 
 class GNGuidedAdamW(torch.optim.Optimizer):
@@ -292,6 +292,17 @@ class GNGuidedAdamW(torch.optim.Optimizer):
         metrics: dict[str, float] = {}
         if context.curvature_batch is None:
             return 0.0, "missing_curvature_batch", metrics
+        if isinstance(context.curvature_batch, tuple):
+            curvature_batches = context.curvature_batch
+        else:
+            curvature_batches = (context.curvature_batch,)
+        if not all(isinstance(batch, FunctionalBatch) for batch in curvature_batches):
+            return 0.0, "invalid_curvature_batches", metrics
+        if len(curvature_batches) != self.config.gn.curvature_batches:
+            metrics["data/curvature_batches_expected"] = float(self.config.gn.curvature_batches)
+            metrics["data/curvature_batches_observed"] = float(len(curvature_batches))
+            return 0.0, "curvature_batch_count_mismatch", metrics
+        metrics["data/curvature_batches"] = float(len(curvature_batches))
         built = 0
         for spec in self.registry.enabled:
             if spec.name not in gradients:
@@ -302,7 +313,15 @@ class GNGuidedAdamW(torch.optim.Optimizer):
                 metrics[f"block/{spec.name}/cooldown"] = 1.0
                 continue
             try:
-                operator = GGNBlockOperator(self.model, spec, context.curvature_batch)
+                microbatch_operators = tuple(
+                    GGNBlockOperator(self.model, spec, batch)
+                    for batch in curvature_batches
+                )
+                operator = (
+                    microbatch_operators[0]
+                    if len(microbatch_operators) == 1
+                    else AveragedGGNBlockOperator(microbatch_operators)
+                )
                 krylov = build_krylov_basis(
                     operator.matvec,
                     gradients[spec.name].reshape(-1),
@@ -316,7 +335,10 @@ class GNGuidedAdamW(torch.optim.Optimizer):
                 state.parameter_snapshot = spec.parameters[0].detach().float().reshape(-1).clone()
                 state.refresh_step = self.step_count
                 state.subspace_overlap = overlap
-                state.curvature_batch_id = context.curvature_batch.batch_id
+                state.curvature_batch_id = "|".join(
+                    "<none>" if batch.batch_id is None else str(batch.batch_id)
+                    for batch in curvature_batches
+                )
                 state.last_metrics = {
                     "rank": float(krylov.rank),
                     "matvecs": float(krylov.matvecs),

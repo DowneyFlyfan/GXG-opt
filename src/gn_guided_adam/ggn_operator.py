@@ -137,3 +137,46 @@ class GGNBlockOperator:
         if not math.isfinite(value) or value < -tolerance:
             raise GGNOperatorError(f"GGN PSD check failed: {value}")
         return value
+
+
+class AveragedGGNBlockOperator:
+    """Average a fixed set of block-GGN microbatches for every Krylov product."""
+
+    def __init__(self, operators: tuple[GGNBlockOperator, ...]) -> None:
+        if not operators:
+            raise ValueError("Averaged block GGN requires at least one operator")
+        first = operators[0]
+        if any(
+            operator.model is not first.model
+            or operator.parameter is not first.parameter
+            for operator in operators[1:]
+        ):
+            raise ValueError("Averaged block GGN operators must share one parameter")
+        self.operators = operators
+        self.model = first.model
+        self.block = first.block
+        self.parameter = first.parameter
+        self.matvec_count = 0
+        self.matvec_time_seconds = 0.0
+        self.batch_ids = tuple(operator.batch.batch_id for operator in operators)
+
+    @property
+    def numel(self) -> int:
+        return self.operators[0].numel
+
+    def gradient(self) -> torch.Tensor:
+        total = None
+        for operator in self.operators:
+            gradient = operator.gradient()
+            total = gradient if total is None else total.add_(gradient.to(total))
+        assert total is not None
+        return total / len(self.operators)
+
+    def matvec(self, vector: torch.Tensor) -> torch.Tensor:
+        started = time.perf_counter()
+        total = torch.zeros_like(vector.reshape(-1))
+        for operator in self.operators:
+            total.add_(operator.matvec(vector).to(total))
+        self.matvec_count += 1
+        self.matvec_time_seconds += time.perf_counter() - started
+        return total / len(self.operators)

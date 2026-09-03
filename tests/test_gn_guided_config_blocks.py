@@ -54,7 +54,7 @@ def test_adaptive_refresh_is_explicitly_deferred():
         (lambda: GuidedAdamConfig(gn=replace(GNConfig(), rank=0)), "rank"),
         (lambda: GuidedAdamConfig(gn=replace(GNConfig(), momentum_subspace_decay=1.1)), "subspace"),
         (lambda: GuidedAdamConfig(gn=replace(GNConfig(), min_damping=1.0)), "min <= initial"),
-        (lambda: GuidedAdamConfig(gn=replace(GNConfig(), curvature_batches=2)), "exactly one"),
+        (lambda: GuidedAdamConfig(gn=replace(GNConfig(), curvature_batches=0)), "curvature_batches"),
         (
             lambda: GuidedAdamConfig(
                 fixed_epoch_duty_cycle=FixedEpochDutyCycleConfig(on_epochs=0)
@@ -67,6 +67,14 @@ def test_adaptive_refresh_is_explicitly_deferred():
 def test_invalid_configurations_fail_before_optimizer_creation(config, match):
     with pytest.raises(ValueError, match=match):
         config()
+
+
+def test_multiple_curvature_batches_are_supported_but_acceptance_stays_single_batch():
+    config = GuidedAdamConfig(gn=replace(GNConfig(), curvature_batches=15))
+
+    assert config.gn.curvature_batches == 15
+    with pytest.raises(ValueError, match="exactly one acceptance batch"):
+        GuidedAdamConfig(gn=replace(GNConfig(), acceptance_batches=2))
 
 
 class RegistryModel(nn.Module):

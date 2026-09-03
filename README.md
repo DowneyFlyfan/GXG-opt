@@ -4,7 +4,17 @@ The repository-native implementation of the Kronecker GGN baseline and its signe
 
 - [x] Adaptive Dropout Rate for each layer
 
-- Alternative Update: Adam -> GN -> Adam (With momentum saved) -> GN -> ...
+- [x] Alternative Update: Adam -> GN -> Adam (With momentum saved) -> GN -> ...
+
+- [ ] Adaptive Layer Frozen in later section of training
+
+- [ ] Low-Rank GN
+
+## Hybrid Stiefel-Muon result
+
+The metric-versus-step comparison for the formal language-model experiment:
+
+![Hybrid Stiefel-Muon metric versus steps](results/nlp/hybrid_stiefel_muon_b12_a4_mu0006_st003_formal_metric_steps.png)
 
 ## Compare Adam/Muon with GN in important layers
 

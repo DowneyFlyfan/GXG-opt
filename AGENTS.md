@@ -14,14 +14,16 @@
 
 - Muon is not applied on first layer of CNN
 
-- Draw Metric-Steps Graph (png format) after every experiment together with baseline optimizers
+- Draw Metric-Steps Graph and Metric-Time Graph (png format) after every experiment together with baseline optimizers
 
-- Plan should be created in current folder
+- Plan should be created in current folder if it's needed.
 
-- Be very careful to not go OOM (Out-Of-Memory)!!!
+- Tune batch size so that it almost saturates the GPU memory, but be very careful to not go OOM (Out-Of-Memory)!!!
+
+- Use gradient accumulation to increase batch size!!!
 
 - Time limit for every experiment is 4 hours. Finish the last step and measure its metric if it hasn't finished yet.
 
 # Server
 
-- Use `ssh ABA` and only 1 GPU when it's fully available. Otherwise, run tasks locally
+- Run Task on local GPU.

@@ -41,7 +41,19 @@ def stiefel_task(*, micro_batch_size: int, gradient_accumulation: int):
 
 
 def stiefel_muon_paths(root: Path, label: str) -> StiefelMuonPaths:
-    stem = f"{LANGUAGE_MODEL_GN_TASK.identifier}__stiefel_muon_{label}"
+    return constrained_muon_paths(root, optimizer_name="stiefel_muon", label=label)
+
+
+def spectral_sphere_muon_paths(root: Path, label: str) -> StiefelMuonPaths:
+    return constrained_muon_paths(
+        root, optimizer_name="spectral_sphere_muon", label=label
+    )
+
+
+def constrained_muon_paths(
+    root: Path, *, optimizer_name: str, label: str
+) -> StiefelMuonPaths:
+    stem = f"{LANGUAGE_MODEL_GN_TASK.identifier}__{optimizer_name}_{label}"
     return StiefelMuonPaths(
         metric=root / "metrics" / "nlp" / f"{stem}.jsonl",
         result=root / "results" / "nlp" / f"{stem}.json",
@@ -116,8 +128,10 @@ def _needs_epoch_end_evaluation(*, steps: int, last_evaluated_steps: int) -> boo
     return steps > last_evaluated_steps
 
 
-def write_stiefel_muon_comparison_plots(root: Path, *, label: str) -> tuple[Path, Path] | None:
-    candidate = stiefel_muon_paths(root, label)
+def _write_constrained_muon_comparison_plots(
+    root: Path, *, optimizer_name: str, display_name: str, label: str
+) -> tuple[Path, Path] | None:
+    candidate = constrained_muon_paths(root, optimizer_name=optimizer_name, label=label)
     if not candidate.metric.exists():
         return None
     traces = []
@@ -125,14 +139,14 @@ def write_stiefel_muon_comparison_plots(root: Path, *, label: str) -> tuple[Path
         baseline = root / "metrics" / "nlp" / f"nlp_gpt_12x512__{optimizer}.jsonl"
         if baseline.exists():
             traces.append((display, _historical_baseline_records(root, optimizer)))
-    traces.append(("Stiefel-Muon", _read_metrics(candidate.metric)))
+    traces.append((display_name, _read_metrics(candidate.metric)))
     if len(traces) != 3:
         return None
     output_root = root / "results" / "nlp"
     output_root.mkdir(parents=True, exist_ok=True)
     outputs = (
-        output_root / f"stiefel_muon_{label}_metric_steps.png",
-        output_root / f"stiefel_muon_{label}_metric_time.png",
+        output_root / f"{optimizer_name}_{label}_metric_steps.png",
+        output_root / f"{optimizer_name}_{label}_metric_time.png",
     )
     for output, key, xlabel in (
         (outputs[0], "step", "Optimizer step"),
@@ -144,13 +158,33 @@ def write_stiefel_muon_comparison_plots(root: Path, *, label: str) -> tuple[Path
             x_values = [record[key] / 3600 if key == "elapsed_seconds" else record[key] for record in values]
             axis.plot(x_values, [record["metric"] for record in values], label=display)
         axis.set(xlabel=xlabel, ylabel="Validation next-token accuracy")
-        axis.set_title("Stiefel-Muon versus retained AdamW and Muon baselines")
+        axis.set_title(f"{display_name} versus retained AdamW and Muon baselines")
         axis.grid(alpha=0.2)
         axis.legend()
         figure.tight_layout()
         figure.savefig(output, dpi=160)
         plot.close(figure)
     return outputs
+
+
+def write_stiefel_muon_comparison_plots(root: Path, *, label: str) -> tuple[Path, Path] | None:
+    return _write_constrained_muon_comparison_plots(
+        root,
+        optimizer_name="stiefel_muon",
+        display_name="Stiefel-Muon",
+        label=label,
+    )
+
+
+def write_spectral_sphere_muon_comparison_plots(
+    root: Path, *, label: str
+) -> tuple[Path, Path] | None:
+    return _write_constrained_muon_comparison_plots(
+        root,
+        optimizer_name="spectral_sphere_muon",
+        display_name="Spectral-Sphere Muon",
+        label=label,
+    )
 
 
 def run_stiefel_muon_trial(
@@ -168,14 +202,17 @@ def run_stiefel_muon_trial(
     gradient_accumulation: int = 2,
     seed: int = 1337,
     fresh: bool = False,
+    optimizer_name: str = "stiefel_muon",
 ) -> dict:
-    """Run Stiefel-Muon until the epoch, step, or four-hour boundary."""
+    """Run a constrained-Muon variant until the epoch, step, or time boundary."""
     if learning_rate <= 0 or not 0 <= momentum < 1 or ns_steps <= 0:
         raise ValueError("learning rate, momentum, and Newton--Schulz steps are invalid")
     if maximum_seconds <= 0 or evaluation_interval_steps <= 0:
         raise ValueError("time and evaluation intervals must be positive")
     if maximum_steps is not None and maximum_steps <= 0:
         raise ValueError("maximum_steps must be positive when provided")
+    if optimizer_name not in {"stiefel_muon", "spectral_sphere_muon"}:
+        raise ValueError("unsupported constrained Muon optimizer")
     if not torch.cuda.is_available():
         raise RuntimeError("CUDA is required for Stiefel-Muon")
 
@@ -183,7 +220,7 @@ def run_stiefel_muon_trial(
         micro_batch_size=micro_batch_size,
         gradient_accumulation=gradient_accumulation,
     )
-    paths = stiefel_muon_paths(root, label)
+    paths = constrained_muon_paths(root, optimizer_name=optimizer_name, label=label)
     if fresh:
         paths.metric.unlink(missing_ok=True)
         paths.result.unlink(missing_ok=True)
@@ -195,12 +232,12 @@ def run_stiefel_muon_trial(
     selected_names = muon_parameter_names(model)
     optimizers = build_optimizers(
         model,
-        "stiefel_muon",
+        optimizer_name,
         learning_rate,
         task.weight_decay,
         task.muon_aux_lr,
     )
-    for group in optimizers["stiefel_muon"].param_groups:
+    for group in optimizers[optimizer_name].param_groups:
         group["momentum"] = momentum
         group["ns_steps"] = ns_steps
     schedulers = {
@@ -270,9 +307,18 @@ def run_stiefel_muon_trial(
                     steps=steps,
                     elapsed_seconds=elapsed_seconds,
                 )
-                write_stiefel_muon_comparison_plots(root, label=label)
+                _write_constrained_muon_comparison_plots(
+                    root,
+                    optimizer_name=optimizer_name,
+                    display_name=(
+                        "Stiefel-Muon"
+                        if optimizer_name == "stiefel_muon"
+                        else "Spectral-Sphere Muon"
+                    ),
+                    label=label,
+                )
                 print(
-                    f"task={task.identifier} optimizer=stiefel_muon step={steps} "
+                    f"task={task.identifier} optimizer={optimizer_name} step={steps} "
                     f"metric={final_metric:.6f} elapsed={elapsed_seconds:.1f}",
                     flush=True,
                 )
@@ -310,9 +356,18 @@ def run_stiefel_muon_trial(
                 steps=steps,
                 elapsed_seconds=elapsed_seconds,
             )
-            write_stiefel_muon_comparison_plots(root, label=label)
+            _write_constrained_muon_comparison_plots(
+                root,
+                optimizer_name=optimizer_name,
+                display_name=(
+                    "Stiefel-Muon"
+                    if optimizer_name == "stiefel_muon"
+                    else "Spectral-Sphere Muon"
+                ),
+                label=label,
+            )
             print(
-                f"task={task.identifier} optimizer=stiefel_muon step={steps} "
+                f"task={task.identifier} optimizer={optimizer_name} step={steps} "
                 f"metric={final_metric:.6f} elapsed={elapsed_seconds:.1f}",
                 flush=True,
             )
@@ -328,7 +383,7 @@ def run_stiefel_muon_trial(
         "task": task.identifier,
         "domain": task.domain,
         "model": task.model,
-        "optimizer": "stiefel_muon",
+        "optimizer": optimizer_name,
         "parameters": sum(parameter.numel() for parameter in model.parameters()),
         "stiefel_matrix_count": len(selected_names),
         "learning_rate": learning_rate,
@@ -344,5 +399,21 @@ def run_stiefel_muon_trial(
     }
     paths.result.parent.mkdir(parents=True, exist_ok=True)
     paths.result.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n")
-    write_stiefel_muon_comparison_plots(root, label=label)
+    _write_constrained_muon_comparison_plots(
+        root,
+        optimizer_name=optimizer_name,
+        display_name=(
+            "Stiefel-Muon"
+            if optimizer_name == "stiefel_muon"
+            else "Spectral-Sphere Muon"
+        ),
+        label=label,
+    )
     return result
+
+
+def run_spectral_sphere_muon_trial(root: Path, **kwargs) -> dict:
+    """Run the article-11241 optimizer with the retained trial protocol."""
+    return run_stiefel_muon_trial(
+        root, optimizer_name="spectral_sphere_muon", **kwargs
+    )

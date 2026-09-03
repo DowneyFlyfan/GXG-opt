@@ -1,0 +1,2 @@
+{"accepted": 1.0, "cg_iterations": 2, "damping": 0.001, "elapsed_seconds": 261.34555435413495, "metric": 0.28365325927734375, "predicted_reduction": 0.02942095696926117, "reduction_ratio": 0.8608478393765825, "step": 256, "step_scale": 1.0}
+{"accepted": 1.0, "cg_iterations": 2, "damping": 0.001, "elapsed_seconds": 529.9383642785251, "metric": 0.2870903015136719, "predicted_reduction": 0.015237275511026382, "reduction_ratio": 0.988315312727295, "step": 512, "step_scale": 1.0}

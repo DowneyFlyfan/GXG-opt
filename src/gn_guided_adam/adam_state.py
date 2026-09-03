@@ -11,8 +11,6 @@ from .tensor_ops import map_norm, project, project_complement
 
 
 class AdamStateBank:
-    BIG_MODEL_PARAMETERS = 100_000_000
-
     def __init__(self, model: nn.Module, config: AdamWConfig) -> None:
         self.model = model
         self.config = config
@@ -26,8 +24,10 @@ class AdamStateBank:
             for name, parameter in self.parameters.items()
         }
         self.active_names: set[str] = set()
-        parameter_count = sum(parameter.numel() for parameter in model.parameters())
-        self.weight_decay = config.weight_decay if parameter_count >= self.BIG_MODEL_PARAMETERS else 0.0
+        # Model-size policy belongs to the experiment configuration.  Silently
+        # changing an explicit AdamW hyperparameter here makes comparisons
+        # irreproducible and can diverge from the retained baseline.
+        self.weight_decay = config.weight_decay
 
     def gradients(self) -> dict[str, torch.Tensor]:
         gradients = {

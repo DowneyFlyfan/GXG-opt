@@ -152,8 +152,8 @@ class GuidedAdamConfig:
             raise ValueError("Adaptive refresh is deferred until the fixed-frequency MVP passes Gate C")
         if self.gn.curvature_dtype != "float32":
             raise ValueError("The fixed prototype requires FP32 curvature")
-        if self.gn.curvature_batches != 1 or self.gn.acceptance_batches != 1:
-            raise ValueError("The fixed prototype currently requires exactly one curvature and acceptance batch")
+        if self.gn.acceptance_batches != 1:
+            raise ValueError("The fixed prototype currently requires exactly one acceptance batch")
         if not isinstance(self.adamw.betas, tuple) or len(self.adamw.betas) != 2:
             raise ValueError("adamw.betas must be a two-item tuple")
         for beta in self.adamw.betas:

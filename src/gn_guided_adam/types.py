@@ -17,7 +17,7 @@ class FunctionalBatch:
 
 @dataclass(frozen=True)
 class GuidedStepContext:
-    curvature_batch: FunctionalBatch | None = None
+    curvature_batch: FunctionalBatch | tuple[FunctionalBatch, ...] | None = None
     acceptance_batch: FunctionalBatch | None = None
     curvature_reuses_training_data: bool = False
     acceptance_reuses_other_data: bool = False

@@ -1,0 +1,4 @@
+{"elapsed_seconds": 3145.257038265001, "epoch": 1, "metric": 0.6576360066731771, "momentum": 0.95, "muon_learning_rate": 0.0006, "ns_steps": 5, "step": 4068, "stiefel_learning_rate": 0.003}
+{"elapsed_seconds": 3153.341737837065, "epoch": 1, "metric": 0.6572074890136719, "momentum": 0.95, "muon_learning_rate": 0.0006, "ns_steps": 5, "step": 4069, "stiefel_learning_rate": 0.003}
+{"elapsed_seconds": 6298.5485510504805, "epoch": 2, "metric": 0.6816622416178385, "momentum": 0.95, "muon_learning_rate": 0.0006, "ns_steps": 5, "step": 8136, "stiefel_learning_rate": 0.003}
+{"elapsed_seconds": 6307.775433494709, "epoch": 2, "metric": 0.6818072001139323, "momentum": 0.95, "muon_learning_rate": 0.0006, "ns_steps": 5, "step": 8138, "stiefel_learning_rate": 0.003}

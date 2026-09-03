@@ -1,5 +1,0 @@
-task=nlp_gpt_12x512 optimizer=full_ggn step=8 metric=0.191254 damping=0.0050625
-task=nlp_gpt_12x512 optimizer=full_ggn step=16 metric=0.191254 damping=0.001
-task=nlp_gpt_12x512 optimizer=full_ggn step=24 metric=0.191254 damping=0.000197531
-task=nlp_gpt_12x512 optimizer=full_ggn step=31 metric=0.191254 damping=0.0001
-{"batch_size": 1, "cg_warm_start_decay": 0.0, "completed_steps": 31, "curvature_accumulation_batches": 60, "curvature_batches": 1, "curvature_effective_batch_size": 60, "domain": "nlp", "gradient_accumulation_batches": 60, "gradient_effective_batch_size": 60, "initial_step_scale": 4.0, "maximum_cg_iterations": 1, "minimum_damping": 0.0001, "model": "gpt_12x512", "optimizer": "full_ggn", "parameters": 54682624, "peak_memory_mb": 9883.4287109375, "preconditioner_exponent": null, "rotate_token_window": false, "seconds": 600.6632344559766, "sequence_length": 1024, "status": "time_limit_checkpointed", "task": "nlp_gpt_12x512"}

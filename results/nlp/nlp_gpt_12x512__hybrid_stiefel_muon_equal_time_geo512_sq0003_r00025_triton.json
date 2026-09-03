@@ -1,0 +1,22 @@
+{
+  "completed_steps": 512,
+  "domain": "nlp",
+  "final_metric": 0.5720240275065104,
+  "gradient_accumulation": 4,
+  "micro_batch_size": 12,
+  "model": "gpt_12x512",
+  "momentum": 0.95,
+  "muon_edge_matrix_count": 8,
+  "muon_learning_rate": 0.0006,
+  "ns_steps": 5,
+  "optimizer": "hybrid_stiefel_muon",
+  "parameters": 54682624,
+  "peak_memory_mb": 12300.173828125,
+  "seconds": 654.4153038416989,
+  "status": "time_limit_checkpointed",
+  "stiefel_learning_rate": 0.003,
+  "stiefel_middle_matrix_count": 40,
+  "stiefel_rectangular_learning_rate": 0.0025,
+  "stiefel_square_learning_rate": 0.003,
+  "task": "nlp_gpt_12x512"
+}

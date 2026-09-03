@@ -1,0 +1,5 @@
+{"elapsed_seconds": 2579.0803687879816, "epoch": 1, "metric": 0.6539154052734375, "momentum": 0.95, "muon_learning_rate": 0.0006, "ns_steps": 5, "step": 2034, "stiefel_learning_rate": 0.003}
+{"elapsed_seconds": 5159.318056197371, "epoch": 2, "metric": 0.6784400939941406, "momentum": 0.95, "muon_learning_rate": 0.0006, "ns_steps": 5, "step": 4068, "stiefel_learning_rate": 0.003}
+{"elapsed_seconds": 7739.771483187564, "epoch": 3, "metric": 0.6964848836263021, "momentum": 0.95, "muon_learning_rate": 0.0006, "ns_steps": 5, "step": 6102, "stiefel_learning_rate": 0.003}
+{"elapsed_seconds": 10320.189291557763, "epoch": 4, "metric": 0.7136090596516927, "momentum": 0.95, "muon_learning_rate": 0.0006, "ns_steps": 5, "step": 8136, "stiefel_learning_rate": 0.003}
+{"elapsed_seconds": 10425.462607082445, "epoch": 5, "metric": 0.7198079427083334, "momentum": 0.95, "muon_learning_rate": 0.0006, "ns_steps": 5, "step": 8213, "stiefel_learning_rate": 0.003}

@@ -7,6 +7,7 @@ from dataclasses import dataclass
 import torch
 from torch import nn
 
+from spectral_sphere_muon import SpectralSphereMuon
 from stiefel_muon import StiefelMuon
 
 
@@ -139,7 +140,7 @@ def build_optimizers(
 ) -> dict[str, torch.optim.Optimizer]:
     if optimizer == "adamw":
         return {"adamw": torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=weight_decay, betas=(0.9, 0.95))}
-    if optimizer not in {"muon", "stiefel_muon", "hybrid_stiefel_muon"}:
+    if optimizer not in {"muon", "spectral_sphere_muon", "stiefel_muon", "hybrid_stiefel_muon"}:
         raise ValueError(f"Unsupported optimizer: {optimizer}")
     if optimizer == "hybrid_stiefel_muon":
         if stiefel_lr is None or stiefel_lr <= 0:
@@ -190,6 +191,8 @@ def build_optimizers(
     auxiliary = [parameter for parameter in model.parameters() if id(parameter) not in selected_ids]
     if optimizer == "stiefel_muon":
         matrix_optimizer: torch.optim.Optimizer = StiefelMuon(muon_parameters, lr=lr)
+    elif optimizer == "spectral_sphere_muon":
+        matrix_optimizer = SpectralSphereMuon(muon_parameters, lr=lr)
     else:
         matrix_optimizer = Muon(muon_parameters, lr=lr, weight_decay=weight_decay)
     return {

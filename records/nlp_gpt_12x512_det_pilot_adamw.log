@@ -1,2 +1,0 @@
-task=nlp_gpt_12x512_det_pilot_adamw optimizer=adamw epoch=1/2 metric=0.631744
-task=nlp_gpt_12x512_det_pilot_adamw optimizer=adamw epoch=2/2 metric=0.670967

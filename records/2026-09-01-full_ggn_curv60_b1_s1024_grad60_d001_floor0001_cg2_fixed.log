@@ -1,8 +1,0 @@
-task=nlp_gpt_12x512 optimizer=full_ggn step=8 metric=0.060303 damping=0.0015
-task=nlp_gpt_12x512 optimizer=full_ggn step=16 metric=0.209473 damping=0.0001
-task=nlp_gpt_12x512 optimizer=full_ggn step=24 metric=0.226730 damping=0.00015
-task=nlp_gpt_12x512 optimizer=full_ggn step=32 metric=0.248566 damping=0.0001
-task=nlp_gpt_12x512 optimizer=full_ggn step=40 metric=0.251282 damping=0.0001
-task=nlp_gpt_12x512 optimizer=full_ggn step=48 metric=0.253296 damping=0.0001
-task=nlp_gpt_12x512 optimizer=full_ggn step=50 metric=0.252777 damping=0.0001
-{"batch_size": 1, "cg_warm_start_decay": 0.0, "completed_steps": 50, "curvature_accumulation_batches": 60, "curvature_batches": 1, "curvature_effective_batch_size": 60, "domain": "nlp", "gradient_accumulation_batches": 60, "gradient_effective_batch_size": 60, "initial_step_scale": 1.0, "maximum_cg_iterations": 2, "minimum_damping": 0.0001, "model": "gpt_12x512", "optimizer": "full_ggn", "parameters": 54682624, "peak_memory_mb": 10092.02783203125, "preconditioner_exponent": null, "rotate_token_window": false, "seconds": 1201.7852509352379, "sequence_length": 1024, "status": "time_limit_checkpointed", "task": "nlp_gpt_12x512"}

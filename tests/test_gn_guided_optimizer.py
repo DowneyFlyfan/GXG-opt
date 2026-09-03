@@ -65,6 +65,27 @@ def test_disabled_guidance_matches_torch_adamw_across_steps():
     assert torch.allclose(ours_model.weight, baseline_model.weight, atol=1.0e-7, rtol=1.0e-6)
 
 
+def test_configured_weight_decay_is_not_silently_disabled_by_model_size():
+    model = nn.Linear(1, 1, bias=False)
+    with torch.no_grad():
+        model.weight.fill_(1.0)
+    config = GuidedAdamConfig(
+        adamw=AdamWConfig(
+            lr=0.01,
+            betas=(0.9, 0.99),
+            eps=1.0e-8,
+            weight_decay=0.1,
+        ),
+        gn=replace(GNConfig(), enabled=False, min_block_numel=1),
+    )
+    optimizer = GNGuidedAdamW(model, config)
+    model.weight.grad = torch.zeros_like(model.weight)
+
+    optimizer.step()
+
+    assert model.weight.item() == pytest.approx(0.999)
+
+
 def test_disabled_guidance_matches_adamw_when_a_parameter_has_no_gradient():
     ours_model = nn.Sequential(
         nn.Linear(1, 1, bias=False),
@@ -118,6 +139,44 @@ def test_fixed_refresh_accepts_useful_guidance_and_keeps_adam_moments_gradient_o
     assert torch.allclose(optimizer.adam.state["weight"]["m"], expected_m)
     assert optimizer.guidance["weight"].basis is not None
     assert result.measurements["block/weight/orthogonality_error"] < 1.0e-6
+
+
+def test_refresh_averages_all_configured_curvature_microbatches():
+    model = nn.Linear(1, 1, bias=False)
+    with torch.no_grad():
+        model.weight.fill_(1.0)
+    optimizer = GNGuidedAdamW(model, guided_config(curvature_batches=2))
+    training_input = torch.tensor([[1.0], [3.0]])
+    training_target = 2 * training_input
+    (0.5 * (model(training_input) - training_target).square().mean()).backward()
+
+    first_input = torch.tensor([[1.0]])
+    second_input = torch.tensor([[3.0]])
+    first_target = 2 * first_input
+    second_target = 2 * second_input
+    first = FunctionalBatch(
+        (first_input,),
+        lambda output: 0.5 * (output - first_target).square().sum(),
+        batch_id="curvature-0",
+    )
+    second = FunctionalBatch(
+        (second_input,),
+        lambda output: 0.5 * (output - second_target).square().sum(),
+        batch_id="curvature-1",
+    )
+
+    result = optimizer.step(
+        GuidedStepContext(
+            curvature_batch=(first, second),
+            acceptance_batch=first,
+            tokens=2,
+        )
+    )
+
+    assert result.refreshed
+    assert result.guidance_used
+    assert torch.allclose(optimizer.guidance["weight"].reduced_matrix, torch.tensor([[5.0]]))
+    assert optimizer.guidance["weight"].curvature_batch_id == "curvature-0|curvature-1"
 
 
 def test_fixed_epoch_duty_cycle_switches_off_and_refreshes_on_reactivation():
