@@ -73,6 +73,13 @@ Its four-epoch checkpoint is configured to resume automatically to the retained
 Muon wall-clock budget of 10,418.2065 seconds.  This is an active experiment,
 not a final result.
 
+The first automatic resume exposed a checkpointing defect: optimizer parameter
+lists were built from Python sets, so a fresh process could assign a serialized
+momentum buffer to a different-shaped matrix.  The resume failed before taking
+a valid fifth-epoch step.  Parameter groups are now sorted by fully qualified
+parameter name, and a regression test verifies that checkpointed group order
+is deterministic.  The affected checkpoint is not reused.
+
 ## Final result
 
 | Optimizer | Final validation next-token accuracy | Time |

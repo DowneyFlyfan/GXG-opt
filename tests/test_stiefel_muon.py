@@ -198,6 +198,38 @@ def test_hybrid_optimizer_can_tune_square_and_rectangular_stiefel_groups_separat
     assert {tuple(parameter.shape) for parameter in groups[1]["params"]} == {(48, 16), (64, 16), (16, 64)}
 
 
+def test_hybrid_optimizer_orders_checkpointed_parameter_groups_by_name():
+    from models import DecoderTransformer
+    from optimizers import build_optimizers, hybrid_muon_parameter_names
+
+    model = DecoderTransformer(width=16, heads=4, layers=3, vocabulary_size=64)
+    optimizers = build_optimizers(
+        model,
+        "hybrid_stiefel_muon",
+        lr=0.0003,
+        stiefel_lr=0.003,
+        weight_decay=0.01,
+        auxiliary_lr=0.0003,
+    )
+    names_by_id = {id(parameter): name for name, parameter in model.named_parameters()}
+    edge_names, middle_names = hybrid_muon_parameter_names(model)
+
+    actual_edge = [
+        names_by_id[id(parameter)]
+        for parameter in optimizers["muon_edge"].param_groups[0]["params"]
+    ]
+    actual_middle = [
+        names_by_id[id(parameter)]
+        for group in optimizers["stiefel_muon_middle"].param_groups
+        for parameter in group["params"]
+    ]
+
+    assert actual_edge == sorted(edge_names)
+    assert actual_middle == sorted(
+        middle_names, key=lambda name: (model.get_parameter(name).shape[0] != model.get_parameter(name).shape[1], name)
+    )
+
+
 def test_square_closed_form_retraction_matches_blog_formula():
     from stiefel_muon import square_closed_form_retraction
 

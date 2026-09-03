@@ -146,15 +146,15 @@ def build_optimizers(
             raise ValueError("Hybrid Stiefel-Muon requires a positive stiefel_lr")
         edge_names, middle_names = hybrid_muon_parameter_names(model)
         named = dict(model.named_parameters())
-        edge = [named[name] for name in edge_names]
+        edge = [named[name] for name in sorted(edge_names)]
         middle_square = [
             named[name]
-            for name in middle_names
+            for name in sorted(middle_names)
             if named[name].shape[0] == named[name].shape[1]
         ]
         middle_rectangular = [
             named[name]
-            for name in middle_names
+            for name in sorted(middle_names)
             if named[name].shape[0] != named[name].shape[1]
         ]
         for rate in (stiefel_square_lr, stiefel_rectangular_lr):
