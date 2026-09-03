@@ -200,6 +200,8 @@ def run_stiefel_muon_trial(
     evaluation_interval_steps: int = 1_024,
     micro_batch_size: int = 4,
     gradient_accumulation: int = 2,
+    training_epochs: int | None = None,
+    scheduler_epochs: int | None = None,
     seed: int = 1337,
     fresh: bool = False,
     optimizer_name: str = "stiefel_muon",
@@ -211,6 +213,10 @@ def run_stiefel_muon_trial(
         raise ValueError("time and evaluation intervals must be positive")
     if maximum_steps is not None and maximum_steps <= 0:
         raise ValueError("maximum_steps must be positive when provided")
+    if training_epochs is not None and training_epochs <= 0:
+        raise ValueError("training_epochs must be positive when provided")
+    if scheduler_epochs is not None and scheduler_epochs <= 0:
+        raise ValueError("scheduler_epochs must be positive when provided")
     if optimizer_name not in {"stiefel_muon", "spectral_sphere_muon"}:
         raise ValueError("unsupported constrained Muon optimizer")
     if not torch.cuda.is_available():
@@ -220,6 +226,8 @@ def run_stiefel_muon_trial(
         micro_batch_size=micro_batch_size,
         gradient_accumulation=gradient_accumulation,
     )
+    epoch_limit = task.estimated_epochs if training_epochs is None else training_epochs
+    scheduler_horizon = epoch_limit if scheduler_epochs is None else scheduler_epochs
     paths = constrained_muon_paths(root, optimizer_name=optimizer_name, label=label)
     if fresh:
         paths.metric.unlink(missing_ok=True)
@@ -241,7 +249,7 @@ def run_stiefel_muon_trial(
         group["momentum"] = momentum
         group["ns_steps"] = ns_steps
     schedulers = {
-        name: torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=task.estimated_epochs)
+        name: torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=scheduler_horizon)
         for name, optimizer in optimizers.items()
     }
     epoch, resume_batch, steps, elapsed_seconds = (1, 0, 0, 0.0)
@@ -260,7 +268,7 @@ def run_stiefel_muon_trial(
     started = time.perf_counter()
     stop = False
     final_metric = None
-    while epoch <= task.estimated_epochs and not stop:
+    while epoch <= epoch_limit and not stop:
         model.train()
         for batch_index, batch in enumerate(train_loader):
             if batch_index < resume_batch:
@@ -378,17 +386,27 @@ def run_stiefel_muon_trial(
 
     if final_metric is None:
         final_metric = _evaluate(task, model, validation_loader, device)
-    status = "completed" if epoch > task.estimated_epochs else "time_limit_checkpointed"
+    status = "completed" if epoch > epoch_limit else "time_limit_checkpointed"
     result = {
         "task": task.identifier,
         "domain": task.domain,
         "model": task.model,
         "optimizer": optimizer_name,
         "parameters": sum(parameter.numel() for parameter in model.parameters()),
-        "stiefel_matrix_count": len(selected_names),
+        # Both variants constrain exactly the Muon-eligible matrix set.  Naming
+        # this generically prevents a spectral-sphere result from being
+        # misreported as a Stiefel experiment.
+        "constrained_matrix_count": len(selected_names),
         "learning_rate": learning_rate,
         "momentum": momentum,
         "ns_steps": ns_steps,
+        "direction_msign": "newton_schulz",
+        "lambda_steps": 10 if optimizer_name == "spectral_sphere_muon" else None,
+        "spectral_power_iterations": (
+            10 if optimizer_name == "spectral_sphere_muon" else None
+        ),
+        "training_epochs": epoch_limit,
+        "scheduler_epochs": scheduler_horizon,
         "micro_batch_size": task.micro_batch_size,
         "gradient_accumulation": task.gradient_accumulation,
         "completed_steps": steps,

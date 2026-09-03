@@ -1,0 +1,21 @@
+{
+  "completed_steps": 1,
+  "constrained_matrix_count": 48,
+  "direction_msign": "newton_schulz",
+  "domain": "nlp",
+  "final_metric": 0.20446014404296875,
+  "gradient_accumulation": 4,
+  "lambda_steps": 10,
+  "learning_rate": 0.003,
+  "micro_batch_size": 12,
+  "model": "gpt_12x512",
+  "momentum": 0.95,
+  "ns_steps": 5,
+  "optimizer": "spectral_sphere_muon",
+  "parameters": 54682624,
+  "peak_memory_mb": 12017.392578125,
+  "seconds": 11.959290524944663,
+  "spectral_power_iterations": 10,
+  "status": "time_limit_checkpointed",
+  "task": "nlp_gpt_12x512"
+}

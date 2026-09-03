@@ -13,10 +13,24 @@ def _dot(left: Tensor, right: Tensor) -> Tensor:
     return torch.sum(left * right)
 
 
-def _exact_matrix_sign(matrix: Tensor) -> Tensor:
-    """The exact singular-value-decomposition ``msign`` used in article 11241."""
-    left, _, right_transpose = torch.linalg.svd(matrix.float(), full_matrices=False)
-    return (left @ right_transpose).to(matrix.dtype)
+@torch.compile
+def _newton_schulz_matrix_sign(matrix: Tensor, steps: int) -> Tensor:
+    """Muon's five-step Newton--Schulz approximation to ``msign(matrix)``.
+
+    Article 11241 uses ``msign`` inside every scalar fixed-point iteration.
+    The article's NumPy SVD is a verification implementation, whereas a
+    trainable optimizer must use the same approximate matrix-sign primitive as
+    Muon.  This is the project's established quintic Newton--Schulz map.
+    """
+    value = matrix.bfloat16()
+    transposed = value.shape[0] > value.shape[1]
+    if transposed:
+        value = value.T
+    value = value / (value.norm() + 1.0e-7)
+    for _ in range(steps):
+        gram = value @ value.T
+        value = 3.4445 * value + (-4.775 * gram + 2.0315 * (gram @ gram)) @ value
+    return (value.T if transposed else value).to(matrix.dtype)
 
 
 def spectral_tangent(
@@ -67,7 +81,7 @@ def spectral_sphere_direction(
     multiplier = -_dot(theta, gradient) / theta_norm_squared
     for _ in range(lambda_steps):
         shifted_gradient = gradient + multiplier * theta
-        direction = _exact_matrix_sign(shifted_gradient)
+        direction = _newton_schulz_matrix_sign(shifted_gradient, ns_steps)
         square_root = shifted_gradient.T @ direction
         theta_direction = theta.T @ direction
         multiplier = (
@@ -75,7 +89,7 @@ def spectral_sphere_direction(
             - torch.trace(theta_direction) * torch.trace(square_root) / gradient.shape[1]
             - _dot(theta, gradient)
         ) / theta_norm_squared
-    return _exact_matrix_sign(gradient + multiplier * theta), multiplier
+    return _newton_schulz_matrix_sign(gradient + multiplier * theta, ns_steps), multiplier
 
 
 class SpectralSphereMuon(torch.optim.Optimizer):
