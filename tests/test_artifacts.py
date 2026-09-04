@@ -3,7 +3,7 @@ from pathlib import Path
 import artifacts
 import torch
 from torch import nn
-from artifacts import write_metric, write_metric_plot
+from artifacts import write_metric, write_metric_plot, write_metric_time_plot
 from training import _load_trial_checkpoint, _save_trial_checkpoint
 
 
@@ -37,6 +37,24 @@ def test_metric_plot_titles_each_optimizer_wall_clock_duration(tmp_path: Path, m
     )
 
     assert titles == ["Wall-clock time\nAdamW: 2m 00s | Muon: 2m 10s"]
+
+
+def test_metric_time_plot_writes_png(tmp_path: Path):
+    adamw = tmp_path / "adamw.jsonl"
+    muon = tmp_path / "muon.jsonl"
+    for epoch, metric in ((1, 0.3), (2, 0.4)):
+        write_metric(adamw, {"epoch": epoch, "metric": metric})
+        write_metric(muon, {"epoch": epoch, "metric": metric + 0.05})
+
+    output = write_metric_time_plot(
+        adamw,
+        muon,
+        tmp_path / "time.png",
+        "validation accuracy",
+        {"AdamW": 120.0, "Muon": 130.0},
+    )
+
+    assert output.read_bytes().startswith(b"\x89PNG\r\n\x1a\n")
 
 
 def test_trial_checkpoint_restores_epoch_elapsed_time_and_optimizer_state(tmp_path: Path):

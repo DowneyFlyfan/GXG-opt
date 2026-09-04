@@ -8,7 +8,7 @@ import torch
 import torch.nn.functional as functional
 from torch import nn
 
-from artifacts import write_metric, write_metric_plot
+from artifacts import write_metric, write_metric_plot, write_metric_time_plot
 from config import FormalTask
 from decoder_initialization import initialize_decoder_transformer
 from data import (
@@ -283,4 +283,12 @@ def run_trial(task: FormalTask, optimizer_name: str, root: Path, workers: int = 
             other_seconds = json.loads(paired_result.read_text())["seconds"]
             runtimes = {"AdamW": result["seconds"] if optimizer_name == "adamw" else other_seconds, "Muon": result["seconds"] if optimizer_name == "muon" else other_seconds}
         write_metric_plot(adamw, muon, root / "results" / task.domain / f"{task.identifier}_metric_steps.png", _metric_label(task.domain), runtimes)
+        if runtimes is not None:
+            write_metric_time_plot(
+                adamw,
+                muon,
+                root / "results" / task.domain / f"{task.identifier}_metric_time.png",
+                _metric_label(task.domain),
+                runtimes,
+            )
     return result

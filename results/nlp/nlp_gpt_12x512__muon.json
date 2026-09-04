@@ -6,8 +6,8 @@
   "model": "gpt_12x512",
   "optimizer": "muon",
   "parameters": 54682624,
-  "peak_memory_mb": 4688.486328125,
-  "seconds": 10418.206502512097,
+  "peak_memory_mb": 4690.486328125,
+  "seconds": 10416.548370660283,
   "status": "completed",
   "task": "nlp_gpt_12x512"
 }

@@ -1,0 +1,6 @@
+task=nlp_gpt_12x512_retune_lr0006_pilot optimizer=adamw epoch=1/2 metric=0.682594
+task=nlp_gpt_12x512_retune_lr0006_pilot optimizer=adamw epoch=2/2 metric=0.707180
+{'task': 'nlp_gpt_12x512_retune_lr0006_pilot', 'domain': 'nlp', 'model': 'gpt_12x512', 'optimizer': 'adamw', 'parameters': 54682624, 'epochs': 2, 'micro_batch_size': 4, 'gradient_accumulation': 2, 'seconds': 4012.488730562385, 'peak_memory_mb': 4824.486328125, 'status': 'completed'}
+task=nlp_gpt_12x512_retune_lr0006_pilot optimizer=muon epoch=1/2 metric=0.714909
+task=nlp_gpt_12x512_retune_lr0006_pilot optimizer=muon epoch=2/2 metric=0.738106
+{'task': 'nlp_gpt_12x512_retune_lr0006_pilot', 'domain': 'nlp', 'model': 'gpt_12x512', 'optimizer': 'muon', 'parameters': 54682624, 'epochs': 2, 'micro_batch_size': 4, 'gradient_accumulation': 2, 'seconds': 4168.225184179377, 'peak_memory_mb': 4690.486328125, 'status': 'completed'}
