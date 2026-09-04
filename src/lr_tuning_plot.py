@@ -65,6 +65,29 @@ def collect_tuning_traces(root: Path, runs: tuple[TuningRun, ...]) -> tuple[Tuni
     return tuple(traces)
 
 
+def select_best_tuning_runs(
+    root: Path, runs: tuple[TuningRun, ...] = LITERATURE_TUNING_RUNS
+) -> dict[str, TuningTrace]:
+    """Select the largest final validation accuracy separately per optimizer."""
+    traces_by_key = {
+        (run.label, run.optimizer): trace
+        for run, trace in zip(
+            (run for run in runs if _paths(root, run)[0].is_file() and _paths(root, run)[1].is_file()),
+            collect_tuning_traces(root, runs),
+            strict=True,
+        )
+    }
+    winners: dict[str, TuningTrace] = {}
+    for run in runs:
+        trace = traces_by_key.get((run.label, run.optimizer))
+        if trace is None:
+            continue
+        previous = winners.get(run.optimizer)
+        if previous is None or trace.records[-1]["metric"] > previous.records[-1]["metric"]:
+            winners[run.optimizer] = trace
+    return winners
+
+
 def write_literature_tuning_plots(root: Path) -> tuple[Path, Path] | None:
     traces = collect_tuning_traces(root, LITERATURE_TUNING_RUNS)
     if not traces:
