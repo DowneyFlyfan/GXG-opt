@@ -9,7 +9,14 @@ import training
 from config import FORMAL_TASKS
 from models import create_audio_model, create_cv_model, create_nlp_model, parameter_count
 from optimizers import Muon, build_optimizers, muon_parameter_names, qualify_ratio
-from training import _evaluate, _loaders, _loss, _model, configure_reproducibility
+from training import (
+    _evaluate,
+    _loaders,
+    _loss,
+    _model,
+    configure_reproducibility,
+    trial_artifact_paths,
+)
 
 
 def test_formal_matrix_has_three_active_tasks_and_six_baselines():
@@ -17,6 +24,25 @@ def test_formal_matrix_has_three_active_tasks_and_six_baselines():
     assert sum(2 for _ in FORMAL_TASKS) == 6
     assert {task.domain for task in FORMAL_TASKS} == {"nlp", "cv", "audio"}
     assert {task.model for task in FORMAL_TASKS} == {"smollm2_135m", "dinov3_vitb16", "owsm_v3.1_base"}
+
+
+def test_labelled_trial_artifacts_preserve_the_retained_baseline_paths(tmp_path):
+    from gn_experiment import LANGUAGE_MODEL_GN_TASK
+
+    retained = trial_artifact_paths(tmp_path, LANGUAGE_MODEL_GN_TASK, "muon")
+    literature = trial_artifact_paths(
+        tmp_path,
+        LANGUAGE_MODEL_GN_TASK,
+        "muon",
+        run_label="literature_lr005_eff48",
+    )
+
+    assert retained.metric == tmp_path / "metrics/nlp/nlp_gpt_12x512__muon.jsonl"
+    assert literature.metric == (
+        tmp_path
+        / "metrics/nlp/nlp_gpt_12x512__literature_lr005_eff48__muon.jsonl"
+    )
+    assert literature.metric != retained.metric
 
 
 def test_declared_models_are_within_parameter_range():

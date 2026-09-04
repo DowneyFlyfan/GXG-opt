@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import time
+from dataclasses import dataclass
 from pathlib import Path
 
 import torch
@@ -182,6 +183,34 @@ def _metric_label(domain: str) -> str:
     return {"nlp": "Validation next-token accuracy", "cv": "Validation top-1 accuracy", "audio": "Validation character error rate"}[domain]
 
 
+@dataclass(frozen=True)
+class TrialArtifactPaths:
+    metric: Path
+    result: Path
+    checkpoint: Path
+    metric_steps_plot: Path
+    metric_time_plot: Path
+
+
+def trial_artifact_paths(
+    root: Path,
+    task: FormalTask,
+    optimizer_name: str,
+    *,
+    run_label: str | None = None,
+) -> TrialArtifactPaths:
+    """Place a labelled retune beside, never over, the retained baseline."""
+    stem = task.identifier if run_label is None else f"{task.identifier}__{run_label}"
+    result_root = root / "results" / task.domain
+    return TrialArtifactPaths(
+        metric=root / "metrics" / task.domain / f"{stem}__{optimizer_name}.jsonl",
+        result=result_root / f"{stem}__{optimizer_name}.json",
+        checkpoint=result_root / f"{stem}__{optimizer_name}.checkpoint.pt",
+        metric_steps_plot=result_root / f"{stem}_metric_steps.png",
+        metric_time_plot=result_root / f"{stem}_metric_time.png",
+    )
+
+
 def _save_trial_checkpoint(
     path: Path,
     model: nn.Module,
@@ -218,7 +247,14 @@ def _load_trial_checkpoint(
     return int(state["completed_epoch"]), float(state["elapsed_seconds"])
 
 
-def run_trial(task: FormalTask, optimizer_name: str, root: Path, workers: int = 4, seed: int = 1337) -> dict:
+def run_trial(
+    task: FormalTask,
+    optimizer_name: str,
+    root: Path,
+    workers: int = 4,
+    seed: int = 1337,
+    run_label: str | None = None,
+) -> dict:
     if not torch.cuda.is_available():
         raise RuntimeError("CUDA is required")
     configure_reproducibility(seed)
@@ -228,8 +264,9 @@ def run_trial(task: FormalTask, optimizer_name: str, root: Path, workers: int = 
     learning_rate = task.adamw_lr if optimizer_name == "adamw" else task.muon_lr
     optimizers = build_optimizers(model, optimizer_name, learning_rate, task.weight_decay, task.muon_aux_lr)
     schedulers = {name: torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=task.estimated_epochs) for name, optimizer in optimizers.items()}
-    metric_path = root / "metrics" / task.domain / f"{task.identifier}__{optimizer_name}.jsonl"
-    checkpoint_path = root / "results" / task.domain / f"{task.identifier}__{optimizer_name}.checkpoint.pt"
+    paths = trial_artifact_paths(root, task, optimizer_name, run_label=run_label)
+    metric_path = paths.metric
+    checkpoint_path = paths.checkpoint
     completed_epoch = 0
     elapsed_seconds = 0.0
     if checkpoint_path.exists():
@@ -269,25 +306,30 @@ def run_trial(task: FormalTask, optimizer_name: str, root: Path, workers: int = 
         "peak_memory_mb": torch.cuda.max_memory_allocated(device) / 1024**2,
         "status": "completed",
     }
-    result_path = root / "results" / task.domain / f"{task.identifier}__{optimizer_name}.json"
+    result_path = paths.result
     result_path.parent.mkdir(parents=True, exist_ok=True)
     result_path.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n")
     checkpoint_path.unlink(missing_ok=True)
-    paired = root / "metrics" / task.domain / f"{task.identifier}__{'muon' if optimizer_name == 'adamw' else 'adamw'}.jsonl"
-    if paired.exists():
-        adamw = metric_path if optimizer_name == "adamw" else paired
-        muon = metric_path if optimizer_name == "muon" else paired
-        paired_result = root / "results" / task.domain / f"{task.identifier}__{'muon' if optimizer_name == 'adamw' else 'adamw'}.json"
+    paired = trial_artifact_paths(
+        root,
+        task,
+        "muon" if optimizer_name == "adamw" else "adamw",
+        run_label=run_label,
+    )
+    if paired.metric.exists():
+        adamw = metric_path if optimizer_name == "adamw" else paired.metric
+        muon = metric_path if optimizer_name == "muon" else paired.metric
+        paired_result = paired.result
         runtimes = None
         if paired_result.exists():
             other_seconds = json.loads(paired_result.read_text())["seconds"]
             runtimes = {"AdamW": result["seconds"] if optimizer_name == "adamw" else other_seconds, "Muon": result["seconds"] if optimizer_name == "muon" else other_seconds}
-        write_metric_plot(adamw, muon, root / "results" / task.domain / f"{task.identifier}_metric_steps.png", _metric_label(task.domain), runtimes)
+        write_metric_plot(adamw, muon, paths.metric_steps_plot, _metric_label(task.domain), runtimes)
         if runtimes is not None:
             write_metric_time_plot(
                 adamw,
                 muon,
-                root / "results" / task.domain / f"{task.identifier}_metric_time.png",
+                paths.metric_time_plot,
                 _metric_label(task.domain),
                 runtimes,
             )
