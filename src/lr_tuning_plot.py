@@ -39,6 +39,8 @@ LITERATURE_TUNING_RUNS = (
     TuningRun("AdamW lr=0.0003", "literature_adamw0003_b12_a4", "adamw"),
     TuningRun("AdamW lr=0.0003 (full)", "literature_adamw0003_full_b12_a4", "adamw"),
     TuningRun("AdamW lr=0.00015", "literature_adamw00015_b12_a4", "adamw"),
+    TuningRun("AdamW lr=0.00015 (full)", "literature_adamw00015_full_b12_a4", "adamw"),
+    TuningRun("AdamW lr=0.000075", "literature_adamw000075_b12_a4", "adamw"),
     TuningRun("AdamW lr=0.0005", "literature_adamw0005_b12_a4", "adamw"),
     TuningRun("AdamW lr=0.0008", "literature_adamw0008_b12_a4", "adamw"),
 )
