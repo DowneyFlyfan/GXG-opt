@@ -32,6 +32,7 @@ class TuningTrace:
 LITERATURE_TUNING_RUNS = (
     TuningRun("Muon lr=0.00125", "literature_mu00125_adamw0005_b12_a4", "muon"),
     TuningRun("Muon lr=0.0025", "literature_mu0025_adamw0005_b12_a4", "muon"),
+    TuningRun("Muon lr=0.0035", "literature_mu0035_adamw0005_b12_a4", "muon"),
     TuningRun("Muon lr=0.005", "literature_mu005_adamw0005_b12_a4", "muon"),
     TuningRun("Muon lr=0.01", "literature_mu01_adamw0005_b12_a4", "muon"),
     TuningRun("Muon lr=0.02", "literature_mu02_adamw0005_b12_a4", "muon"),
