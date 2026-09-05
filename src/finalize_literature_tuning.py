@@ -10,7 +10,7 @@ from lr_tuning_plot import LITERATURE_TUNING_RUNS, _paths, select_best_tuning_ru
 
 def write_literature_tuning_summary(root: Path) -> Path:
     """Record every candidate that completed, including its final accuracy."""
-    rows: list[tuple[str, str, float, float, float]] = []
+    rows: list[tuple[str, str, int, float, float, float]] = []
     incomplete: list[str] = []
     for run in LITERATURE_TUNING_RUNS:
         metric_path, result_path = _paths(root, run)
@@ -26,6 +26,7 @@ def write_literature_tuning_summary(root: Path) -> Path:
             (
                 run.label,
                 run.optimizer,
+                int(result["epochs"]),
                 float(metrics[-1]["metric"]),
                 float(result["seconds"]),
                 float(result["peak_memory_mb"]),
@@ -39,17 +40,17 @@ def write_literature_tuning_summary(root: Path) -> Path:
         "## Fixed protocol",
         "",
         "- Model: GPT-12x512 (54.68M parameters); WikiText byte stream cached under `.cache`.",
-        "- Five epochs; micro-batch 12, gradient accumulation 4, effective batch 48; weight decay 0.01.",
+        "- Full candidates use five epochs; high-end boundary probes may stop after one epoch. All use micro-batch 12, gradient accumulation 4, effective batch 48, and weight decay 0.01.",
         "- Metric: validation next-token accuracy. No loss curves are used.",
         "- Each listed candidate ran alone on the local GPU.",
         "",
         "## Completed candidates",
         "",
-        "| Optimizer | Learning rate | Final validation accuracy | Seconds | Peak MiB |",
-        "| --- | ---: | ---: | ---: | ---: |",
+        "| Optimizer | Learning rate | Epochs | Final validation accuracy | Seconds | Peak MiB |",
+        "| --- | ---: | ---: | ---: | ---: | ---: |",
     ]
-    for label, optimizer, metric, seconds, memory in rows:
-        lines.append(f"| {optimizer} | {label.rsplit('=', 1)[1].strip()} | {metric:.6f} | {seconds:.1f} | {memory:.1f} |")
+    for label, optimizer, epochs, metric, seconds, memory in rows:
+        lines.append(f"| {optimizer} | {label.rsplit('=', 1)[1].strip()} | {epochs} | {metric:.6f} | {seconds:.1f} | {memory:.1f} |")
     lines.extend(["", "## Selected settings", ""])
     for optimizer in ("muon", "adamw"):
         winner = winners.get(optimizer)
