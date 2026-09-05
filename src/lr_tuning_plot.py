@@ -37,6 +37,7 @@ LITERATURE_TUNING_RUNS = (
     TuningRun("Muon lr=0.01", "literature_mu01_adamw0005_b12_a4", "muon"),
     TuningRun("Muon lr=0.02", "literature_mu02_adamw0005_b12_a4", "muon"),
     TuningRun("AdamW lr=0.0003", "literature_adamw0003_b12_a4", "adamw"),
+    TuningRun("AdamW lr=0.0003 (full)", "literature_adamw0003_full_b12_a4", "adamw"),
     TuningRun("AdamW lr=0.0005", "literature_adamw0005_b12_a4", "adamw"),
     TuningRun("AdamW lr=0.0008", "literature_adamw0008_b12_a4", "adamw"),
 )
