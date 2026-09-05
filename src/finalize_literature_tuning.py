@@ -5,7 +5,13 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from lr_tuning_plot import LITERATURE_TUNING_RUNS, _paths, select_best_tuning_runs, write_literature_tuning_plots
+from lr_tuning_plot import (
+    LITERATURE_TUNING_RUNS,
+    _paths,
+    remove_tuning_figures,
+    select_best_final_runs,
+    write_final_baseline_plots,
+)
 
 
 def write_literature_tuning_summary(root: Path) -> Path:
@@ -32,8 +38,9 @@ def write_literature_tuning_summary(root: Path) -> Path:
                 float(result["peak_memory_mb"]),
             )
         )
-    winners = select_best_tuning_runs(root)
-    plots = write_literature_tuning_plots(root)
+    winners = select_best_final_runs(root)
+    remove_tuning_figures(root)
+    plots = write_final_baseline_plots(root)
     lines = [
         "# GPT-12x512 learning-rate tuning",
         "",
@@ -42,7 +49,7 @@ def write_literature_tuning_summary(root: Path) -> Path:
         "- Model: GPT-12x512 (54.68M parameters); WikiText byte stream cached under `.cache`.",
         "- Full candidates use five epochs; high-end boundary probes may stop after one epoch. All use micro-batch 12, gradient accumulation 4, effective batch 48, and weight decay 0.01.",
         "- Metric: validation next-token accuracy. No loss curves are used.",
-        "- Each listed candidate ran alone on the local GPU.",
+        "- Each listed candidate ran alone on the local GPU. All tuning metric/result data are retained; no tuning-sweep figures are generated.",
         "",
         "## Completed candidates",
         "",
@@ -59,7 +66,7 @@ def write_literature_tuning_summary(root: Path) -> Path:
     if incomplete:
         lines.extend(["", "## Incomplete candidates", "", *[f"- {label}" for label in incomplete]])
     if plots is not None:
-        lines.extend(["", "## Figures", "", *[f"- `{path.relative_to(root)}`" for path in plots]])
+        lines.extend(["", "## Final-baseline figures", "", *[f"- `{path.relative_to(root)}`" for path in plots]])
     output = root / "records" / "2026-09-04-literature-lr-tuning.md"
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text("\n".join(lines) + "\n")
