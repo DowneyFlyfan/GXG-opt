@@ -1,0 +1,23 @@
+Traceback (most recent call last):
+  File "/home/downeyflyfan/Research_Projects/AI/Optimizers/New_Optimizer/src/run_srip_band.py", line 34, in <module>
+    main()
+  File "/home/downeyflyfan/Research_Projects/AI/Optimizers/New_Optimizer/src/run_srip_band.py", line 25, in main
+    result = run_srip_band_trial(Path(__file__).resolve().parents[1], label=args.label,
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/downeyflyfan/Research_Projects/AI/Optimizers/New_Optimizer/src/srip_band_experiment.py", line 146, in run_srip_band_trial
+    optimizer.step()
+  File "/home/downeyflyfan/Research_Projects/AI/Optimizers/New_Optimizer/.venv/lib/python3.12/site-packages/torch/optim/lr_scheduler.py", line 166, in wrapper
+    return func.__get__(opt, opt.__class__)(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/downeyflyfan/Research_Projects/AI/Optimizers/New_Optimizer/.venv/lib/python3.12/site-packages/torch/optim/optimizer.py", line 530, in wrapper
+    out = func(*args, **kwargs)
+          ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/downeyflyfan/Research_Projects/AI/Optimizers/New_Optimizer/.venv/lib/python3.12/site-packages/torch/utils/_contextlib.py", line 124, in decorate_context
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/downeyflyfan/Research_Projects/AI/Optimizers/New_Optimizer/src/srip_band.py", line 247, in step
+    updated, diagnostics = srip_band_update(
+                           ^^^^^^^^^^^^^^^^^
+  File "/home/downeyflyfan/Research_Projects/AI/Optimizers/New_Optimizer/src/srip_band.py", line 171, in srip_band_update
+    raise ValueError(
+ValueError: SRIP weight lies outside the selected spectral band: top=1.00005698, minimum=0.27288663, lower=0.22941573

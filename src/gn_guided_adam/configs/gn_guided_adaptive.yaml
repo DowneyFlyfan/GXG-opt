@@ -1,0 +1,30 @@
+# Placeholder only. Adaptive refresh is intentionally disabled until the fixed MVP
+# passes Gate C. Setting enabled=true is rejected by configuration validation.
+optimizer:
+  name: gn_guided_adamw
+  seed: 42
+  adamw:
+    lr: 3.0e-4
+    betas: [0.9, 0.999]
+    eps: 1.0e-8
+    weight_decay: 0.01
+  gn:
+    enabled: true
+    warmup_steps: 100
+    rank: 8
+    refresh_interval: 200
+  oracle:
+    enabled: false
+  fixed_epoch_duty_cycle:
+    enabled: true
+    start_epoch: 0
+    on_epochs: 1
+    off_epochs: 1
+    refresh_on_activation: true
+  adaptive:
+    enabled: false
+    min_refresh_interval: 50
+    max_refresh_interval: 500
+    safety_margin: 0.05
+  checkpoint:
+    atomic: true

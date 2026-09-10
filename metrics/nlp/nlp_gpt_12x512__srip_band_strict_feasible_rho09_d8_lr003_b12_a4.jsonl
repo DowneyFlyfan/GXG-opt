@@ -1,0 +1,5 @@
+{"constrained_matrix_count": 36, "dual_steps": 8, "elapsed_seconds": 8967.927390430123, "epoch": 1, "learning_rate": 0.003, "metric": 0.4470837910970052, "rho": 0.9, "step": 2034}
+{"constrained_matrix_count": 36, "dual_steps": 8, "elapsed_seconds": 17663.373608186375, "epoch": 2, "learning_rate": 0.003, "metric": 0.5420939127604166, "rho": 0.9, "step": 4068}
+{"constrained_matrix_count": 36, "dual_steps": 8, "elapsed_seconds": 26141.94699655054, "epoch": 3, "learning_rate": 0.003, "metric": 0.572973887125651, "rho": 0.9, "step": 6102}
+{"constrained_matrix_count": 36, "dual_steps": 8, "elapsed_seconds": 34504.555000428576, "epoch": 4, "learning_rate": 0.003, "metric": 0.59100341796875, "rho": 0.9, "step": 8136}
+{"constrained_matrix_count": 36, "dual_steps": 8, "elapsed_seconds": 42809.07734098425, "epoch": 5, "learning_rate": 0.003, "metric": 0.6090532938639323, "rho": 0.9, "step": 10170}

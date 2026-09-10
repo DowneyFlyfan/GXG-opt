@@ -1,0 +1,4 @@
+{"accepted": 1.0, "cg_iterations": 1, "damping": 0.005062500000000001, "elapsed_seconds": 153.77400106098503, "metric": 0.191253662109375, "predicted_reduction": 0.7817852646112442, "reduction_ratio": 0.29461138276137977, "step": 8, "step_scale": 0.5}
+{"accepted": 1.0, "cg_iterations": 1, "damping": 0.001, "elapsed_seconds": 310.10823209164664, "metric": 0.191253662109375, "predicted_reduction": -0.01241748034954071, "reduction_ratio": 411108.0, "step": 16, "step_scale": 1.0}
+{"accepted": 1.0, "cg_iterations": 1, "damping": 0.00019753086419753083, "elapsed_seconds": 467.5308581450954, "metric": 0.191253662109375, "predicted_reduction": 0.006921052932739258, "reduction_ratio": 5.238003375934411, "step": 24, "step_scale": 1.0}
+{"accepted": 1.0, "cg_iterations": 1, "damping": 0.0001, "elapsed_seconds": 600.6632344559766, "metric": 0.191253662109375, "predicted_reduction": 0.012262914329767227, "reduction_ratio": 0.6622417333247058, "step": 31, "step_scale": 2.0}

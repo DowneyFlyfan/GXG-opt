@@ -1,0 +1,21 @@
+Traceback (most recent call last):
+  File "/home/downeyflyfan/Research_Projects/AI/Optimizers/New_Optimizer/src/run_multi_step_spectral_geometry.py", line 54, in <module>
+    main()
+  File "/home/downeyflyfan/Research_Projects/AI/Optimizers/New_Optimizer/src/run_multi_step_spectral_geometry.py", line 31, in main
+    result = run_multi_step_spectral_trial(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/downeyflyfan/Research_Projects/AI/Optimizers/New_Optimizer/src/multi_step_spectral_geometry_experiment.py", line 221, in run_multi_step_spectral_trial
+    model = _model(task).to(device)
+            ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/downeyflyfan/Research_Projects/AI/Optimizers/New_Optimizer/.venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1383, in to
+    return self._apply(convert)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/home/downeyflyfan/Research_Projects/AI/Optimizers/New_Optimizer/.venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 933, in _apply
+    module._apply(fn)
+  File "/home/downeyflyfan/Research_Projects/AI/Optimizers/New_Optimizer/.venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 964, in _apply
+    param_applied = fn(param)
+                    ^^^^^^^^^
+  File "/home/downeyflyfan/Research_Projects/AI/Optimizers/New_Optimizer/.venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1369, in convert
+    return t.to(
+           ^^^^^
+RuntimeError: NVML_SUCCESS == DriverAPI::get()->nvmlInit_v2_() INTERNAL ASSERT FAILED at "/__w/pytorch/pytorch/c10/cuda/PeerToPeerAccess.cpp":83, please report a bug to PyTorch. 

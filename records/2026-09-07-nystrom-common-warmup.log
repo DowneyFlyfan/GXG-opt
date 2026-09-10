@@ -1,0 +1,1 @@
+{'status': 'complete', 'checkpoint': '.cache/nlp/checkpoints/nlp_gpt_12x512__paper_common_adamw_warmup.pt', 'processed_tokens': 54685696, 'target_tokens': 54682624, 'metric': 0.6567001342773438, 'seconds': 1107.7882629418746}

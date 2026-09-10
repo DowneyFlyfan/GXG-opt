@@ -1,0 +1,13 @@
+{
+  "domain": "nlp",
+  "epochs": 2,
+  "gradient_accumulation": 2,
+  "micro_batch_size": 4,
+  "model": "gpt_12x512",
+  "optimizer": "muon",
+  "parameters": 54682624,
+  "peak_memory_mb": 4688.486328125,
+  "seconds": 4167.45243051392,
+  "status": "completed",
+  "task": "nlp_gpt_12x512_det_pilot_muon"
+}

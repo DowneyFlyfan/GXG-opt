@@ -1,0 +1,1 @@
+{"elapsed_seconds": 12.016563807148486, "epoch": 1, "metric": 0.19952937534877233, "momentum": 0.95, "muon_learning_rate": 0.0006, "ns_steps": 3, "step": 1, "stiefel_learning_rate": 0.003}

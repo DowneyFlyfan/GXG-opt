@@ -1,0 +1,6 @@
+{"elapsed_seconds": 177.87499683722854, "metric": 0.670654296875, "nystrom_initial_step_scale": 1.5e-05, "nystrom_line_search_step_size": 1.5e-05, "stage": "nystrom_ggn", "step": 1}
+{"adamw_learning_rate": 0.00015, "adamw_steps": 2034, "elapsed_seconds": 2133.2021452970803, "epoch": 1, "metric": 0.6958020528157552, "stage": "adamw", "step": 2035}
+{"adamw_learning_rate": 0.00015, "adamw_steps": 4068, "elapsed_seconds": 4088.846554502379, "epoch": 2, "metric": 0.706610361735026, "stage": "adamw", "step": 4069}
+{"adamw_learning_rate": 0.00015, "adamw_steps": 6102, "elapsed_seconds": 6044.422832509968, "epoch": 3, "metric": 0.7129427591959635, "stage": "adamw", "step": 6103}
+{"adamw_learning_rate": 0.00015, "adamw_steps": 8136, "elapsed_seconds": 7999.945238567423, "epoch": 4, "metric": 0.717797597249349, "stage": "adamw", "step": 8137}
+{"adamw_learning_rate": 0.00015, "adamw_steps": 10170, "elapsed_seconds": 9955.43024686398, "epoch": 5, "metric": 0.7200177510579427, "stage": "adamw", "step": 10171}

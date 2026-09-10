@@ -1,0 +1,6 @@
+task=nlp_gpt_12x512 optimizer=spectral_sphere_muon step=9216 metric=0.694209 elapsed=11029.2
+task=nlp_gpt_12x512 optimizer=spectral_sphere_muon step=9728 metric=0.696795 elapsed=11639.7
+task=nlp_gpt_12x512 optimizer=spectral_sphere_muon step=10170 metric=0.696861 elapsed=12169.3
+task=nlp_gpt_12x512 optimizer=spectral_sphere_muon step=10240 metric=0.705031 elapsed=12259.5
+task=nlp_gpt_12x512 optimizer=spectral_sphere_muon step=10752 metric=0.709427 elapsed=12870.1
+task=nlp_gpt_12x512 optimizer=spectral_sphere_muon step=11264 metric=0.710882 elapsed=13482.2

@@ -1,0 +1,18 @@
+{
+  "auxiliary_learning_rate": 0.0003,
+  "completed_epochs": 1,
+  "completed_steps": 2034,
+  "domain": "nlp",
+  "final_metric": 0.29720815022786456,
+  "gradient_accumulation": 4,
+  "matrix_learning_rate": 0.0003,
+  "micro_batch_size": 12,
+  "model": "gpt_12x512",
+  "optimizer": "mkor",
+  "parameters": 54682624,
+  "peak_memory_mb": 12856.048828125,
+  "racs_scale": null,
+  "seconds": 2113.2125331782736,
+  "status": "screen_complete",
+  "task": "nlp_gpt_12x512"
+}

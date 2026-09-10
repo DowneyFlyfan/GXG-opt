@@ -1,0 +1,11 @@
+{
+  "completed_steps": 1342,
+  "domain": "nlp",
+  "model": "gpt_12x512",
+  "optimizer": "kronecker_ggn",
+  "parameters": 54682624,
+  "peak_memory_mb": 4974.205078125,
+  "seconds": 300.10797498142347,
+  "status": "time_limit_checkpointed",
+  "task": "nlp_gpt_12x512"
+}

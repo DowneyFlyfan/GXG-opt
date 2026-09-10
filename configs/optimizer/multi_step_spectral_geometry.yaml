@@ -1,0 +1,28 @@
+optimizer:
+  name: multi_step_spectral_policy
+  lr: 5.0e-5
+  fallback_lr: 5.0e-5
+  momentum: 0.95
+  weight_decay: 0.01
+  matrix_scale: moonlight
+  candidates: [2, 4, 8, .inf]
+  transform_backend: reduced
+  ns_steps: 8
+  polynomial_degree: 12
+  polynomial_floor: 1.0e-4
+policy:
+  warmup_steps: 500
+  interval: 100
+  horizon: 4
+  horizon_weights: [1.0, 0.8, 0.6, 0.4]
+  switch_penalty: 0.01
+  switch_margin: 0.005
+  compute_penalty: 0.0
+dynamics:
+  history_size: 8
+  basis_rank: 8
+  fit_interval: 50
+  ridge: 1.0e-4
+  min_curvature: 0.0
+  max_curvature: 100.0
+  perpendicular_curvature: median_secant

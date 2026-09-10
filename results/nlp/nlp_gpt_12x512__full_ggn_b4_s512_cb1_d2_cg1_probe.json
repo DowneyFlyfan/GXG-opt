@@ -1,0 +1,16 @@
+{
+  "batch_size": 4,
+  "completed_steps": 2,
+  "curvature_batches": 1,
+  "domain": "nlp",
+  "maximum_cg_iterations": 1,
+  "minimum_damping": 1e-06,
+  "model": "gpt_12x512",
+  "optimizer": "full_ggn",
+  "parameters": 54682624,
+  "peak_memory_mb": 12806.6474609375,
+  "seconds": 4.434015643317252,
+  "sequence_length": 512,
+  "status": "time_limit_checkpointed",
+  "task": "nlp_gpt_12x512"
+}

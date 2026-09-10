@@ -1,0 +1,23 @@
+{
+  "averaged_curvature_matvecs": 4,
+  "completed_outer_steps": 1,
+  "consumed_training_sequences": 7808,
+  "curvature_batch_size": 64,
+  "damping": 0.1,
+  "domain": "nlp",
+  "final_metric": 0.670654296875,
+  "initial_step_scale": 1.5e-05,
+  "model": "gpt_12x512",
+  "nystrom_rank": 4,
+  "optimizer": "nystrom_ggn",
+  "outer_effective_batch_size": 3904,
+  "parameters": 54682624,
+  "peak_memory_mb": 8505.3056640625,
+  "physical_batch_size": 1,
+  "post_warmup_seconds": 177.87499683722854,
+  "refresh_interval": 4,
+  "seconds": 1285.663259779103,
+  "status": "completed",
+  "task": "nlp_gpt_12x512",
+  "warmup_tokens": 54685696
+}

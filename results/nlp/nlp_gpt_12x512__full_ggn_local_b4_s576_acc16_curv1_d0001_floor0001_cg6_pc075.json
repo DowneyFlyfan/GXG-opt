@@ -1,0 +1,20 @@
+{
+  "batch_size": 4,
+  "completed_steps": 212,
+  "curvature_accumulation_batches": 1,
+  "curvature_batches": 1,
+  "domain": "nlp",
+  "gradient_accumulation_batches": 16,
+  "initial_step_scale": 1.0,
+  "maximum_cg_iterations": 6,
+  "minimum_damping": 0.001,
+  "model": "gpt_12x512",
+  "optimizer": "full_ggn",
+  "parameters": 54682624,
+  "peak_memory_mb": 15129.20068359375,
+  "preconditioner_exponent": 0.75,
+  "seconds": 2303.9156510774046,
+  "sequence_length": 576,
+  "status": "time_limit_checkpointed",
+  "task": "nlp_gpt_12x512"
+}

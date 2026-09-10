@@ -1,0 +1,13 @@
+{
+  "domain": "cv",
+  "epochs": 75,
+  "gradient_accumulation": 8,
+  "micro_batch_size": 8,
+  "model": "dinov3_vitb16",
+  "optimizer": "muon",
+  "parameters": 85737316,
+  "peak_memory_mb": 1004.103515625,
+  "seconds": 8170.543931378517,
+  "status": "completed",
+  "task": "cv_dinov3_vitb16"
+}

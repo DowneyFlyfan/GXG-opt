@@ -1,0 +1,19 @@
+{
+  "adamw_auxiliary_parameter_count": 29516800,
+  "alpha": 0.03,
+  "auxiliary_learning_rate": 0.0003,
+  "completed_epochs": 1,
+  "completed_steps": 2034,
+  "domain": "nlp",
+  "final_metric": 0.4987589518229167,
+  "gradient_accumulation": 4,
+  "micro_batch_size": 12,
+  "model": "gpt_12x512",
+  "optimizer": "stiefel_feature_steepest_descent",
+  "parameters": 54682624,
+  "peak_memory_mb": 12267.423828125,
+  "seconds": 3226.0236915987916,
+  "status": "screen_complete",
+  "stiefel_matrix_count": 36,
+  "task": "nlp_gpt_12x512"
+}

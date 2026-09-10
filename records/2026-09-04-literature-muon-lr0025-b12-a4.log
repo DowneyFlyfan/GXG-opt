@@ -1,0 +1,6 @@
+task=nlp_gpt_12x512 optimizer=muon epoch=1/5 metric=0.711671
+task=nlp_gpt_12x512 optimizer=muon epoch=2/5 metric=0.730506
+task=nlp_gpt_12x512 optimizer=muon epoch=3/5 metric=0.742125
+task=nlp_gpt_12x512 optimizer=muon epoch=4/5 metric=0.751369
+task=nlp_gpt_12x512 optimizer=muon epoch=5/5 metric=0.755032
+{'task': 'nlp_gpt_12x512', 'domain': 'nlp', 'model': 'gpt_12x512', 'optimizer': 'muon', 'parameters': 54682624, 'epochs': 5, 'micro_batch_size': 12, 'gradient_accumulation': 4, 'seconds': 9886.204922331497, 'peak_memory_mb': 12289.923828125, 'status': 'completed'}

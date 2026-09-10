@@ -1,0 +1,9 @@
+experiment:
+  name: tiny_mlp_reference_only
+  purpose: mathematical_correctness_test
+  seed: 42
+  input_dim: 4
+  hidden_dim: 5
+  output_dim: 3
+  dtype: float64
+  maximum_runtime_hours: 4

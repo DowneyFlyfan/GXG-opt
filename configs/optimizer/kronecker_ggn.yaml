@@ -1,0 +1,18 @@
+optimizer:
+  name: kronecker_ggn
+  learning_rate: 1.0
+  curvature_mode: mc_ggn
+  damping: 0.001
+  damping_mode: exact_joint_eigenvalue
+  factor_decay: 0.95
+  factor_update_interval: 1
+  spectral_update_interval: 20
+  factor_eigenvalue_floor: 1.0e-8
+  joint_eigenvalue_floor: 1.0e-12
+  supported_modules: [linear]
+  unsupported_parameter_fallback: adamw
+  fallback_learning_rate: 0.0003
+  fallback_betas: [0.9, 0.999]
+  fallback_epsilon: 1.0e-8
+  weight_decay: 0.0
+  linear_algebra_dtype: float32

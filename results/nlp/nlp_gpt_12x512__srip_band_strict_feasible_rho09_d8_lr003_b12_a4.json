@@ -1,0 +1,21 @@
+{
+  "adamw_auxiliary_parameter_count": 20079616,
+  "completed_epochs": 5,
+  "completed_steps": 10170,
+  "constrained_matrix_count": 36,
+  "domain": "nlp",
+  "dual_steps": 8,
+  "final_metric": 0.6090532938639323,
+  "gradient_accumulation": 4,
+  "learning_rate": 0.003,
+  "micro_batch_size": 12,
+  "model": "gpt_12x512",
+  "momentum": 0.95,
+  "optimizer": "srip_band",
+  "parameters": 54682624,
+  "peak_memory_mb": 12306.923828125,
+  "rho": 0.9,
+  "seconds": 42809.07734098425,
+  "status": "completed",
+  "task": "nlp_gpt_12x512"
+}

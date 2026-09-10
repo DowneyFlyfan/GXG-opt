@@ -1,0 +1,37 @@
+optimizer:
+  name: low_rank_corrected_kronecker_ggn
+  learning_rate: 1.0
+  curvature_mode: mc_ggn
+  damping: 0.001
+  damping_mode: exact_joint_eigenvalue
+  factor_decay: 0.95
+  factor_update_interval: 1
+  spectral_update_interval: 20
+  factor_eigenvalue_floor: 1.0e-8
+  joint_eigenvalue_floor: 1.0e-12
+  supported_modules: [linear]
+  unsupported_parameter_fallback: adamw
+  fallback_learning_rate: 0.0003
+  fallback_betas: [0.9, 0.999]
+  fallback_epsilon: 1.0e-8
+  weight_decay: 0.0
+  linear_algebra_dtype: float32
+  correction_rank: 4
+  correction_oversampling: 4
+  lanczos_steps: 12
+  lanczos_tolerance: 0.0001
+  reorthogonalization_passes: 2
+  correction_warmup_steps: 100
+  correction_refresh_interval: 100
+  correction_max_age: 200
+  correction_eigenvalue_margin: 0.1
+  correction_abs_eigenvalue_cap: 100.0
+  correction_storage: dense_reference
+  correction_dtype: float32
+  correction_memory_budget_mb: 2048
+  active_layer_policy: largest_relative_residual
+  active_layer_count: 2
+  cross_batch_validation: false
+  cross_batch_reliability_threshold: 0.0
+  fallback_on_invalid_correction: true
+  seed: 42

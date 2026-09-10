@@ -1,0 +1,3 @@
+{"accepted": 1.0, "cg_iterations": 2, "damping": 0.1, "elapsed_seconds": 33.34008978586644, "metric": 0.19235610961914062, "predicted_reduction": -0.001161942258477211, "reduction_ratio": 43916.0, "step": 32, "step_scale": 0.125}
+{"accepted": 1.0, "cg_iterations": 2, "damping": 0.1, "elapsed_seconds": 69.12582127051428, "metric": 0.24235153198242188, "predicted_reduction": 0.017372719943523407, "reduction_ratio": 0.9741380530396568, "step": 64, "step_scale": 1.0}
+{"accepted": 1.0, "cg_iterations": 2, "damping": 0.1, "elapsed_seconds": 104.70120531134307, "metric": 0.2633514404296875, "predicted_reduction": 0.01590660121291876, "reduction_ratio": 0.9824464683944567, "step": 96, "step_scale": 1.0}

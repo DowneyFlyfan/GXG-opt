@@ -1,0 +1,13 @@
+{
+  "domain": "audio",
+  "epochs": 8,
+  "gradient_accumulation": 8,
+  "micro_batch_size": 1,
+  "model": "owsm_v3.1_base",
+  "optimizer": "adamw",
+  "parameters": 101182628,
+  "peak_memory_mb": 2825.83837890625,
+  "seconds": 9780.95572604984,
+  "status": "completed",
+  "task": "audio_owsm_v3_1_base"
+}

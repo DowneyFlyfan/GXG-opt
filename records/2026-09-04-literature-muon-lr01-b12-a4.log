@@ -1,0 +1,1 @@
+task=nlp_gpt_12x512 optimizer=muon epoch=1/5 metric=0.597449

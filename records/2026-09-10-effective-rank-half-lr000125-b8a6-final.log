@@ -1,0 +1,6 @@
+task=nlp_gpt_12x512 optimizer=effective_rank_half epoch=1/5 metric=0.709560
+task=nlp_gpt_12x512 optimizer=effective_rank_half epoch=2/5 metric=0.730143
+task=nlp_gpt_12x512 optimizer=effective_rank_half epoch=3/5 metric=0.743105
+task=nlp_gpt_12x512 optimizer=effective_rank_half epoch=4/5 metric=0.751217
+task=nlp_gpt_12x512 optimizer=effective_rank_half epoch=5/5 metric=0.755241
+{'task': 'nlp_gpt_12x512', 'domain': 'nlp', 'model': 'gpt_12x512', 'optimizer': 'effective_rank_half', 'parameters': 54682624, 'epochs': 5, 'learning_rate': 0.00125, 'weight_decay': 0.0, 'micro_batch_size': 8, 'gradient_accumulation': 6, 'seconds': 16315.66481101299, 'peak_memory_mb': 8481.330078125, 'status': 'completed'}

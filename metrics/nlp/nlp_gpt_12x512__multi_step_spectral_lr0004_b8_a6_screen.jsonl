@@ -1,0 +1,1 @@
+{"elapsed_seconds": 2126.763423235986, "epoch": 1, "learning_rate": 0.0004, "metric": 0.6856746673583984, "momentum": 0.95, "policy_matrix_count": 48, "policy_seconds": 0.0, "selected_p": {"2.0": 1, "4.0": 2, "inf": 45}, "spectral_matrix_count": 48, "step": 2034, "switches": 3, "transform_seconds": 0.07105430600222462}

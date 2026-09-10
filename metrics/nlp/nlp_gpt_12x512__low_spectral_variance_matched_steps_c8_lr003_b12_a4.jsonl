@@ -1,0 +1,5 @@
+{"condition_limit": 8.0, "constrained_matrix_count": 36, "dual_steps": 1, "elapsed_seconds": 3318.8798926318996, "epoch": 1, "learning_rate": 0.003, "metric": 0.396453857421875, "step": 2034}
+{"condition_limit": 8.0, "constrained_matrix_count": 36, "dual_steps": 1, "elapsed_seconds": 6667.62335062027, "epoch": 2, "learning_rate": 0.003, "metric": 0.5551465352376302, "step": 4068}
+{"condition_limit": 8.0, "constrained_matrix_count": 36, "dual_steps": 1, "elapsed_seconds": 10124.92233160371, "epoch": 3, "learning_rate": 0.003, "metric": 0.612280527750651, "step": 6102}
+{"condition_limit": 8.0, "constrained_matrix_count": 36, "dual_steps": 1, "elapsed_seconds": 13620.390065548941, "epoch": 4, "learning_rate": 0.003, "metric": 0.6405410766601562, "step": 8136}
+{"condition_limit": 8.0, "constrained_matrix_count": 36, "dual_steps": 1, "elapsed_seconds": 17185.44344905624, "epoch": 5, "learning_rate": 0.003, "metric": 0.6632512410481771, "step": 10170}

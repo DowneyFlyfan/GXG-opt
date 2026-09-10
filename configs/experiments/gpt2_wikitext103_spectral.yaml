@@ -1,0 +1,36 @@
+experiment_name: gpt2_wikitext103_spectral_5090
+selection_source: migrated_stage1_screen_defaults
+model:
+  name: openai-community/gpt2
+  local_path: .cache/gpt2_wikitext103/gpt2-model
+  sequence_length: 512
+dataset:
+  name: Salesforce/wikitext
+  config: wikitext-103-raw-v1
+  local_path: .cache/gpt2_wikitext103/wikitext103-gpt2-512
+training:
+  steps: 2000
+  seeds: [0, 1, 2]
+  micro_batch_size: 16
+  gradient_accumulation: 2
+  evaluation_batch_size: 8
+  evaluation_batches: 32
+  evaluation_interval: 200
+  checkpoint_interval: 400
+  warmup_fraction: 0.06
+  precision: bfloat16
+  tf32: true
+  time_limit_hours: 4.0
+methods:
+  - id: adamw
+    label: AdamW baseline
+    role: baseline
+    optimizer_config: configs/optimizer/gpt2_adamw.yaml
+  - id: muon
+    label: Muon baseline
+    role: baseline
+    optimizer_config: configs/optimizer/gpt2_muon.yaml
+  - id: multi_step_spectral_policy
+    label: Multi-step spectral geometry policy
+    role: proposal
+    optimizer_config: configs/optimizer/multi_step_spectral_geometry.yaml

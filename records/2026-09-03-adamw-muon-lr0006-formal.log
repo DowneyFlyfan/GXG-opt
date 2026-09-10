@@ -1,0 +1,12 @@
+task=nlp_gpt_12x512 optimizer=adamw epoch=1/5 metric=0.682594
+task=nlp_gpt_12x512 optimizer=adamw epoch=2/5 metric=0.705643
+task=nlp_gpt_12x512 optimizer=adamw epoch=3/5 metric=0.718037
+task=nlp_gpt_12x512 optimizer=adamw epoch=4/5 metric=0.728367
+task=nlp_gpt_12x512 optimizer=adamw epoch=5/5 metric=0.734009
+{'task': 'nlp_gpt_12x512', 'domain': 'nlp', 'model': 'gpt_12x512', 'optimizer': 'adamw', 'parameters': 54682624, 'epochs': 5, 'micro_batch_size': 4, 'gradient_accumulation': 2, 'seconds': 10030.849046426825, 'peak_memory_mb': 4824.486328125, 'status': 'completed'}
+task=nlp_gpt_12x512 optimizer=muon epoch=1/5 metric=0.714909
+task=nlp_gpt_12x512 optimizer=muon epoch=2/5 metric=0.731647
+task=nlp_gpt_12x512 optimizer=muon epoch=3/5 metric=0.743713
+task=nlp_gpt_12x512 optimizer=muon epoch=4/5 metric=0.752346
+task=nlp_gpt_12x512 optimizer=muon epoch=5/5 metric=0.756306
+{'task': 'nlp_gpt_12x512', 'domain': 'nlp', 'model': 'gpt_12x512', 'optimizer': 'muon', 'parameters': 54682624, 'epochs': 5, 'micro_batch_size': 4, 'gradient_accumulation': 2, 'seconds': 10416.548370660283, 'peak_memory_mb': 4690.486328125, 'status': 'completed'}

@@ -1,0 +1,2 @@
+task=nlp_gpt_12x512 optimizer=effective_rank_half epoch=1/1 metric=0.709560
+{'task': 'nlp_gpt_12x512', 'domain': 'nlp', 'model': 'gpt_12x512', 'optimizer': 'effective_rank_half', 'parameters': 54682624, 'epochs': 1, 'learning_rate': 0.00125, 'weight_decay': 0.0, 'micro_batch_size': 8, 'gradient_accumulation': 6, 'seconds': 3292.522626036007, 'peak_memory_mb': 8481.330078125, 'status': 'completed'}

@@ -1,0 +1,7 @@
+experiment:
+  name: synthetic_quadratic
+  seed: 42
+  dimensions: 64
+  correction_ranks: [0, 1, 4, 8]
+  damping: 0.001
+  maximum_runtime_hours: 4

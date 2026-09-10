@@ -1,0 +1,31 @@
+{
+  "adamw_auxiliary_parameter_count": 16933888,
+  "auxiliary_learning_rate": 0.0003,
+  "completed_epochs": 1,
+  "completed_steps": 2034,
+  "domain": "nlp",
+  "final_metric": 0.6728363037109375,
+  "gradient_accumulation": 6,
+  "last_policy_diagnostics": {
+    "policy_matrix_count": 48,
+    "policy_seconds": 0.0,
+    "selected_p": {
+      "2.0": 1,
+      "4.0": 47
+    },
+    "switches": 3,
+    "transform_seconds": 0.060509719885885715
+  },
+  "learning_rate": 0.0003,
+  "matrix_scale": "moonlight",
+  "micro_batch_size": 8,
+  "model": "gpt_12x512",
+  "momentum": 0.95,
+  "optimizer": "multi_step_spectral_geometry",
+  "parameters": 54682624,
+  "peak_memory_mb": 13367.376953125,
+  "seconds": 2182.4619981804863,
+  "spectral_matrix_count": 48,
+  "status": "screen_complete",
+  "task": "nlp_gpt_12x512"
+}

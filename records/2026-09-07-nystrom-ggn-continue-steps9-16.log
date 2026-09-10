@@ -1,0 +1,12 @@
+Traceback (most recent call last):
+  File "/home/downeyflyfan/Research_Projects/AI/Optimizers/New_Optimizer/src/run_new_curvature.py", line 35, in <module>
+    main()
+  File "/home/downeyflyfan/Research_Projects/AI/Optimizers/New_Optimizer/src/run_new_curvature.py", line 27, in main
+    result = run_nystrom_ggn_trial(root, label=args.label, maximum_seconds=args.maximum_seconds, maximum_outer_steps=args.maximum_outer_steps, workers=args.workers, seed=args.seed, fresh=args.fresh)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/downeyflyfan/Research_Projects/AI/Optimizers/New_Optimizer/src/new_curvature_experiment.py", line 326, in run_nystrom_ggn_trial
+    state = build_nystrom_state(matvec, dimension=gradient.numel(), indices=indices, rank=nystrom_rank, damping=damping, dtype=gradient.dtype, storage_dtype=torch.bfloat16, device=device)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/downeyflyfan/Research_Projects/AI/Optimizers/New_Optimizer/src/nystrom_ggn.py", line 92, in build_nystrom_state
+    raise ValueError("Nyström sampled intersection has no positive eigenvalue")
+ValueError: Nyström sampled intersection has no positive eigenvalue

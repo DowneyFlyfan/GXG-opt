@@ -1,0 +1,6 @@
+task=nlp_gpt_12x512 optimizer=adamw epoch=1/5 metric=0.650279
+task=nlp_gpt_12x512 optimizer=adamw epoch=2/5 metric=0.690746
+task=nlp_gpt_12x512 optimizer=adamw epoch=3/5 metric=0.708050
+task=nlp_gpt_12x512 optimizer=adamw epoch=4/5 metric=0.718047
+task=nlp_gpt_12x512 optimizer=adamw epoch=5/5 metric=0.723747
+{'task': 'nlp_gpt_12x512', 'domain': 'nlp', 'model': 'gpt_12x512', 'optimizer': 'adamw', 'parameters': 54682624, 'epochs': 5, 'micro_batch_size': 12, 'gradient_accumulation': 4, 'seconds': 9775.804351472296, 'peak_memory_mb': 12436.673828125, 'status': 'completed'}

@@ -1,0 +1,2 @@
+task=nlp_gpt_12x512 optimizer=muon epoch=1/1 metric=0.286447
+{'task': 'nlp_gpt_12x512', 'domain': 'nlp', 'model': 'gpt_12x512', 'optimizer': 'muon', 'parameters': 54682624, 'epochs': 1, 'micro_batch_size': 12, 'gradient_accumulation': 4, 'seconds': 1966.1585241323337, 'peak_memory_mb': 12289.923828125, 'status': 'completed'}

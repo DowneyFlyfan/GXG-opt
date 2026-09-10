@@ -1,0 +1,31 @@
+Traceback (most recent call last):
+  File "/home/downeyflyfan/Research_Projects/AI/Optimizers/New_Optimizer/src/run_new_curvature.py", line 35, in <module>
+    main()
+  File "/home/downeyflyfan/Research_Projects/AI/Optimizers/New_Optimizer/src/run_new_curvature.py", line 30, in main
+    result = runner(root, label=args.label, matrix_learning_rate=args.matrix_learning_rate, auxiliary_learning_rate=args.auxiliary_learning_rate, maximum_seconds=args.maximum_seconds, workers=args.workers, seed=args.seed, fresh=args.fresh, racs_scale=args.racs_scale, maximum_epochs=args.maximum_epochs, write_plots=args.final)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/downeyflyfan/Research_Projects/AI/Optimizers/New_Optimizer/src/new_curvature_experiment.py", line 248, in run_mkor_trial
+    return _run_matrix_trial(root, candidate="mkor", **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/downeyflyfan/Research_Projects/AI/Optimizers/New_Optimizer/src/new_curvature_experiment.py", line 201, in _run_matrix_trial
+    optimizer.step()
+  File "/home/downeyflyfan/Research_Projects/AI/Optimizers/New_Optimizer/.venv/lib/python3.12/site-packages/torch/optim/lr_scheduler.py", line 166, in wrapper
+    return func.__get__(opt, opt.__class__)(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/downeyflyfan/Research_Projects/AI/Optimizers/New_Optimizer/.venv/lib/python3.12/site-packages/torch/optim/optimizer.py", line 530, in wrapper
+    out = func(*args, **kwargs)
+          ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/downeyflyfan/Research_Projects/AI/Optimizers/New_Optimizer/.venv/lib/python3.12/site-packages/torch/utils/_contextlib.py", line 124, in decorate_context
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/downeyflyfan/Research_Projects/AI/Optimizers/New_Optimizer/src/mkor.py", line 167, in step
+    state.update(
+  File "/home/downeyflyfan/Research_Projects/AI/Optimizers/New_Optimizer/.venv/lib/python3.12/site-packages/torch/utils/_contextlib.py", line 124, in decorate_context
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/downeyflyfan/Research_Projects/AI/Optimizers/New_Optimizer/src/mkor.py", line 93, in update
+    self.right_inverse = self._rank_one_inverse_update(
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/downeyflyfan/Research_Projects/AI/Optimizers/New_Optimizer/src/mkor.py", line 70, in _rank_one_inverse_update
+    raise RuntimeError("MKOR inverse update is non-finite")
+RuntimeError: MKOR inverse update is non-finite

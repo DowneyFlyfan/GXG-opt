@@ -1,0 +1,2 @@
+task=nlp_gpt_12x512 optimizer=muown epoch=1/1 metric=0.714914
+{'task': 'nlp_gpt_12x512', 'domain': 'nlp', 'model': 'gpt_12x512', 'optimizer': 'muown', 'parameters': 54682624, 'epochs': 1, 'learning_rate': 0.005, 'weight_decay': 0.0, 'micro_batch_size': 8, 'gradient_accumulation': 6, 'seconds': 1962.1650379290004, 'peak_memory_mb': 8616.173828125, 'status': 'completed'}

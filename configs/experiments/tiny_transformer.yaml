@@ -1,0 +1,11 @@
+experiment:
+  name: tiny_transformer_reference_only
+  purpose: mathematical_correctness_test
+  seed: 42
+  vocabulary_size: 17
+  sequence_length: 5
+  width: 8
+  heads: 2
+  layers: 1
+  dtype: float64
+  maximum_runtime_hours: 4

@@ -1,0 +1,49 @@
+optimizer:
+  name: gn_guided_adamw
+  seed: 42
+  adamw:
+    lr: 3.0e-4
+    betas: [0.9, 0.999]
+    eps: 1.0e-8
+    weight_decay: 0.01
+  gn:
+    enabled: true
+    warmup_steps: 100
+    rank: 8
+    refresh_interval: 200
+    curvature_dtype: float32
+    curvature_batches: 1
+    acceptance_batches: 1
+    initial_damping: 1.0e-2
+    min_damping: 1.0e-6
+    max_damping: 10000.0
+    damping_increase: 10.0
+    damping_decrease: 0.5
+    trust_radius: 1.0
+    max_relative_block_update: 1.0e-3
+    alpha_max: 1.0
+    max_basis_age: 200
+    max_parameter_drift: 1.0e-2
+    rho_min: 0.25
+    acceptance_margin: 0.0
+    momentum_subspace_decay: 0.0
+    fallback_to_adamw: true
+    min_block_numel: 256
+    include_output_projection: false
+    guided_block_patterns: []
+    reorthogonalization_passes: 2
+    negative_eigenvalue_tolerance: 1.0e-6
+    failures_before_cooldown: 3
+    failure_cooldown_steps: 400
+  oracle:
+    enabled: false
+  fixed_epoch_duty_cycle:
+    enabled: true
+    start_epoch: 0
+    on_epochs: 1
+    off_epochs: 1
+    refresh_on_activation: true
+  adaptive:
+    enabled: false
+  checkpoint:
+    atomic: true

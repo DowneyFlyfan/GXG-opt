@@ -1,0 +1,2 @@
+task=nlp_gpt_12x512 optimizer=adamw epoch=1/1 metric=0.650279
+{'task': 'nlp_gpt_12x512', 'domain': 'nlp', 'model': 'gpt_12x512', 'optimizer': 'adamw', 'parameters': 54682624, 'epochs': 1, 'micro_batch_size': 12, 'gradient_accumulation': 4, 'seconds': 1955.9564731698483, 'peak_memory_mb': 12436.673828125, 'status': 'completed'}

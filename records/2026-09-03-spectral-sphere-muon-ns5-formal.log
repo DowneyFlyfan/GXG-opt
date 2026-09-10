@@ -1,0 +1,23 @@
+task=nlp_gpt_12x512 optimizer=spectral_sphere_muon step=512 metric=0.542238 elapsed=610.8
+task=nlp_gpt_12x512 optimizer=spectral_sphere_muon step=1024 metric=0.615729 elapsed=1221.2
+task=nlp_gpt_12x512 optimizer=spectral_sphere_muon step=1536 metric=0.622281 elapsed=1831.6
+task=nlp_gpt_12x512 optimizer=spectral_sphere_muon step=2034 metric=0.627527 elapsed=2429.8
+task=nlp_gpt_12x512 optimizer=spectral_sphere_muon step=2048 metric=0.632996 elapsed=2453.8
+task=nlp_gpt_12x512 optimizer=spectral_sphere_muon step=2560 metric=0.632926 elapsed=3064.0
+task=nlp_gpt_12x512 optimizer=spectral_sphere_muon step=3072 metric=0.632978 elapsed=3674.0
+task=nlp_gpt_12x512 optimizer=spectral_sphere_muon step=3584 metric=0.635370 elapsed=4284.0
+task=nlp_gpt_12x512 optimizer=spectral_sphere_muon step=4068 metric=0.636531 elapsed=4861.6
+task=nlp_gpt_12x512 optimizer=spectral_sphere_muon step=4096 metric=0.645023 elapsed=4902.0
+task=nlp_gpt_12x512 optimizer=spectral_sphere_muon step=4608 metric=0.649193 elapsed=5512.2
+task=nlp_gpt_12x512 optimizer=spectral_sphere_muon step=5120 metric=0.645021 elapsed=6122.7
+task=nlp_gpt_12x512 optimizer=spectral_sphere_muon step=5632 metric=0.648441 elapsed=6733.2
+task=nlp_gpt_12x512 optimizer=spectral_sphere_muon step=6102 metric=0.649487 elapsed=7294.6
+task=nlp_gpt_12x512 optimizer=spectral_sphere_muon step=6144 metric=0.661986 elapsed=7351.5
+task=nlp_gpt_12x512 optimizer=spectral_sphere_muon step=6656 metric=0.666771 elapsed=7962.1
+task=nlp_gpt_12x512 optimizer=spectral_sphere_muon step=7168 metric=0.667397 elapsed=8572.4
+task=nlp_gpt_12x512 optimizer=spectral_sphere_muon step=7680 metric=0.668104 elapsed=9182.7
+task=nlp_gpt_12x512 optimizer=spectral_sphere_muon step=8136 metric=0.669057 elapsed=9727.5
+task=nlp_gpt_12x512 optimizer=spectral_sphere_muon step=8192 metric=0.684039 elapsed=9800.9
+task=nlp_gpt_12x512 optimizer=spectral_sphere_muon step=8704 metric=0.692710 elapsed=10411.2
+task=nlp_gpt_12x512 optimizer=spectral_sphere_muon step=8710 metric=0.692193 elapsed=10425.7
+{'task': 'nlp_gpt_12x512', 'domain': 'nlp', 'model': 'gpt_12x512', 'optimizer': 'spectral_sphere_muon', 'parameters': 54682624, 'constrained_matrix_count': 48, 'learning_rate': 0.003, 'momentum': 0.95, 'ns_steps': 5, 'direction_msign': 'newton_schulz', 'lambda_steps': 10, 'spectral_power_iterations': 10, 'training_epochs': 6, 'scheduler_epochs': 6, 'micro_batch_size': 12, 'gradient_accumulation': 4, 'completed_steps': 8710, 'final_metric': 0.692193349202474, 'seconds': 10425.732339294627, 'peak_memory_mb': 12297.337890625, 'status': 'time_limit_checkpointed'}
