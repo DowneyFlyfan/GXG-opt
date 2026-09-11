@@ -1,0 +1,44 @@
+{
+  "AdamW (1.5e-4)": {
+    "final_metric": 0.7237472534179688,
+    "metric_file": "metrics/nlp/nlp_gpt_12x512__literature_adamw00015_full_b12_a4__adamw.jsonl",
+    "metric_samples": 5,
+    "result_file": "results/nlp/nlp_gpt_12x512__literature_adamw00015_full_b12_a4__adamw.json",
+    "seconds": 9775.804351472296
+  },
+  "Effective-Rank-Half (1.25e-3)": {
+    "final_metric": 0.7552413940429688,
+    "metric_file": "metrics/nlp/nlp_gpt_12x512__lr000125_b8_a6_final__effective_rank_half.jsonl",
+    "metric_samples": 5,
+    "result_file": "results/nlp/nlp_gpt_12x512__lr000125_b8_a6_final__effective_rank_half.json",
+    "seconds": 16315.66481101299
+  },
+  "Hybrid Stiefel-Muon": {
+    "final_metric": 0.7264544169108073,
+    "metric_file": "metrics/nlp/nlp_gpt_12x512__hybrid_stiefel_muon_b12_a4_mu0006_st003_formal.jsonl",
+    "metric_samples": 44,
+    "result_file": "results/nlp/nlp_gpt_12x512__hybrid_stiefel_muon_b12_a4_mu0006_st003_formal.json",
+    "seconds": 13188.599598824512
+  },
+  "Multi-Step Spectral (4e-4)": {
+    "final_metric": 0.7444992065429688,
+    "metric_file": "metrics/nlp/nlp_gpt_12x512__multi_step_spectral_lr0004_b8_a6_final.jsonl",
+    "metric_samples": 5,
+    "result_file": "results/nlp/nlp_gpt_12x512__multi_step_spectral_lr0004_b8_a6_final.json",
+    "seconds": 10669.799837861172
+  },
+  "Muon (2.5e-3)": {
+    "final_metric": 0.7550315856933594,
+    "metric_file": "metrics/nlp/nlp_gpt_12x512__literature_mu0025_adamw0005_b12_a4__muon.jsonl",
+    "metric_samples": 5,
+    "result_file": "results/nlp/nlp_gpt_12x512__literature_mu0025_adamw0005_b12_a4__muon.json",
+    "seconds": 9886.204922331497
+  },
+  "Muown (5e-3, wd=0)": {
+    "final_metric": 0.7561779022216797,
+    "metric_file": "metrics/nlp/nlp_gpt_12x512__lr0005_b8_a6_final__muown.jsonl",
+    "metric_samples": 5,
+    "result_file": "results/nlp/nlp_gpt_12x512__lr0005_b8_a6_final__muown.json",
+    "seconds": 9792.299071112011
+  }
+}
