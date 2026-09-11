@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from itertools import chain
 from pathlib import Path
 
-from datasets import DatasetDict, load_dataset
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from datasets import DatasetDict, load_dataset, load_from_disk
+from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -20,6 +21,7 @@ def prepare(
     dataset_config: str,
     sequence_length: int,
     processes: int,
+    model_init: str = "pretrained",
 ) -> None:
     model_path = output_root / "gpt2-model"
     tokenizer_path = output_root / "gpt2-tokenizer"
@@ -29,8 +31,11 @@ def prepare(
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     tokenizer.pad_token = tokenizer.eos_token
     tokenizer.save_pretrained(tokenizer_path)
-    model = AutoModelForCausalLM.from_pretrained(model_name)
-    model.float().save_pretrained(model_path, safe_serialization=True)
+    if model_init == "random":
+        AutoConfig.from_pretrained(model_name).save_pretrained(model_path)
+    else:
+        model = AutoModelForCausalLM.from_pretrained(model_name)
+        model.float().save_pretrained(model_path, safe_serialization=True)
 
     raw = load_dataset(dataset_name, dataset_config)
 
@@ -75,6 +80,7 @@ def prepare(
         }
     )
     grouped.save_to_disk(dataset_path)
+    saved = load_from_disk(dataset_path) if model_init == "random" else grouped
     manifest = {
         "model_name": model_name,
         "dataset_name": dataset_name,
@@ -84,11 +90,17 @@ def prepare(
             split: {
                 "blocks": len(grouped[split]),
                 "tokens": len(grouped[split]) * sequence_length,
-                "fingerprint": grouped[split]._fingerprint,
+                "fingerprint": saved[split]._fingerprint,
             }
             for split in grouped
         },
     }
+    if model_init == "random":
+        manifest["model_init"] = model_init
+        manifest["data_sha256"] = {}
+        for path in sorted(dataset_path.rglob("*.arrow")):
+            with path.open("rb") as handle:
+                manifest["data_sha256"][str(path.relative_to(dataset_path))] = hashlib.file_digest(handle, "sha256").hexdigest()
     (output_root / "manifest.json").write_text(
         json.dumps(manifest, indent=2) + "\n", encoding="utf-8"
     )
@@ -106,6 +118,7 @@ def main() -> None:
     parser.add_argument("--dataset-config", default="wikitext-103-raw-v1")
     parser.add_argument("--sequence-length", type=int, default=512)
     parser.add_argument("--processes", type=int, default=4)
+    parser.add_argument("--model-init", choices=("pretrained", "random"), default="pretrained")
     args = parser.parse_args()
     prepare(
         args.output_root,
@@ -114,6 +127,7 @@ def main() -> None:
         dataset_config=args.dataset_config,
         sequence_length=args.sequence_length,
         processes=args.processes,
+        model_init=args.model_init,
     )
 
 

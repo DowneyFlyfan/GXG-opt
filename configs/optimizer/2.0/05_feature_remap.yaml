@@ -1,0 +1,7 @@
+optimizer:
+  name: feature_remap_cohort_v1
+  enabled: true
+  interval: 8
+  max_age: 32
+  block_size: 32
+  audit_interval: 128

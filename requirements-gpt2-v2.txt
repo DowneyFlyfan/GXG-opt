@@ -1,0 +1,8 @@
+# Isolated local optimizer 2.0 profile; keep the repository's other profiles unchanged.
+# scripts/run_gpt2_v2_5090.sh inherits the installed CUDA PyTorch/Transformers and
+# installs only missing dataset/plot dependencies after verifying these versions.
+torch==2.11.0+cu130
+transformers==5.7.0
+datasets==5.0.1
+matplotlib==3.10.8
+PyYAML>=6.0.2

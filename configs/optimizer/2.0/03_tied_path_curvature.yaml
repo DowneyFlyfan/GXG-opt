@@ -1,0 +1,7 @@
+optimizer:
+  name: tied_path_curvature_v1
+  enabled: true
+  interval: 16
+  max_age: 16
+  probes: 2
+  rho: 1.0

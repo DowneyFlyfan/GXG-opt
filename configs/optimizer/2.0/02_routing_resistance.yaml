@@ -1,0 +1,8 @@
+optimizer:
+  name: routing_resistance_v1
+  enabled: true
+  interval: 8
+  query_rows: 4
+  edges_per_row: 4
+  mixture: 0.05
+  rho: 1.0

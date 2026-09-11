@@ -3,3 +3,5 @@
 .pytest_cache/
 __pycache__/
 *.py[cod]
+.venv-gpt2-v2/
+results/gpt2_v2_*/

@@ -1,0 +1,4 @@
+optimizer:
+  name: ln_response_v1
+  enabled: true
+  interval: 32

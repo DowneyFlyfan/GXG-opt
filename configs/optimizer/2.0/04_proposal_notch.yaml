@@ -1,0 +1,4 @@
+optimizer:
+  name: proposal_notch_v1
+  enabled: true
+  radius: 0.8

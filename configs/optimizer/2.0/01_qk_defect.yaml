@@ -1,0 +1,9 @@
+optimizer:
+  name: qk_defect_v1
+  enabled: true
+  interval: 8
+  query_rows: 8
+  rho: 0.25
+  lambda_rel: 0.01
+  nu_rel: 1.0
+  full_loss_interval: 512
