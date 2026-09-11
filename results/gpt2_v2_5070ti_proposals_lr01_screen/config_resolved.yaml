@@ -1,0 +1,148 @@
+config:
+  experiment_name: gpt2_v2_5070ti_muon_lr01_screen
+  comparison_profile: optimizer_v2_local_muon_lr_screen
+  hardware:
+    gpu: NVIDIA GeForce RTX 5070 Ti
+    minimum_gpu_memory_gib: 16
+  model:
+    name: openai-community/gpt2
+    local_path: .cache/gpt2-v2/gpt2-model
+    initialization: random
+    sequence_length: 512
+  dataset:
+    name: Salesforce/wikitext
+    config: wikitext-103-raw-v1
+    local_path: .cache/gpt2-v2/wikitext103-gpt2-512
+  training:
+    epochs: 5
+    seeds:
+    - 0
+    batch_size: 4
+    gradient_accumulation_steps: 8
+    evaluation_batch_size: 4
+    evaluation_interval: 16
+    checkpoint_interval: 16
+    warmup_fraction: 0.06
+    gradient_clip_norm: 1.0
+    precision: bfloat16
+    tf32: true
+    probe_sequence_length: 128
+    max_steps: 33
+  baseline:
+    lr: 0.01
+    betas:
+    - 0.9
+    - 0.95
+    weight_decay: 0.1
+    momentum: 0.95
+  methods:
+  - id: qk_defect_v1
+    label: Query-key finite-interaction correction
+    role: proposal
+    optimizer_config: configs/optimizer/2.0/01_qk_defect.yaml
+    options:
+      enabled: true
+      interval: 8
+      query_rows: 8
+      rho: 0.25
+      lambda_rel: 0.01
+      nu_rel: 1.0
+      full_loss_interval: 512
+  - id: routing_resistance_v1
+    label: Sparse attention-curvature preconditioning
+    role: proposal
+    optimizer_config: configs/optimizer/2.0/02_routing_resistance.yaml
+    options:
+      enabled: true
+      interval: 8
+      query_rows: 4
+      edges_per_row: 4
+      mixture: 0.05
+      rho: 1.0
+  - id: tied_path_curvature_v1
+    label: Tied embedding joint curvature
+    role: proposal
+    optimizer_config: configs/optimizer/2.0/03_tied_path_curvature.yaml
+    options:
+      enabled: true
+      interval: 16
+      max_age: 16
+      probes: 2
+      rho: 1.0
+  - id: proposal_notch_v1
+    label: Resonance-selective proposal filtering
+    role: proposal
+    optimizer_config: configs/optimizer/2.0/04_proposal_notch.yaml
+    options:
+      enabled: true
+      radius: 0.8
+  - id: feature_remap_cohort_v1
+    label: Feature-drift cohort momentum remapping
+    role: proposal
+    optimizer_config: configs/optimizer/2.0/05_feature_remap.yaml
+    options:
+      enabled: true
+      interval: 8
+      max_age: 32
+      block_size: 32
+      audit_interval: 128
+  - id: ln_response_v1
+    label: LayerNorm finite-response coupling
+    role: proposal
+    optimizer_config: configs/optimizer/2.0/06_ln_response.yaml
+    options:
+      enabled: true
+      interval: 32
+assets:
+  model_name: openai-community/gpt2
+  dataset_name: Salesforce/wikitext
+  dataset_config: wikitext-103-raw-v1
+  sequence_length: 512
+  splits:
+    train:
+      blocks: 232000
+      tokens: 118784000
+      fingerprint: 266ee1b44fff0e81
+    validation:
+      blocks: 486
+      tokens: 248832
+      fingerprint: 6382e071ec90a4f2
+  model_init: random
+  data_sha256:
+    train/data-00000-of-00001.arrow: 21a06174dea4677003bd32dfa217693c696e159dd1dcb600a24c56751321697a
+    validation/data-00000-of-00001.arrow: 3d9d4d82930bab9ed389882bb6ba3653bd3b4fff6f195d91dc5edc1e71f8d34b
+baseline:
+  torch: 2.13.0+cu130
+  torch_revision: cf30153c4c131c8164ee7798e5022d810682e2cb
+  source_sha256: 4d003aba2d0c7fcc24875845802e45edb4475a51a037e2caaa7b46c3944c0dae
+  momentum: M.lerp_(G, 1-beta); N=G.lerp(M, beta)
+  nesterov: true
+  ns_coefficients:
+  - 3.4445
+  - -4.775
+  - 2.0315
+  ns_steps: 5
+  ns_precision: bfloat16
+  eps: 1.0e-07
+  adjust_lr_fn: match_rms_adamw
+  decay: unadjusted scalar lr; decoupled
+  grouping: full fused hidden matrices; embeddings and vectors use AdamW
+runtime:
+  transformers: 4.57.6
+  datasets: 5.0.1
+  numpy: 2.5.2
+  python: 3.12.13
+sources:
+  src/gpt2_v2_experiment.py: a30e0f935d9e0308f79246d44969d9ec41d468a420d19897ca6e36ea5137b176
+  scripts/run_gpt2_v2_comparison.py: 3e81bc74de4836e477881e8d751d56deaadc033374f6de964aa3274b16ef681a
+  scripts/run_gpt2_v2_5090.sh: 6c76edc35668fbfe10c33de8d6fe5734cf9bfc136a4f9b06d6f4bd9ab0a05dca
+  scripts/prepare_gpt2_wikitext.py: dcbf1a1a793b776836c7c4480896c6b9732e6e552f16c572f20755b28b59c4eb
+  src/optimizer_v2/__init__.py: 28d5c1e1994d08be71e5f9e2bee74c2937faf529ebfcda085fff144af68eb54f
+  src/optimizer_v2/adapter.py: 9d75e4a8dcad75c8328642eed9c9bab0a7202b9aa72eef31ff4e19bb082f3b1e
+  src/optimizer_v2/attention.py: a14ac0cbfadeda82c3f5620d7dd32271bdc3a9bfdd35392d22d26ea0eabc7bb4
+  src/optimizer_v2/layernorm.py: 53018da60e43bc186cee4d822f1d5401499f52cfd5af8acea7194f2e06bdebfa
+  src/optimizer_v2/linalg.py: 7a84fc82b4a30522483d690ee182871e2d9310e6e897bec887b70d40e5386db2
+  src/optimizer_v2/optimizer.py: 9c03652850a466030aea8eaff8614aea43bda016da4d7f8a6773613a045b3942
+  src/optimizer_v2/probes.py: 6caa780458861146ee9183fe759bfb709209211fa2263747c9a6334334c6308c
+  src/optimizer_v2/temporal.py: e85f3bbbafbc7bd6ad4944b7a32c25d8926ca3468c3de96462149f0fb668d1d5
+model_config_sha256: 5afead58ed72c62dee09ab6925e458d0111e045aa1aaf28b607b8cecd72e8ab7

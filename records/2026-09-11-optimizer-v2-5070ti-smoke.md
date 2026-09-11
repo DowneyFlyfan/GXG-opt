@@ -83,3 +83,35 @@ un-tuned fixed setting, and the largest proposal-versus-Muon difference is only
 about `1.25e-4` NLL. A future final comparison must tune the baselines and each
 candidate with comparable budgets, use the required five epochs, and use
 matched repeated seeds.
+
+## Aggressive Muon learning-rate screen
+
+The original `3.0e-4` Muon rate produced corrections whose observed impact was
+near the validation rounding floor. With the same 33 updates, random
+initialization, batch protocol, and validation set, a direct Muon screen found:
+
+| Muon LR | Validation NLL | Peak GiB | Fallbacks |
+|---:|---:|---:|---:|
+| 3e-4 | 10.842623 | 5.567 | 0 |
+| 3e-3 | 9.752750 | 5.567 | 0 |
+| 1e-2 | 8.072368 | 5.567 | 0 |
+
+The `1e-2` screen was stable, so each proposal was run once at that matched
+rate. All reached 33 updates with no fallback. Feature-remap had the largest
+screen improvement over Muon, but only `9.16e-4` NLL and with 52.76 seconds
+versus Muon's 51.71 seconds; it is a continuation candidate, not a winning
+result.
+
+| Proposal at Muon LR 1e-2 | Validation NLL | Wall s | Delta vs Muon |
+|---|---:|---:|---:|
+| Query-key correction | 8.072368 | 34.64 | 0.000000 |
+| Sparse attention curvature | 8.072426 | 34.13 | +0.000058 |
+| Tied embedding curvature | 8.072309 | 37.29 | -0.000059 |
+| Resonance filtering | 8.072368 | 35.28 | 0.000000 |
+| Feature-remap cohort | 8.071451 | 52.76 | -0.000916 |
+| LayerNorm response | 8.071860 | 34.51 | -0.000508 |
+
+The tuning artifacts are `results/gpt2_v2_5070ti_muon_lr003_screen/`,
+`results/gpt2_v2_5070ti_muon_lr01_screen/`, and
+`results/gpt2_v2_5070ti_proposals_lr01_screen/`; their checkpoints remain only
+under the matching `.cache/gpt2-v2/checkpoints/results/` paths.

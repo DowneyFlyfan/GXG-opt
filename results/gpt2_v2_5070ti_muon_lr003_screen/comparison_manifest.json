@@ -1,0 +1,84 @@
+{
+  "profile": "optimizer_v2_local",
+  "scope": "single-seed screen",
+  "model": "openai-community/gpt2",
+  "initialization": "random",
+  "epochs": 5,
+  "dataset": "Salesforce/wikitext/wikitext-103-raw-v1",
+  "train_blocks": 232000,
+  "steps_per_run": 33,
+  "methods": [
+    "muon"
+  ],
+  "seeds": [
+    0
+  ],
+  "runs": 1,
+  "physical_batch_size": 4,
+  "effective_batch_size": 32,
+  "sequence_length": 512,
+  "gpu_count": 1,
+  "gpu": "NVIDIA GeForce RTX 5070 Ti",
+  "minimum_gpu_memory_gib": 16,
+  "smoke_only": true,
+  "full_budget_input_tokens_per_run": 593920000,
+  "assets": {
+    "model_name": "openai-community/gpt2",
+    "dataset_name": "Salesforce/wikitext",
+    "dataset_config": "wikitext-103-raw-v1",
+    "sequence_length": 512,
+    "splits": {
+      "train": {
+        "blocks": 232000,
+        "tokens": 118784000,
+        "fingerprint": "266ee1b44fff0e81"
+      },
+      "validation": {
+        "blocks": 486,
+        "tokens": 248832,
+        "fingerprint": "6382e071ec90a4f2"
+      }
+    },
+    "model_init": "random",
+    "data_sha256": {
+      "train/data-00000-of-00001.arrow": "21a06174dea4677003bd32dfa217693c696e159dd1dcb600a24c56751321697a",
+      "validation/data-00000-of-00001.arrow": "3d9d4d82930bab9ed389882bb6ba3653bd3b4fff6f195d91dc5edc1e71f8d34b"
+    }
+  },
+  "baseline": {
+    "torch": "2.13.0+cu130",
+    "torch_revision": "cf30153c4c131c8164ee7798e5022d810682e2cb",
+    "source_sha256": "4d003aba2d0c7fcc24875845802e45edb4475a51a037e2caaa7b46c3944c0dae",
+    "momentum": "M.lerp_(G, 1-beta); N=G.lerp(M, beta)",
+    "nesterov": true,
+    "ns_coefficients": [
+      3.4445,
+      -4.775,
+      2.0315
+    ],
+    "ns_steps": 5,
+    "ns_precision": "bfloat16",
+    "eps": 1e-07,
+    "adjust_lr_fn": "match_rms_adamw",
+    "decay": "unadjusted scalar lr; decoupled",
+    "grouping": "full fused hidden matrices; embeddings and vectors use AdamW"
+  },
+  "system": {
+    "platform": "Linux-7.0.0-31-generic-x86_64-with-glibc2.43",
+    "cuda": "13.0",
+    "gpu": "NVIDIA GeForce RTX 5070 Ti",
+    "gpu_memory_bytes": 16611278848,
+    "transformers": "4.57.6",
+    "datasets": "5.0.1"
+  },
+  "probe_policy": "training-only; separate fit/check; dropout disabled; independent RNG",
+  "approximations": [
+    "sampled attention rows/edges",
+    "stale paired embedding metric",
+    "block-diagonal feature maps",
+    "periodic age-separated momentum",
+    "local QK output surrogate",
+    "reduced LN GGN"
+  ],
+  "prediction_gate_policy": "diagnostic only; all six candidates remain included"
+}

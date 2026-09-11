@@ -1,0 +1,119 @@
+{
+  "method": {
+    "id": "ln_response_v1",
+    "label": "LayerNorm finite-response coupling",
+    "role": "proposal",
+    "optimizer_config": "configs/optimizer/2.0/06_ln_response.yaml",
+    "options": {
+      "enabled": true,
+      "interval": 32
+    }
+  },
+  "seed": 0,
+  "initialization_hash": "811cbf5668684ccd17f492caec21cc986a42b984f4f836314fb8bd20ba5cdafe",
+  "calibration_block_indices": [
+    119723,
+    113491
+  ],
+  "probe_sequence_length": 128,
+  "epoch_order_hashes": [
+    "80abf35a27a9aafc294aad2347ba01db6ead130c78aad349187328ce3f731701",
+    "37b2d9d261dfbabc16ba119fb97ab79a89b230bc01796d9345e5278d6fa56091",
+    "99c3e3b1824017d66e310e0b70652bc28a1a60f97081f7be166cfb6140ee1f17",
+    "8131d403cd512be67c24ff0ddfba58fab1d6be611f36ae320cd133584af80c39",
+    "255d073ee61245f716018bf6702102329591b989ab65548d83f6904d5fc921a4"
+  ],
+  "model_config": {
+    "vocab_size": 50257,
+    "n_positions": 1024,
+    "n_embd": 768,
+    "n_layer": 12,
+    "n_head": 12,
+    "n_inner": null,
+    "activation_function": "gelu_new",
+    "resid_pdrop": 0.1,
+    "embd_pdrop": 0.1,
+    "attn_pdrop": 0.1,
+    "layer_norm_epsilon": 1e-05,
+    "initializer_range": 0.02,
+    "summary_type": "cls_index",
+    "summary_use_proj": true,
+    "summary_activation": null,
+    "summary_first_dropout": 0.1,
+    "summary_proj_to_labels": true,
+    "scale_attn_weights": true,
+    "use_cache": false,
+    "scale_attn_by_inverse_layer_idx": false,
+    "reorder_and_upcast_attn": false,
+    "bos_token_id": 50256,
+    "eos_token_id": 50256,
+    "return_dict": true,
+    "output_hidden_states": false,
+    "torchscript": false,
+    "dtype": null,
+    "pruned_heads": {},
+    "tie_word_embeddings": true,
+    "chunk_size_feed_forward": 0,
+    "is_encoder_decoder": false,
+    "is_decoder": false,
+    "cross_attention_hidden_size": null,
+    "add_cross_attention": false,
+    "tie_encoder_decoder": false,
+    "architectures": [
+      "GPT2LMHeadModel"
+    ],
+    "finetuning_task": null,
+    "id2label": {
+      "0": "LABEL_0",
+      "1": "LABEL_1"
+    },
+    "label2id": {
+      "LABEL_0": 0,
+      "LABEL_1": 1
+    },
+    "task_specific_params": {
+      "text-generation": {
+        "do_sample": true,
+        "max_length": 50
+      }
+    },
+    "problem_type": null,
+    "tokenizer_class": null,
+    "prefix": null,
+    "pad_token_id": null,
+    "sep_token_id": null,
+    "decoder_start_token_id": null,
+    "max_length": 20,
+    "min_length": 0,
+    "do_sample": false,
+    "early_stopping": false,
+    "num_beams": 1,
+    "temperature": 1.0,
+    "top_k": 50,
+    "top_p": 1.0,
+    "typical_p": 1.0,
+    "repetition_penalty": 1.0,
+    "length_penalty": 1.0,
+    "no_repeat_ngram_size": 0,
+    "encoder_no_repeat_ngram_size": 0,
+    "bad_words_ids": null,
+    "num_return_sequences": 1,
+    "output_scores": false,
+    "return_dict_in_generate": false,
+    "forced_bos_token_id": null,
+    "forced_eos_token_id": null,
+    "remove_invalid_values": false,
+    "exponential_decay_length_penalty": null,
+    "suppress_tokens": null,
+    "begin_suppress_tokens": null,
+    "num_beam_groups": 1,
+    "diversity_penalty": 0.0,
+    "_name_or_path": "/home/downeyflyfan/Research_Projects/AI/Optimizers/New_Optimizer/.cache/gpt2-v2/gpt2-model",
+    "transformers_version": "4.57.6",
+    "model_type": "gpt2",
+    "n_ctx": 1024,
+    "tf_legacy_loss": false,
+    "use_bfloat16": false,
+    "output_attentions": false
+  }
+}
