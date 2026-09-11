@@ -1,0 +1,44 @@
+{
+  "jobs": [
+    {
+      "method": "adamw",
+      "seed": 0,
+      "status": "completed"
+    },
+    {
+      "method": "muon",
+      "seed": 0,
+      "status": "completed"
+    },
+    {
+      "method": "qk_defect_v1",
+      "seed": 0,
+      "status": "completed"
+    },
+    {
+      "method": "routing_resistance_v1",
+      "seed": 0,
+      "status": "completed"
+    },
+    {
+      "method": "tied_path_curvature_v1",
+      "seed": 0,
+      "status": "completed"
+    },
+    {
+      "method": "proposal_notch_v1",
+      "seed": 0,
+      "status": "completed"
+    },
+    {
+      "method": "feature_remap_cohort_v1",
+      "seed": 0,
+      "status": "completed"
+    },
+    {
+      "method": "ln_response_v1",
+      "seed": 0,
+      "status": "completed"
+    }
+  ]
+}

@@ -50,3 +50,36 @@ Before launch, prepare the random GPT-2 and WikiText-103 assets only under
 `.cache/gpt2-v2`. Then run exactly one 33-step job matrix. Inspect each method's
 summary, metric logs, checkpoint location, and generated step/time PNGs before
 reporting any result.
+
+## Completed Torch-2.13 compatibility smoke
+
+The bounded screen completed all eight methods, with the identical random
+initialization hash `811cbf5668684ccd17f492caec21cc986a42b984f4f836314fb8bd20ba5cdafe`.
+Each method committed 33 updates (540,672 input tokens) and evaluated the same
+248,346 validation prediction tokens at updates 0, 16, 32, and 33. The screen
+did not complete an epoch; `epochs_completed = 0` is expected because the
+prepared training split has 232,000 blocks.
+
+| Method | Validation NLL | Wall s | Peak GiB | Fallbacks |
+|---|---:|---:|---:|---:|
+| AdamW | 9.641650 | 35.61 | 5.826 | 0 |
+| Muon | 10.842623 | 52.04 | 5.567 | 0 |
+| Query-key correction | 10.842623 | 34.45 | 5.530 | 0 |
+| Sparse attention curvature | 10.842601 | 34.20 | 5.530 | 0 |
+| Tied embedding curvature | 10.842613 | 36.52 | 5.818 | 0 |
+| Resonance filtering | 10.842623 | 35.36 | 5.742 | 0 |
+| Feature-remap cohort | 10.842557 | 53.28 | 5.807 | 0 |
+| LayerNorm response | 10.842497 | 34.78 | 5.530 | 0 |
+
+The complete evidence is in `results/gpt2_v2_5070ti_smoke_t213/`, including
+the step and time figures, immutable source snapshot, manifests, metric logs,
+diagnostics, and `final_results.csv`. All eight resumable checkpoints were
+verified under `.cache/gpt2-v2/checkpoints/results/gpt2_v2_5070ti_smoke_t213/`;
+none were placed under `results/nlp`. The figures were visually inspected.
+
+This is an execution and compatibility result, not a five-epoch result and not
+evidence of optimizer superiority. AdamW is substantially lower at this
+un-tuned fixed setting, and the largest proposal-versus-Muon difference is only
+about `1.25e-4` NLL. A future final comparison must tune the baselines and each
+candidate with comparable budgets, use the required five epochs, and use
+matched repeated seeds.
