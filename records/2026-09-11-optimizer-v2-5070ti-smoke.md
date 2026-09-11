@@ -29,8 +29,14 @@ imported source validation record pins Torch 2.11.0+cu130 and Transformers 5.7.0
 which are unavailable on this host. The smoke is therefore a local execution
 compatibility result, not a reproduction of the source runtime's parity claim.
 The independent FP64 optimizer-v2 mathematics suite and the new profile/cache
-tests passed **26 tests** under the local runtime; the PyTorch-2.11-only
+tests passed **27 tests** under the local runtime; the PyTorch-2.11-only
 integration suite remains skipped by its existing version guard.
+
+The first launch exposed one stale execution-only RTX 5090 guard after
+configuration validation had already accepted the 5070 Ti profile. The guard
+now compares the actual device to `hardware.gpu`, and a regression test covers
+the configured-5070-Ti runtime path. The failed launch performed no training,
+produced no metrics, and retained no checkpoint.
 
 ## Execution gate
 

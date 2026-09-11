@@ -126,6 +126,13 @@ def comparison_plan(config, blocks=None):
     }
 
 
+def require_configured_gpu(config):
+    actual_gpu = torch.cuda.get_device_name(0)
+    expected_gpu = config["hardware"]["gpu"]
+    if actual_gpu != expected_gpu:
+        raise RuntimeError(f"this profile requires {expected_gpu}, found {actual_gpu}")
+
+
 def epoch_order(length, seed, epoch):
     return torch.randperm(length, generator=torch.Generator().manual_seed(seed * 1_000_003 + epoch + 10_000))
 
@@ -480,8 +487,7 @@ def run(config, output):
 
 def _run_locked(config, output, load_from_disk):
     provenance = muon_provenance()
-    if torch.cuda.get_device_name(0) != "NVIDIA GeForce RTX 5090":
-        raise RuntimeError("this profile is registered for the local RTX 5090")
+    require_configured_gpu(config)
     dataset_path = resolve(config["dataset"]["local_path"])
     assets = json.loads((dataset_path.parent / "manifest.json").read_text())
     if assets["sequence_length"] != config["model"]["sequence_length"] or assets.get("model_init") != "random":

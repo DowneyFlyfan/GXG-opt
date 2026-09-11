@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from scripts.run_gpt2_v2_comparison import load_config
-from gpt2_v2_experiment import checkpoint_path, comparison_plan
+from gpt2_v2_experiment import checkpoint_path, comparison_plan, require_configured_gpu
 
 
 def test_5070ti_smoke_profile_reports_its_actual_hardware_and_batching():
@@ -24,3 +24,12 @@ def test_v2_checkpoint_path_is_kept_under_cache_not_results():
     assert checkpoint.name == "checkpoint.pt"
     assert checkpoint.is_relative_to(Path(".cache/gpt2-v2/checkpoints").resolve())
     assert not checkpoint.is_relative_to(Path("results").resolve())
+
+
+def test_5070ti_profile_allows_its_configured_runtime_gpu(monkeypatch):
+    config = load_config(Path("configs/experiments/gpt2_v2_5070ti_smoke.yaml"))
+    monkeypatch.setattr(
+        "gpt2_v2_experiment.torch.cuda.get_device_name", lambda index: "NVIDIA GeForce RTX 5070 Ti"
+    )
+
+    require_configured_gpu(config)
