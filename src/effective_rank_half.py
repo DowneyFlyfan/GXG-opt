@@ -88,6 +88,14 @@ def _constraint(weight: Tensor) -> Tensor:
     return math.sqrt(rank_bound / 2.0) * gram_norm - frobenius_squared
 
 
+def _is_effective_rank_half_feasible(weight: Tensor, tolerance: float) -> bool:
+    """Check the scale-invariant constraint within the matrix dtype's precision."""
+    numerical_tolerance = tolerance
+    if weight.dtype in (torch.float16, torch.bfloat16, torch.float32):
+        numerical_tolerance = max(numerical_tolerance, 1.0e-6)
+    return effective_rank(weight) >= 0.5 - numerical_tolerance
+
+
 def _partial_polar(gradient: Tensor) -> Tensor:
     """Return a rank-aware partial polar factor with spectral norm at most one."""
     left, singular_values, right_transpose = torch.linalg.svd(gradient, full_matrices=False)
@@ -111,7 +119,8 @@ def certified_effective_rank_step(
     The scalar search stays inside the spectral-norm ball because it scales a
     partial polar factor.  It starts from zero, which is feasible whenever
     the input already has effective rank at least one half, and accepts only
-    candidates satisfying the exact finite-step constraint.
+    candidates satisfying the finite-step constraint within the matrix dtype's
+    numerical precision.
     """
     if weight.shape != gradient.shape or weight.ndim != 2:
         raise ValueError("weight and gradient must be equally shaped matrices")
@@ -121,21 +130,21 @@ def certified_effective_rank_step(
     maximum_step = float(torch.linalg.matrix_norm(weight, ord="fro") / math.sqrt(rank_bound))
     if not step_size < maximum_step:
         raise ValueError("step_size must be smaller than ||W||_F / sqrt(r)")
-    if float(_constraint(weight)) > tolerance:
+    if not _is_effective_rank_half_feasible(weight, tolerance):
         raise ValueError("input matrix is not effective-rank-half feasible")
 
     direction = _partial_polar(gradient)
     if not torch.any(direction):
         return CertifiedEffectiveRankStep(weight, direction, 0.0, False, effective_rank(weight))
     candidate = weight - step_size * direction
-    if float(_constraint(candidate)) <= tolerance:
+    if _is_effective_rank_half_feasible(candidate, tolerance):
         return CertifiedEffectiveRankStep(candidate, direction, 1.0, True, effective_rank(candidate))
 
     lower, upper = 0.0, 1.0
     for _ in range(bisection_steps):
         midpoint = (lower + upper) / 2.0
         candidate = weight - step_size * midpoint * direction
-        if float(_constraint(candidate)) <= tolerance:
+        if _is_effective_rank_half_feasible(candidate, tolerance):
             lower = midpoint
         else:
             upper = midpoint

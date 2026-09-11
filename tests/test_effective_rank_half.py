@@ -38,6 +38,23 @@ def test_certified_step_backtracks_at_the_effective_rank_boundary():
     assert effective_rank(update.weight) >= 0.5 - 1.0e-10
 
 
+def test_float32_boundary_weight_decay_keeps_certified_optimizer_running():
+    """Float32 scale-only decay must not reject a feasible boundary matrix."""
+    from effective_rank_half import EffectiveRankHalf, effective_rank
+
+    boundary_singular_value = math.sqrt(2.0 - math.sqrt(3.0))
+    parameter = torch.nn.Parameter(
+        torch.diag(torch.tensor([1.0, boundary_singular_value, 0.0], dtype=torch.float32))
+    )
+    parameter.grad = torch.diag(torch.tensor([0.0, 1.0, 0.0], dtype=torch.float32))
+    optimizer = EffectiveRankHalf([parameter], lr=0.00125, weight_decay=0.01)
+
+    optimizer.step()
+
+    assert optimizer.state[parameter]["accepted_steps"] == 1
+    assert effective_rank(parameter) >= 0.5 - 1.0e-6
+
+
 def test_optimizer_and_builder_keep_matrix_updates_certified():
     from effective_rank_half import EffectiveRankHalf, effective_rank
     from optimizers import build_optimizers

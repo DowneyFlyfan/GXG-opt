@@ -105,3 +105,53 @@ Its validation next-token accuracy was **0.70899963**, which is 0.00056076
 below the 0.00125 incumbent's epoch-one result (0.70956039). The run completed
 cleanly, removed its `.cache` checkpoint, and is rejected: raising the rate from
 0.00125 to 0.00175 is not an improvement.
+
+## Screen 4: lower-neighbour learning rate 0.0010
+
+`lr0001_b8_a6_screen` completed one fresh epoch in 3,288.00 seconds with the
+same matched batch-8, accumulation-6, zero-decay configuration. It produced
+validation next-token accuracy **0.70688057**, 0.00267982 below the 0.00125
+incumbent. It completed cleanly and removed its `.cache` checkpoint, so 0.0010
+is rejected. The surviving interval is now `(0.0010, 0.00175)`; the next
+screen targets the interior rate 0.00135.
+
+## Screen 5: interior learning rate 0.00135
+
+`lr000135_b8_a6_screen` completed one fresh epoch in 3,292.51 seconds with
+the matched micro-batch 8, accumulation 6, and zero-decay configuration. Its
+validation next-token accuracy was **0.70922470**, which is 0.00033569 below
+the 0.00125 incumbent (0.70956039). It completed cleanly with 8,498.33 MiB
+peak memory, removed its `.cache` checkpoint, and left no checkpoint under
+`results/nlp`; the interior increase is therefore rejected. The remaining
+unmeasured local neighbour is 0.00115, which is the next screen.
+
+## Screen 6: lower local-neighbour learning rate 0.00115
+
+`lr000115_b8_a6_screen` completed one fresh epoch in 3,282.46 seconds with
+the matched micro-batch 8, accumulation 6, and zero-decay configuration. Its
+validation next-token accuracy was **0.70760345**, which is 0.00195694 below
+the 0.00125 incumbent (0.70956039). Peak memory was 8,498.33 MiB. The run
+completed cleanly, removed its `.cache` checkpoint, and left no checkpoint
+under `results/nlp`. It is rejected. Across the completed nearby screen
+rates 0.00100, 0.00115, 0.00125, 0.00135, and 0.00175, the existing 0.00125
+five-epoch configuration is the best observed **zero-decay**
+effective-rank-half setting. Weight decay is the remaining matched tuning axis
+permitted for this 54.7M-parameter model.
+
+## Weight-decay screen: float32 feasibility correction
+
+The first matched `lr000125_b8_a6_wd001_screen` attempt, with decoupled
+weight decay 0.01, produced no metric or result artifact: immediately after
+the scale-only decay, float32 roundoff changed the computed boundary effective
+rank from 0.50000006 to 0.49999994. The loose optimizer precheck admitted the
+matrix, whereas the homogeneous constraint used a stricter absolute
+`1e-10` tolerance and raised `ValueError`. Since uniform scaling preserves the
+mathematical effective-rank ratio, this is a precision-contract error rather
+than experimental evidence against weight decay.
+
+The certification predicate now uses the scale-invariant effective-rank ratio
+with the already documented 1e-6 float32 margin (while retaining 1e-10 for
+float64). A regression test reproduces the boundary decay and verifies that a
+real optimizer step is accepted. The repaired screen is running under the
+fresh label `lr000125_b8_a6_wd001_fix_screen`; its metric will be recorded only
+after the epoch completes.
