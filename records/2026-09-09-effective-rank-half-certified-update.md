@@ -155,3 +155,15 @@ float64). A regression test reproduces the boundary decay and verifies that a
 real optimizer step is accepted. The repaired screen is running under the
 fresh label `lr000125_b8_a6_wd001_fix_screen`; its metric will be recorded only
 after the epoch completes.
+
+## Weight-decay screen: 0.01 after the precision correction
+
+The repaired `lr000125_b8_a6_wd001_fix_screen` completed its single fresh,
+matched epoch with learning rate 0.00125, weight decay 0.01, micro-batch 8,
+and accumulation 6. Its validation next-token accuracy was **0.70972061** in
+3,180.15 seconds with 8,498.33 MiB peak allocated memory. This is
+**+0.00016022** above the best zero-decay screen (0.70956039), so the decay
+setting is accepted for a new five-epoch confirmation. The completed run
+removed its checkpoint from `.cache`; a matching scan found no checkpoint
+under `results/nlp`. This one-epoch result is a selection measurement only,
+not a final optimizer comparison claim.
