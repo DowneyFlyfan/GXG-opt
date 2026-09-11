@@ -10,7 +10,7 @@ from transformers import GPT2Config, GPT2LMHeadModel
 
 from scripts.run_gpt2_v2_comparison import load_config
 from gpt2_v2_experiment import (
-    comparison_plan, epoch_batches, epoch_order, evaluate, load_checkpoint,
+    checkpoint_path, comparison_plan, epoch_batches, epoch_order, evaluate, load_checkpoint,
     resolved_config, run, run_one, save_checkpoint, trim_log,
 )
 from optimizer_v2.adapter import ProposalAdapter
@@ -399,7 +399,7 @@ def test_tiny_gpu_epoch_runner_all_eight_methods(tmp_path):
         result = run_one(config, method, 0, train, validation, output, {"requested": False})
         assert result["steps"] == 6 and result["epochs_completed"] == 2
         assert result["input_tokens"] == 9 * 8 * 2
-        assert (output / "checkpoint.pt").exists()
+        assert checkpoint_path(output).exists()
         assert result["fallback_events"] == 0
         results.append(result)
     assert len({result["initialization_hash"] for result in results}) == 1
@@ -435,7 +435,7 @@ def test_outer_runner_serializes_provenance_and_verifies_completed_resume(tmp_pa
     assert run(config, output) == 0
     assert (output / "gpt2_wikitext103_validation_nll_steps.png").is_file()
     assert (output / "gpt2_wikitext103_validation_nll_time.png").is_file()
-    checkpoint = output / "runs/adamw/seed_0/checkpoint.pt"
+    checkpoint = checkpoint_path(output / "runs/adamw/seed_0")
     modified = checkpoint.stat().st_mtime_ns
     assert run(config, output) == 0
     assert checkpoint.stat().st_mtime_ns == modified
@@ -477,21 +477,21 @@ def test_nonfinite_microbatch_restores_committed_rng_and_exact_resume(tmp_path, 
     monkeypatch.setattr(runner, "lm_loss", loss)
     with pytest.raises(FloatingPointError):
         run_one(config, method, 0, train, validation, tmp_path / "failed", {"requested": False})
-    failed = torch.load(tmp_path / "failed/checkpoint.pt", map_location="cpu", weights_only=False)
+    failed = torch.load(checkpoint_path(tmp_path / "failed"), map_location="cpu", weights_only=False)
     assert failed["progress"]["step"] == 1
     monkeypatch.setattr(runner, "lm_loss", original_loss)
     capped = copy.deepcopy(config)
     capped["training"]["max_steps"] = 1
     run_one(capped, method, 0, train, validation, tmp_path / "one", {"requested": False})
-    one = torch.load(tmp_path / "one/checkpoint.pt", map_location="cpu", weights_only=False)
+    one = torch.load(checkpoint_path(tmp_path / "one"), map_location="cpu", weights_only=False)
     assert_tree(failed["model"], one["model"])
     assert_tree(failed["optimizer"]["adapter"], one["optimizer"]["adapter"])
     assert_tree(failed["torch_rng"], one["torch_rng"])
     assert_tree(failed["cuda_rng"], one["cuda_rng"])
     run_one(config, method, 0, train, validation, tmp_path / "failed", {"requested": False})
     run_one(config, method, 0, train, validation, tmp_path / "uninterrupted", {"requested": False})
-    resumed = torch.load(tmp_path / "failed/checkpoint.pt", map_location="cpu", weights_only=False)
-    control = torch.load(tmp_path / "uninterrupted/checkpoint.pt", map_location="cpu", weights_only=False)
+    resumed = torch.load(checkpoint_path(tmp_path / "failed"), map_location="cpu", weights_only=False)
+    control = torch.load(checkpoint_path(tmp_path / "uninterrupted"), map_location="cpu", weights_only=False)
     assert_tree(resumed["model"], control["model"], exact=False)
     assert_tree(resumed["optimizer"]["adapter"], control["optimizer"]["adapter"], exact=False)
 
@@ -513,10 +513,10 @@ def test_resume_retries_failed_final_validation_before_reporting_completion(tmp_
     output = tmp_path / "failed_validation"
     with pytest.raises(FloatingPointError):
         run_one(config, method, 0, train, validation, output, {"requested": False})
-    saved = torch.load(output / "checkpoint.pt", map_location="cpu", weights_only=False)
+    saved = torch.load(checkpoint_path(output), map_location="cpu", weights_only=False)
     assert saved["progress"]["step"] == 6 and saved["progress"]["last_evaluation_step"] == 3
     monkeypatch.setattr(runner, "evaluate", original_evaluate)
     result = run_one(config, method, 0, train, validation, output, {"requested": False})
-    restored = torch.load(output / "checkpoint.pt", map_location="cpu", weights_only=False)
+    restored = torch.load(checkpoint_path(output), map_location="cpu", weights_only=False)
     assert restored["progress"]["last_evaluation_step"] == 6
     assert result["steps"] == 6

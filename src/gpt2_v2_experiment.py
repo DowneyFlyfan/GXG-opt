@@ -30,6 +30,18 @@ def resolve(path):
     return path if path.is_absolute() else ROOT / path
 
 
+def checkpoint_path(output: Path) -> Path:
+    """Keep resumable v2 state in the cache while results retain metrics and plots."""
+    resolved_output = Path(output).resolve()
+    try:
+        relative_output = resolved_output.relative_to(ROOT)
+    except ValueError:
+        relative_output = Path("external") / hashlib.sha256(
+            str(resolved_output).encode("utf-8")
+        ).hexdigest()
+    return ROOT / ".cache" / "gpt2-v2" / "checkpoints" / relative_output / "checkpoint.pt"
+
+
 def atomic_json(path, value):
     temporary = path.with_suffix(path.suffix + ".tmp")
     temporary.write_text(json.dumps(value, indent=2, allow_nan=False) + "\n")
@@ -52,6 +64,15 @@ def validate_config(config):
         raise ValueError("local training requires BF16 and at least two tokens")
     if not training["seeds"] or len(set(training["seeds"])) != len(training["seeds"]):
         raise ValueError("seeds must be nonempty and unique")
+    hardware = config.setdefault(
+        "hardware", {"gpu": "NVIDIA GeForce RTX 5090", "minimum_gpu_memory_gib": 32}
+    )
+    if not isinstance(hardware.get("gpu"), str) or not hardware["gpu"]:
+        raise ValueError("hardware.gpu must be a nonempty string")
+    if not isinstance(hardware.get("minimum_gpu_memory_gib"), int) or hardware[
+        "minimum_gpu_memory_gib"
+    ] < 1:
+        raise ValueError("hardware.minimum_gpu_memory_gib must be a positive integer")
     return config
 
 
@@ -98,7 +119,8 @@ def comparison_plan(config, blocks=None):
         "seeds": training["seeds"], "runs": len(config["methods"]) * len(training["seeds"]),
         "physical_batch_size": training["batch_size"], "effective_batch_size": batch,
         "sequence_length": config["model"]["sequence_length"], "gpu_count": 1,
-        "gpu": "NVIDIA GeForce RTX 5090", "minimum_gpu_memory_gib": 32,
+        "gpu": config["hardware"]["gpu"],
+        "minimum_gpu_memory_gib": config["hardware"]["minimum_gpu_memory_gib"],
         "smoke_only": bool(training.get("max_steps")),
         "full_budget_input_tokens_per_run": blocks * training["epochs"] * config["model"]["sequence_length"] if blocks else None,
     }
@@ -154,6 +176,7 @@ def tree_to(value, device):
 
 
 def save_checkpoint(path, model, optimizer, progress):
+    path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_suffix(".tmp")
     torch.save({"model": model.state_dict(), "optimizer": optimizer.state_dict(), "progress": progress,
                 "torch_rng": torch.random.get_rng_state(), "cuda_rng": torch.cuda.get_rng_state_all() if torch.cuda.is_available() else [],
@@ -223,7 +246,7 @@ def run_one(config, method, seed, train, validation, output, stop):
     model.to(device)
     optimizer = OptimizerV2(model, method["id"], method["options"], seed=seed, baseline=config["baseline"])
     output.mkdir(parents=True, exist_ok=True)
-    checkpoint = output / "checkpoint.pt"
+    checkpoint = checkpoint_path(output)
     metrics_path, diagnostics_path = output / "metrics.jsonl", output / "optimizer_diagnostics.jsonl"
     progress = {"step": 0, "epoch": 0, "offset": 0, "input_tokens": 0, "prediction_tokens": 0,
                 "elapsed_wall_seconds": 0.0, "training_step_seconds": 0.0,
@@ -520,12 +543,13 @@ def _run_locked(config, output, load_from_disk):
         for job in state["jobs"]:
             run_output = output / "runs" / job["method"] / f"seed_{job['seed']}"
             summary = run_output / "run_summary.json"
-            if job["status"] == "completed" and summary.exists() and (run_output / "checkpoint.pt").exists():
+            checkpoint = checkpoint_path(run_output)
+            if job["status"] == "completed" and summary.exists() and checkpoint.exists():
                 result = json.loads(summary.read_text())
                 expected_steps = comparison_plan(config, len(datasets["train"]))["steps_per_run"]
                 if result["method"] != job["method"] or result["seed"] != job["seed"] or result["steps"] != expected_steps:
                     raise ValueError("completed run summary does not match the requested job")
-                with (run_output / "checkpoint.pt").open("rb") as handle:
+                with checkpoint.open("rb") as handle:
                     if hashlib.file_digest(handle, "sha256").hexdigest() != result.get("checkpoint_sha256"):
                         raise ValueError("completed checkpoint checksum mismatch")
                 completed.append(result)
