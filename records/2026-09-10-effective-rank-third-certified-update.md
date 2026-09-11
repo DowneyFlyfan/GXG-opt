@@ -46,3 +46,13 @@ The fresh initial screen uses the previously selected aggressive learning rate
 workers, one epoch, and the local GPU. It is a tuning screen only. A fresh
 five-epoch run will be promoted only if its completed one-epoch metric warrants
 it; all checkpoints remain confined to `.cache/nlp/checkpoints`.
+
+## Screen result
+
+`lr000125_b8_a6_screen` completed one fresh matched epoch with zero weight
+decay. It reached validation next-token accuracy **0.71140671** in 3,625.27
+seconds with 8,496.83 MiB peak allocated memory. This is **+0.00184631** above
+the matched effective-rank-half zero-decay epoch-one value (0.70956039), so the
+one-third constraint is a promising candidate for a later independent
+five-epoch confirmation. Its checkpoint was automatically removed from
+`.cache`, and no checkpoint was written under `results/nlp`.
