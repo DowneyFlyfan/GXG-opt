@@ -8,6 +8,9 @@ from pathlib import Path
 import torch
 
 
+SUPPORTED_TORCH_VERSIONS = {"2.11.0", "2.13.0"}
+
+
 def transformer_matrix_parameter_names(model: torch.nn.Module) -> list[str]:
     """Route hidden matrices without exposing names to optimizer controllers."""
     excluded_ids = set()
@@ -66,8 +69,8 @@ class ProposalAdapter:
 
     def __init__(self, model, *, adam_only=False, lr=3e-4, weight_decay=0.1,
                  betas=(0.9, 0.95), momentum=0.95):
-        if torch.__version__.split("+")[0] != "2.11.0":
-            raise RuntimeError("optimizer 2.0 is pinned to PyTorch 2.11.0")
+        if torch.__version__.split("+")[0] not in SUPPORTED_TORCH_VERSIONS:
+            raise RuntimeError("optimizer 2.0 supports only PyTorch 2.11.0 or 2.13.0")
         self.parameters = dict(model.named_parameters())
         self.matrix_names = set(transformer_matrix_parameter_names(model))
         self.optimizers = []

@@ -1,7 +1,11 @@
 from pathlib import Path
 
+import torch
+from transformers import GPT2Config, GPT2LMHeadModel
+
 from scripts.run_gpt2_v2_comparison import load_config
 from gpt2_v2_experiment import checkpoint_path, comparison_plan, require_configured_gpu
+from optimizer_v2.adapter import ProposalAdapter
 
 
 def test_5070ti_smoke_profile_reports_its_actual_hardware_and_batching():
@@ -33,3 +37,10 @@ def test_5070ti_profile_allows_its_configured_runtime_gpu(monkeypatch):
     )
 
     require_configured_gpu(config)
+
+
+def test_local_torch_constructs_optimizer_v2_adapter_with_stock_muon():
+    model = GPT2LMHeadModel(GPT2Config(vocab_size=19, n_embd=8, n_layer=1, n_head=2))
+    adapter = ProposalAdapter(model)
+
+    assert any(isinstance(optimizer, torch.optim.Muon) for optimizer in adapter.optimizers)

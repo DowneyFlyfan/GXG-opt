@@ -21,8 +21,8 @@ from optimizer_v2.probes import collect_factors, collect_head_probe, lm_loss
 
 
 pytestmark = pytest.mark.skipif(
-    torch.__version__.split("+")[0] != "2.11.0",
-    reason="optimizer 2.0 integration requires the isolated PyTorch 2.11 environment",
+    torch.__version__.split("+")[0] not in {"2.11.0", "2.13.0"},
+    reason="optimizer 2.0 integration requires a supported PyTorch environment",
 )
 
 

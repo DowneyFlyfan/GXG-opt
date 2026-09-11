@@ -25,12 +25,18 @@ resumable checkpoints are redirected beneath `.cache/gpt2-v2/checkpoints/`.
 
 The repository's local environment provides CUDA Torch **2.13.0+cu130**,
 Transformers **4.57.6**, Datasets **5.0.1**, and Matplotlib **3.10.8**. The
-imported source validation record pins Torch 2.11.0+cu130 and Transformers 5.7.0,
-which are unavailable on this host. The smoke is therefore a local execution
-compatibility result, not a reproduction of the source runtime's parity claim.
-The independent FP64 optimizer-v2 mathematics suite and the new profile/cache
-tests passed **27 tests** under the local runtime; the PyTorch-2.11-only
-integration suite remains skipped by its existing version guard.
+imported source validation record pins Torch 2.11.0+cu130 and Transformers 5.7.0;
+the exact `2.11.0+cu130` package cannot be resolved from this host's package
+index. This smoke is therefore a Torch-2.13 compatibility result, not a
+reproduction of the source runtime's PyTorch-2.11 parity claim.
+
+The 2.13 Muon constructor plus the `_adjust_lr` and
+`_zeropower_via_newtonschulz` helper signatures match the adapter call sites.
+The adapter now explicitly accepts only 2.11.0 and 2.13.0, records the exact
+Torch revision and Muon source SHA-256 in its manifest, and rejects every other
+version. Focused profile/math tests passed **28 tests**; the existing
+end-to-end integration suite passed **31 tests** (one pre-existing skip) under
+Torch 2.13, including its tiny-GPU run of all eight methods.
 
 The first launch exposed one stale execution-only RTX 5090 guard after
 configuration validation had already accepted the 5070 Ti profile. The guard
