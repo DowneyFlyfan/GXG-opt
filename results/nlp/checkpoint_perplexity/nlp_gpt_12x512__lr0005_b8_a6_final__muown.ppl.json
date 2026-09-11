@@ -1,0 +1,6 @@
+{
+  "checkpoint": ".cache/nlp_gpt_12x512__lr0005_b8_a6_final__muown.checkpoint.pt",
+  "perplexity": 2.3031476828995414,
+  "validation_batches": 64,
+  "validation_nll": 0.834276745095849
+}

@@ -1,0 +1,6 @@
+{
+  "checkpoint": ".cache/nlp/checkpoints/nlp_gpt_12x512__stiefel_feature_alpha003_screen.checkpoint.pt",
+  "perplexity": 5.646709964902712,
+  "validation_batches": 64,
+  "validation_nll": 1.7310730684548616
+}

@@ -431,12 +431,60 @@ def write_summary(output, completed):
             writer.writerows(completed)
     lines = ["# GPT-2 optimizer 2.0 comparison", "",
              "Fixed hyperparameter screen; these results do not establish superiority or novelty.", "",
-             "| Method | Seed | Epochs completed | Updates | Validation NLL | Peak GiB |", "|---|---:|---:|---:|---:|---:|"]
+             "| Method | Seed | Epochs completed | Updates | Validation PPL | Peak GiB |", "|---|---:|---:|---:|---:|---:|"]
     for result in completed:
-        lines.append(f"| {result['method']} | {result['seed']} | {result['epochs_completed']} | {result['steps']} | {result['final_validation_nll']:.6f} | {result['peak_memory_gib']:.3f} |")
+        lines.append(f"| {result['method']} | {result['seed']} | {result['epochs_completed']} | {result['steps']} | {result['final_validation_perplexity']:.6f} | {result['peak_memory_gib']:.3f} |")
     if any(result["smoke_only"] for result in completed):
         lines.extend(["", "This directory contains bounded smoke runs, not the five-epoch comparison."])
     (output / "report.md").write_text("\n".join(lines) + "\n")
+
+
+def _validation_perplexity(record):
+    value = record.get("validation_perplexity")
+    if value is not None:
+        return float(value)
+    return math.exp(float(record["validation_nll"]))
+
+
+def render_recorded_perplexity(output):
+    """Render PPL directly from recorded GPT-2 metric traces.
+
+    This is deliberately unavailable for historical accuracy-only artifacts:
+    perplexity cannot be recovered from argmax accuracy.  NLL traces, by
+    contrast, have an exact pointwise PPL conversion.
+    """
+    from matplotlib.figure import Figure
+
+    traces = []
+    for path in sorted(output.glob("runs/*/seed_*/metrics.jsonl")):
+        records = [json.loads(line) for line in path.read_text().splitlines() if line]
+        if not records:
+            continue
+        summary_path = path.with_name("run_summary.json")
+        summary = json.loads(summary_path.read_text()) if summary_path.exists() else {}
+        method = path.parents[1].name
+        seed = path.parent.name.removeprefix("seed_")
+        traces.append((summary.get("label", method) + f" (seed {seed})", records))
+    if not traces:
+        raise ValueError("no recorded GPT-2 NLL/PPL traces were found")
+    outputs = []
+    for key, suffix, xlabel in (("step", "steps", "Optimizer update"),
+                                ("elapsed_wall_seconds", "time", "Cumulative wall-clock time (seconds)")):
+        figure = Figure(figsize=(10, 6))
+        axis = figure.subplots()
+        for index, (label, records) in enumerate(traces):
+            axis.plot([record[key] for record in records],
+                      [_validation_perplexity(record) for record in records],
+                      label=label, color=("#475569", "#2563eb", "#dc2626", "#059669", "#9333ea", "#d97706")[index % 6])
+        axis.set(title="GPT-2 / WikiText-103 optimizer comparison",
+                 xlabel=xlabel, ylabel="Validation perplexity (lower is better)")
+        axis.grid(alpha=0.2)
+        axis.legend(fontsize=8)
+        figure.tight_layout()
+        output_path = output / f"gpt2_wikitext103_validation_perplexity_{suffix}.png"
+        figure.savefig(output_path, dpi=160)
+        outputs.append(output_path)
+    return tuple(outputs)
 
 
 def render_comparison(output, config, completed):
@@ -459,16 +507,16 @@ def render_comparison(output, config, completed):
                 records = [json.loads(line) for line in path.read_text().splitlines() if line]
                 label = method["label"] if len(paired) == 1 else f"{method['label']} (seed {seed})"
                 axis.plot([record[key] for record in records],
-                          [record["validation_nll"] for record in records], label=label, color=color)
+                          [_validation_perplexity(record) for record in records], label=label, color=color)
         scope = "single-seed screen" if len(paired) == 1 else "paired-seed screen"
         if config["training"].get("max_steps"):
             scope += "; bounded smoke"
         axis.set(title=f"GPT-2 / WikiText-103 optimizer 2.0 ({scope})",
-                 xlabel=xlabel, ylabel="Validation negative log-likelihood (lower is better)")
+                 xlabel=xlabel, ylabel="Validation perplexity (lower is better)")
         axis.grid(alpha=0.2)
         axis.legend(fontsize=8)
         figure.tight_layout()
-        figure.savefig(output / f"gpt2_wikitext103_validation_nll_{suffix}.png", dpi=160)
+        figure.savefig(output / f"gpt2_wikitext103_validation_perplexity_{suffix}.png", dpi=160)
 
 
 def run(config, output):

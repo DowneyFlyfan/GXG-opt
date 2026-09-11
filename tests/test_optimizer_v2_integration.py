@@ -433,8 +433,8 @@ def test_outer_runner_serializes_provenance_and_verifies_completed_resume(tmp_pa
                               probe_sequence_length=8)
     output = tmp_path / "comparison"
     assert run(config, output) == 0
-    assert (output / "gpt2_wikitext103_validation_nll_steps.png").is_file()
-    assert (output / "gpt2_wikitext103_validation_nll_time.png").is_file()
+    assert (output / "gpt2_wikitext103_validation_perplexity_steps.png").is_file()
+    assert (output / "gpt2_wikitext103_validation_perplexity_time.png").is_file()
     checkpoint = checkpoint_path(output / "runs/adamw/seed_0")
     modified = checkpoint.stat().st_mtime_ns
     assert run(config, output) == 0

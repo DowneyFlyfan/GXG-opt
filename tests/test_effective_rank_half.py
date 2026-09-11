@@ -84,6 +84,58 @@ def test_one_third_optimizer_and_builder_keep_matrix_updates_certified():
     assert isinstance(optimizers["adamw_aux"], torch.optim.AdamW)
 
 
+def test_linear_optimizer_advances_and_restores_its_effective_rank_schedule():
+    from effective_rank_half import EffectiveRankLinear, effective_rank
+    from optimizers import build_optimizers
+
+    parameter = torch.nn.Parameter(torch.eye(3))
+    parameter.grad = torch.zeros_like(parameter)
+    optimizer = EffectiveRankLinear(
+        [parameter], lr=0.1, weight_decay=0.0, schedule_steps=4
+    )
+    optimizer.step()
+
+    assert optimizer.minimum_effective_rank == pytest.approx(0.4)
+    assert effective_rank(parameter) >= 0.2 - 1.0e-6
+    restored_parameter = torch.nn.Parameter(torch.eye(3))
+    restored = EffectiveRankLinear(
+        [restored_parameter], lr=0.1, weight_decay=0.0, schedule_steps=4
+    )
+    restored.load_state_dict(optimizer.state_dict())
+    assert restored.schedule_step == 1
+    assert restored.minimum_effective_rank == pytest.approx(0.4)
+
+    class Model(torch.nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.matrix = torch.nn.Parameter(torch.eye(3))
+            self.bias = torch.nn.Parameter(torch.zeros(3))
+
+    optimizers = build_optimizers(
+        Model(), "effective_rank_linear", lr=0.01, weight_decay=0.0, auxiliary_lr=0.001
+    )
+    assert isinstance(optimizers["effective_rank_linear"], EffectiveRankLinear)
+
+
+def test_linear_optimizer_projects_an_infeasible_matrix_before_certifying_update():
+    from effective_rank_half import EffectiveRankLinear, effective_rank
+
+    parameter = torch.nn.Parameter(torch.diag(torch.tensor([1.0, 0.01, 0.0])))
+    parameter.grad = torch.zeros_like(parameter)
+    optimizer = EffectiveRankLinear(
+        [parameter],
+        lr=0.01,
+        weight_decay=0.0,
+        schedule_steps=2,
+        start_effective_rank=0.8,
+        end_effective_rank=0.8,
+    )
+    optimizer.step()
+
+    assert effective_rank(parameter) >= 0.8 - 1.0e-6
+    assert optimizer.state[parameter]["projected_steps"] == 1
+
+
 def test_float32_boundary_weight_decay_keeps_certified_optimizer_running():
     """Float32 scale-only decay must not reject a feasible boundary matrix."""
     from effective_rank_half import EffectiveRankHalf, effective_rank

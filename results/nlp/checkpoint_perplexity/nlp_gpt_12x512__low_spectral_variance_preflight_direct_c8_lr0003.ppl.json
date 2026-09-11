@@ -1,0 +1,6 @@
+{
+  "checkpoint": ".cache/nlp/checkpoints/nlp_gpt_12x512__low_spectral_variance_preflight_direct_c8_lr0003.checkpoint.pt",
+  "perplexity": 23.986766667292844,
+  "validation_batches": 64,
+  "validation_nll": 3.177502289414406
+}

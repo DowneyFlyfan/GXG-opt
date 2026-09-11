@@ -81,6 +81,100 @@ class EffectiveRankThird(EffectiveRankHalf):
     constraint_name = "effective-rank-third"
 
 
+class EffectiveRankLinear(EffectiveRankHalf):
+    """Certified partial-polar updates with a linearly increasing rank floor.
+
+    The floor starts at 0.2 and reaches 0.8 after ``schedule_steps`` updates.
+    A step is accepted only when its *current* scheduled floor is feasible, so
+    the existing finite-step certificate is never weakened by the scheduler.
+    """
+
+    constraint_name = "effective-rank-linear-02-to-08"
+
+    def __init__(
+        self,
+        params: Iterable[nn.Parameter],
+        *,
+        lr: float,
+        weight_decay: float,
+        momentum: float = 0.95,
+        schedule_steps: int,
+        start_effective_rank: float = 0.2,
+        end_effective_rank: float = 0.8,
+        projection_margin: float = 0.05,
+    ) -> None:
+        if (
+            schedule_steps <= 0
+            or not 0 < start_effective_rank <= end_effective_rank <= 1
+            or not 0 <= projection_margin < 1
+        ):
+            raise ValueError("effective-rank linear schedule is invalid")
+        self.start_effective_rank = start_effective_rank
+        self.end_effective_rank = end_effective_rank
+        self.schedule_steps = schedule_steps
+        self.projection_margin = projection_margin
+        self.schedule_step = 0
+        super().__init__(params, lr=lr, weight_decay=weight_decay, momentum=momentum)
+
+    @property
+    def minimum_effective_rank(self) -> float:
+        # There are ``schedule_steps`` certified updates, including both
+        # endpoints: the first uses 0.2 and the final uses 0.8.
+        progress = min(self.schedule_step / max(self.schedule_steps - 1, 1), 1.0)
+        return self.start_effective_rank + progress * (
+            self.end_effective_rank - self.start_effective_rank
+        )
+
+    @torch.no_grad()
+    def step(self, closure=None):
+        target = min(self.minimum_effective_rank + self.projection_margin, 1.0)
+        for group in self.param_groups:
+            for parameter in group["params"]:
+                if parameter.grad is None:
+                    continue
+                matrix = parameter.reshape(parameter.shape[0], -1)
+                projection_norm = _project_effective_rank(matrix, target)
+                if projection_norm == 0.0:
+                    continue
+                state = self.state[parameter]
+                state["projected_steps"] = int(state.get("projected_steps", 0)) + 1
+                state["projection_frobenius"] = float(
+                    state.get("projection_frobenius", 0.0)
+                ) + projection_norm
+        loss = super().step(closure)
+        self.schedule_step += 1
+        return loss
+
+    def state_dict(self) -> dict:
+        """Persist the global schedule alongside ordinary optimizer state."""
+        state = super().state_dict()
+        state["effective_rank_linear_schedule"] = {
+            "schedule_step": self.schedule_step,
+            "schedule_steps": self.schedule_steps,
+            "start_effective_rank": self.start_effective_rank,
+            "end_effective_rank": self.end_effective_rank,
+            "projection_margin": self.projection_margin,
+        }
+        return state
+
+    def load_state_dict(self, state_dict: dict) -> None:
+        """Restore only a schedule with the same declared endpoints."""
+        state_dict = dict(state_dict)
+        schedule = state_dict.pop("effective_rank_linear_schedule", None)
+        if schedule is not None:
+            expected = {
+                "schedule_steps": self.schedule_steps,
+                "start_effective_rank": self.start_effective_rank,
+                "end_effective_rank": self.end_effective_rank,
+                "projection_margin": self.projection_margin,
+            }
+            actual = {key: schedule[key] for key in expected}
+            if actual != expected:
+                raise ValueError("effective-rank linear checkpoint has a different schedule")
+            self.schedule_step = int(schedule["schedule_step"])
+        super().load_state_dict(state_dict)
+
+
 def effective_rank(weight: Tensor) -> float:
     """Return the Frobenius-norm effective-rank ratio for a nonzero matrix."""
     if weight.ndim != 2:
@@ -109,6 +203,44 @@ def _is_effective_rank_feasible(
     if weight.dtype in (torch.float16, torch.bfloat16, torch.float32):
         numerical_tolerance = max(numerical_tolerance, 1.0e-6)
     return effective_rank(weight) >= minimum_effective_rank - numerical_tolerance
+
+
+@torch.no_grad()
+def _project_effective_rank(weight: Tensor, minimum_effective_rank: float) -> float:
+    """Minimally equalize singular values until the requested floor is feasible.
+
+    The interpolation preserves singular vectors and continuously moves the
+    spectrum toward equal nonzero singular values, whose normalized effective
+    rank is one.  Bisection therefore finds a feasible finite projection when
+    the scheduled floor rises above the matrix's current rank.
+    """
+    if _is_effective_rank_feasible(weight, 1.0e-6, minimum_effective_rank):
+        return 0.0
+    left, singular_values, right_transpose = torch.linalg.svd(weight, full_matrices=False)
+    if singular_values.numel() == 0 or float(singular_values.max()) == 0.0:
+        return 0.0
+    equal_spectrum = torch.full_like(singular_values, singular_values.mean())
+
+    rank_bound = singular_values.numel()
+
+    def spectrum_is_feasible(mixing: float) -> bool:
+        spectrum = torch.lerp(singular_values, equal_spectrum, mixing)
+        squared = spectrum.square().sum()
+        ratio = squared.square() / (rank_bound * spectrum.pow(4).sum())
+        return float(ratio) >= minimum_effective_rank - 1.0e-6
+
+    lower, upper = 0.0, 1.0
+    for _ in range(48):
+        midpoint = (lower + upper) / 2.0
+        if spectrum_is_feasible(midpoint):
+            upper = midpoint
+        else:
+            lower = midpoint
+    projected_spectrum = torch.lerp(singular_values, equal_spectrum, upper)
+    projected = (left * projected_spectrum.unsqueeze(0)) @ right_transpose
+    distance = float(torch.linalg.matrix_norm(projected - weight, ord="fro"))
+    weight.copy_(projected)
+    return distance
 
 
 def _constraint_name(minimum_effective_rank: float) -> str:

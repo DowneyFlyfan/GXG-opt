@@ -1,0 +1,6 @@
+{
+  "checkpoint": ".cache/nlp/checkpoints/nlp_gpt_12x512__nystrom_adam_formal_stage1_ns15e6_adam15e5_b12_a4.checkpoint.pt",
+  "perplexity": 2.56112055427147,
+  "validation_batches": 64,
+  "validation_nll": 0.9404448792338371
+}

@@ -10,11 +10,11 @@ The repository-native implementation of the Kronecker GGN baseline and its signe
 
 - [x] Low-Rank GN
 
-# Effective-Rank-Half certified update
+# Steepest Descent with Effective Rank Constraint
 
-- Between Muon and Muown
+- Result: Between Muon and Muown
 
-- [] Tune lr, effective normalized rank
+- [] Tune lr and effective normalized rank
 
 ![Effective-Rank-Half metric versus steps](results/nlp/effective_rank_half_lr000125_b8_a6_final_metric_steps.png)
 

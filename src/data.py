@@ -5,10 +5,8 @@ from functools import lru_cache
 from pathlib import Path
 
 import torch
-import torchaudio
 from datasets import load_dataset
 from torch.utils.data import DataLoader, Dataset
-from torchvision import datasets, transforms
 
 from models import CONTEXT_LENGTH
 
@@ -161,6 +159,8 @@ def smollm2_wikitext_loaders(
 
 
 def cifar100_loaders(root: Path, batch_size: int, workers: int, seed: int = 1337) -> tuple[DataLoader, DataLoader]:
+    from torchvision import datasets, transforms
+
     normalize = transforms.Normalize((0.5071, 0.4867, 0.4408), (0.2675, 0.2565, 0.2761))
     train_transform = transforms.Compose(
         [transforms.RandomResizedCrop(224), transforms.RandomHorizontalFlip(), transforms.ToTensor(), normalize]
@@ -176,6 +176,8 @@ def cifar100_loaders(root: Path, batch_size: int, workers: int, seed: int = 1337
 
 
 def dinov3_cifar100_loaders(root: Path, batch_size: int, workers: int, seed: int = 1337) -> tuple[DataLoader, DataLoader]:
+    from torchvision import datasets, transforms
+
     normalize = transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
     train_transform = transforms.Compose(
         [transforms.RandomResizedCrop(224), transforms.RandomHorizontalFlip(), transforms.ToTensor(), normalize]
@@ -196,6 +198,8 @@ def _transcript_tokens(text: str) -> torch.Tensor:
 
 class LibriSpeechFeatures(Dataset):
     def __init__(self, root: Path, split: str) -> None:
+        import torchaudio
+
         cache = root / ".cache" / "audio"
         cache.mkdir(parents=True, exist_ok=True)
         self.dataset = torchaudio.datasets.LIBRISPEECH(cache, url=split, download=True)
@@ -218,6 +222,8 @@ class LibriSpeechFeatures(Dataset):
 
 class OWSMLibriSpeech(Dataset):
     def __init__(self, root: Path, split: str) -> None:
+        import torchaudio
+
         cache = root / ".cache" / "audio"
         cache.mkdir(parents=True, exist_ok=True)
         self.dataset = torchaudio.datasets.LIBRISPEECH(cache, url=split, download=False)
@@ -227,6 +233,8 @@ class OWSMLibriSpeech(Dataset):
         return len(self.dataset)
 
     def __getitem__(self, index: int) -> dict[str, torch.Tensor | str]:
+        import torchaudio
+
         waveform, sample_rate, transcript, *_ = self.dataset[index]
         if sample_rate != 16_000:
             waveform = torchaudio.functional.resample(waveform, sample_rate, 16_000)

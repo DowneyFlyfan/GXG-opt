@@ -1,0 +1,6 @@
+{
+  "checkpoint": ".cache/nlp/checkpoints/nlp_gpt_12x512__multi_step_spectral_lr00015_b8_a6_screen.checkpoint.pt",
+  "perplexity": 2.9645753914396074,
+  "validation_batches": 64,
+  "validation_nll": 1.0867338152602315
+}

@@ -1,0 +1,6 @@
+{
+  "checkpoint": ".cache/nlp/checkpoints/nlp_gpt_12x512__mkor_tune_lr0003_retry_b12_a4.checkpoint.pt",
+  "perplexity": 11.28259156304325,
+  "validation_batches": 64,
+  "validation_nll": 2.4232609681785107
+}

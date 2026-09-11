@@ -7,7 +7,6 @@ from pathlib import Path
 import torch
 import torch.nn.functional as functional
 from torch import nn
-from torchvision import models as vision_models
 
 
 VOCABULARY_SIZE = 32_000
@@ -124,6 +123,8 @@ def create_cv_model(name: str) -> nn.Module:
         return DINOv3CIFAR100Classifier()
     if name != "vit_base_12x768":
         raise ValueError(f"Unsupported CV model: {name}")
+    from torchvision import models as vision_models
+
     return vision_models.VisionTransformer(
         image_size=224,
         patch_size=16,
