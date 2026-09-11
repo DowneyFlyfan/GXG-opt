@@ -1,4 +1,4 @@
-"""Certified finite steps that retain effective rank at least one half."""
+"""Certified finite steps that retain a configured effective-rank bound."""
 
 from __future__ import annotations
 
@@ -23,6 +23,9 @@ class CertifiedEffectiveRankStep:
 
 class EffectiveRankHalf(torch.optim.Optimizer):
     """Momentum partial-polar updates constrained to effective rank one half."""
+
+    minimum_effective_rank = 0.5
+    constraint_name = "effective-rank-half"
 
     def __init__(
         self,
@@ -53,7 +56,9 @@ class EffectiveRankHalf(torch.optim.Optimizer):
                 maximum_step = float(
                     torch.linalg.matrix_norm(matrix, ord="fro") / math.sqrt(min(matrix.shape))
                 )
-                if maximum_step == 0.0 or effective_rank(matrix) < 0.5 - 1.0e-6:
+                if maximum_step == 0.0 or not _is_effective_rank_feasible(
+                    matrix, 1.0e-6, self.minimum_effective_rank
+                ):
                     state["skipped_steps"] = int(state.get("skipped_steps", 0)) + 1
                     continue
                 scaled_step = group["lr"] * 0.2 * math.sqrt(max(matrix.shape))
@@ -61,11 +66,19 @@ class EffectiveRankHalf(torch.optim.Optimizer):
                     matrix,
                     direction_gradient,
                     step_size=min(scaled_step, 0.99 * maximum_step),
+                    minimum_effective_rank=self.minimum_effective_rank,
                 )
                 parameter.copy_(update.weight.reshape_as(parameter))
                 state["last_scale"] = update.scale
                 state["accepted_steps"] = int(state.get("accepted_steps", 0)) + int(update.accepted)
         return loss
+
+
+class EffectiveRankThird(EffectiveRankHalf):
+    """Momentum partial-polar updates constrained to effective rank one third."""
+
+    minimum_effective_rank = 1.0 / 3.0
+    constraint_name = "effective-rank-third"
 
 
 def effective_rank(weight: Tensor) -> float:
@@ -80,20 +93,30 @@ def effective_rank(weight: Tensor) -> float:
     return float((frobenius_squared.square() / (rank_bound * gram_squared)).detach())
 
 
-def _constraint(weight: Tensor) -> Tensor:
-    """Return the equivalent half-effective-rank constraint."""
+def _constraint(weight: Tensor, minimum_effective_rank: float = 0.5) -> Tensor:
+    """Return the effective-rank lower-bound constraint for a matrix."""
     rank_bound = min(weight.shape)
     frobenius_squared = torch.sum(weight.square())
     gram_norm = torch.linalg.matrix_norm(weight.transpose(-2, -1) @ weight, ord="fro")
-    return math.sqrt(rank_bound / 2.0) * gram_norm - frobenius_squared
+    return math.sqrt(rank_bound * minimum_effective_rank) * gram_norm - frobenius_squared
 
 
-def _is_effective_rank_half_feasible(weight: Tensor, tolerance: float) -> bool:
+def _is_effective_rank_feasible(
+    weight: Tensor, tolerance: float, minimum_effective_rank: float
+) -> bool:
     """Check the scale-invariant constraint within the matrix dtype's precision."""
     numerical_tolerance = tolerance
     if weight.dtype in (torch.float16, torch.bfloat16, torch.float32):
         numerical_tolerance = max(numerical_tolerance, 1.0e-6)
-    return effective_rank(weight) >= 0.5 - numerical_tolerance
+    return effective_rank(weight) >= minimum_effective_rank - numerical_tolerance
+
+
+def _constraint_name(minimum_effective_rank: float) -> str:
+    if minimum_effective_rank == 0.5:
+        return "effective-rank-half"
+    if minimum_effective_rank == 1.0 / 3.0:
+        return "effective-rank-third"
+    return "effective-rank"
 
 
 def _partial_polar(gradient: Tensor) -> Tensor:
@@ -113,38 +136,39 @@ def certified_effective_rank_step(
     step_size: float,
     tolerance: float = 1.0e-10,
     bisection_steps: int = 48,
+    minimum_effective_rank: float = 0.5,
 ) -> CertifiedEffectiveRankStep:
     """Take the largest feasible partial-polar step along the supplied gradient.
 
     The scalar search stays inside the spectral-norm ball because it scales a
     partial polar factor.  It starts from zero, which is feasible whenever
-    the input already has effective rank at least one half, and accepts only
+    the input already has at least the requested effective rank, and accepts only
     candidates satisfying the finite-step constraint within the matrix dtype's
     numerical precision.
     """
     if weight.shape != gradient.shape or weight.ndim != 2:
         raise ValueError("weight and gradient must be equally shaped matrices")
-    if step_size <= 0 or bisection_steps <= 0:
+    if step_size <= 0 or bisection_steps <= 0 or not 0 < minimum_effective_rank <= 1:
         raise ValueError("step_size and bisection_steps must be positive")
     rank_bound = min(weight.shape)
     maximum_step = float(torch.linalg.matrix_norm(weight, ord="fro") / math.sqrt(rank_bound))
     if not step_size < maximum_step:
         raise ValueError("step_size must be smaller than ||W||_F / sqrt(r)")
-    if not _is_effective_rank_half_feasible(weight, tolerance):
-        raise ValueError("input matrix is not effective-rank-half feasible")
+    if not _is_effective_rank_feasible(weight, tolerance, minimum_effective_rank):
+        raise ValueError(f"input matrix is not {_constraint_name(minimum_effective_rank)} feasible")
 
     direction = _partial_polar(gradient)
     if not torch.any(direction):
         return CertifiedEffectiveRankStep(weight, direction, 0.0, False, effective_rank(weight))
     candidate = weight - step_size * direction
-    if _is_effective_rank_half_feasible(candidate, tolerance):
+    if _is_effective_rank_feasible(candidate, tolerance, minimum_effective_rank):
         return CertifiedEffectiveRankStep(candidate, direction, 1.0, True, effective_rank(candidate))
 
     lower, upper = 0.0, 1.0
     for _ in range(bisection_steps):
         midpoint = (lower + upper) / 2.0
         candidate = weight - step_size * midpoint * direction
-        if _is_effective_rank_half_feasible(candidate, tolerance):
+        if _is_effective_rank_feasible(candidate, tolerance, minimum_effective_rank):
             lower = midpoint
         else:
             upper = midpoint
