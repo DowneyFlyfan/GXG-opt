@@ -216,6 +216,7 @@ def run_ppl_trial(
     validation_batches: int = 64,
     weight_decay: float = 0.0,
     auxiliary_learning_rate: float | None = None,
+    effective_rank_momentum: float | None = None,
 ) -> dict:
     """Train one matched run and record measured PPL at actual optimizer steps.
 
@@ -234,6 +235,7 @@ def run_ppl_trial(
         learning_rate <= 0
         or weight_decay < 0
         or (auxiliary_learning_rate is not None and auxiliary_learning_rate <= 0)
+        or (effective_rank_momentum is not None and not 0 <= effective_rank_momentum < 1)
     ):
         raise ValueError("learning_rate must be positive and weight_decay non-negative")
 
@@ -254,6 +256,9 @@ def run_ppl_trial(
         weight_decay,
         task.muon_aux_lr if auxiliary_learning_rate is None else auxiliary_learning_rate,
         effective_rank_schedule_steps=scheduled_updates,
+        effective_rank_momentum=(
+            0.95 if effective_rank_momentum is None else effective_rank_momentum
+        ),
     )
     schedulers = {
         name: torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=task.estimated_epochs)
@@ -340,6 +345,10 @@ def run_ppl_trial(
         "status": "screen_completed" if stopped_early else "completed",
     }
     result.update(_optimizer_diagnostics(optimizer_name, optimizers))
+    if optimizer_name in {"effective_rank_half", "effective_rank_joint_newton"}:
+        result["effective_rank_momentum"] = (
+            0.95 if effective_rank_momentum is None else effective_rank_momentum
+        )
     paths.result.parent.mkdir(parents=True, exist_ok=True)
     paths.result.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n")
     if not stopped_early:

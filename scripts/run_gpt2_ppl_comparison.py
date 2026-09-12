@@ -23,6 +23,7 @@ def main() -> None:
     parser.add_argument("--muon-learning-rate", type=float, default=FORMAL_PPL_HYPERPARAMETERS["muon"]["learning_rate"])
     parser.add_argument("--muown-learning-rate", type=float, default=FORMAL_PPL_HYPERPARAMETERS["muown"]["learning_rate"])
     parser.add_argument("--effective-rank-learning-rate", type=float, default=FORMAL_PPL_HYPERPARAMETERS["effective_rank_linear"]["learning_rate"])
+    parser.add_argument("--effective-rank-momentum", type=float, default=0.95)
     parser.add_argument("--micro-batch-size", type=int, default=8)
     parser.add_argument("--gradient-accumulation", type=int, default=6)
     parser.add_argument("--maximum-epochs", type=int, default=5)
@@ -64,6 +65,11 @@ def main() -> None:
                 else arguments.weight_decay
             ),
             auxiliary_learning_rate=FORMAL_PPL_HYPERPARAMETERS[method]["auxiliary_lr"],
+            effective_rank_momentum=(
+                arguments.effective_rank_momentum
+                if method in {"effective_rank_half", "effective_rank_joint_newton"}
+                else None
+            ),
         )
         results.append(result)
     if arguments.maximum_updates is None and not arguments.skip_plots:

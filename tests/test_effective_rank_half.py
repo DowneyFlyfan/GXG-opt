@@ -70,6 +70,29 @@ def test_effective_rank_optimizer_records_newton_schulz_fallback_direction():
     assert optimizer.state[parameter]["newton_schulz_direction_steps"] == 1
 
 
+def test_effective_rank_builder_exposes_a_reproducible_momentum_override():
+    from effective_rank_half import EffectiveRankHalf
+    from optimizers import build_optimizers
+
+    class Model(torch.nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.matrix = torch.nn.Parameter(torch.eye(3))
+            self.bias = torch.nn.Parameter(torch.zeros(3))
+
+    optimizers = build_optimizers(
+        Model(),
+        "effective_rank_half",
+        lr=0.01,
+        weight_decay=0.0,
+        auxiliary_lr=0.001,
+        effective_rank_momentum=0.8,
+    )
+
+    assert isinstance(optimizers["effective_rank_half"], EffectiveRankHalf)
+    assert optimizers["effective_rank_half"].param_groups[0]["momentum"] == pytest.approx(0.8)
+
+
 def test_certified_bisection_uses_float32_resolution_without_changing_float64_reference():
     """Float32 GPT updates need only a safe, not 48-bit, bisection endpoint."""
     from effective_rank_half import _certified_bisection_steps

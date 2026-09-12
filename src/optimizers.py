@@ -239,6 +239,7 @@ def build_optimizers(
     srip_rho: float | None = None,
     srip_dual_steps: int = 8,
     effective_rank_schedule_steps: int | None = None,
+    effective_rank_momentum: float = 0.95,
 ) -> dict[str, torch.optim.Optimizer]:
     if optimizer == "adamw":
         return {"adamw": torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=weight_decay, betas=(0.9, 0.95))}
@@ -301,6 +302,8 @@ def build_optimizers(
             raise ValueError("SRIP-band requires rho strictly between zero and one")
         selected = srip_band_parameter_names(model, rho=srip_rho, candidates=selected)
     if optimizer in {"effective_rank_half", "effective_rank_joint_newton", "effective_rank_third", "effective_rank_linear", "effective_rank_linear_joint_newton"}:
+        if not 0 <= effective_rank_momentum < 1:
+            raise ValueError("effective-rank momentum must lie in [0, 1)")
         minimum_effective_rank = 0.5 if optimizer in {"effective_rank_half", "effective_rank_joint_newton"} else (1.0 / 3.0 if optimizer == "effective_rank_third" else 0.2)
         named = dict(model.named_parameters())
         selected = {
@@ -330,18 +333,26 @@ def build_optimizers(
     elif optimizer == "muown":
         matrix_optimizer = Muown(muon_parameters, lr=lr, weight_decay=weight_decay)
     elif optimizer == "effective_rank_half":
-        matrix_optimizer = EffectiveRankHalf(muon_parameters, lr=lr, weight_decay=weight_decay)
+        matrix_optimizer = EffectiveRankHalf(
+            muon_parameters, lr=lr, weight_decay=weight_decay,
+            momentum=effective_rank_momentum,
+        )
     elif optimizer == "effective_rank_joint_newton":
         matrix_optimizer = EffectiveRankJointNewton(
-            muon_parameters, lr=lr, weight_decay=weight_decay
+            muon_parameters, lr=lr, weight_decay=weight_decay,
+            momentum=effective_rank_momentum,
         )
     elif optimizer == "effective_rank_third":
-        matrix_optimizer = EffectiveRankThird(muon_parameters, lr=lr, weight_decay=weight_decay)
+        matrix_optimizer = EffectiveRankThird(
+            muon_parameters, lr=lr, weight_decay=weight_decay,
+            momentum=effective_rank_momentum,
+        )
     elif optimizer == "effective_rank_linear":
         matrix_optimizer = EffectiveRankLinear(
             muon_parameters,
             lr=lr,
             weight_decay=weight_decay,
+            momentum=effective_rank_momentum,
             schedule_steps=36_250 if effective_rank_schedule_steps is None else effective_rank_schedule_steps,
         )
     elif optimizer == "effective_rank_linear_joint_newton":
@@ -349,6 +360,7 @@ def build_optimizers(
             muon_parameters,
             lr=lr,
             weight_decay=weight_decay,
+            momentum=effective_rank_momentum,
             schedule_steps=36_250 if effective_rank_schedule_steps is None else effective_rank_schedule_steps,
         )
     else:
