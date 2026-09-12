@@ -1,0 +1,38 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: new-optimizer-gpt2-dual-a100
+  labels:
+    app: new-optimizer-gpt2
+    purpose: next-independent-optimizer-experiment
+spec:
+  # This is a bounded scheduling request, not an idle reservation.  It expires
+  # if the next two-A100 experiment is not dispatched promptly after admission.
+  activeDeadlineSeconds: 900
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        app: new-optimizer-gpt2
+        purpose: next-independent-optimizer-experiment
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: admission-check
+          image: nvcr.io/nvidia/pytorch:26.04-py3
+          command: ["bash", "-lc"]
+          args:
+            - |
+              nvidia-smi --query-gpu=index,name,memory.total --format=csv,noheader
+              sleep 900
+          resources:
+            requests:
+              cpu: "8"
+              memory: 32Gi
+              ephemeral-storage: 20Gi
+              nvidia.com/a100: "2"
+            limits:
+              cpu: "16"
+              memory: 64Gi
+              ephemeral-storage: 50Gi
+              nvidia.com/a100: "2"

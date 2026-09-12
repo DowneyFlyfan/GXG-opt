@@ -83,3 +83,15 @@ The selected five-epoch A100 protocol started with the effective-rank method.
 This record will be completed with its epoch metrics, the remaining three
 methods, final PPL figures, and an evidence-backed conclusion after all four
 runs finish.
+
+## Nautilus two-A100 request
+
+On 2026-09-11, a bounded two-A100 Nautilus Job was submitted as
+`new-optimizer-gpt2-dual-a100` using
+`configs/experiments/nautilus_gpt2_dual_a100_reservation.yaml`.  The namespace
+quota permits nine A100 requests and had only one active request before this
+submission.  The scheduler accepted the Job but it is currently `Pending`; no
+node with two schedulable A100s has been assigned.  It expires after 15 minutes
+if not admitted, so it cannot hold idle GPUs.  The live ABA comparison remains
+single-GPU because its time-axis comparison is intentionally matched; it was
+not modified or duplicated for the Nautilus request.
