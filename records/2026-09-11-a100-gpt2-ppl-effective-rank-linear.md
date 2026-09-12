@@ -163,3 +163,20 @@ finite-step check still rejects any infeasible candidate. The saved PPL record
 now includes `effective_rank_newton_schulz_direction_steps` in addition to the
 joint-Newton and projection-path counters. The test-first change increased the
 relevant suite to 23 passing tests.
+
+## Float32 bisection revision and final V5 launch
+
+V4 was also stopped before any epoch artifact. Its certified fallback remained
+correct, but used 48 feasibility bisections per float32 matrix update. A lower
+endpoint from any number of bisection iterations is still explicitly feasible;
+reducing the float32 search to 12 iterations only makes that accepted step
+slightly more conservative. Float64 keeps the original 48 iterations for the
+reference tests. Commit `ad68b62` adds this dtype-specific bound and a
+regression test; the relevant suite then passed 24 tests.
+
+The sole active effective-rank trainer is
+`aba_a100_ppl_formal_b8_a6_joint_newton_fast_v5` on ABA A100 GPU 0. It uses the
+same five-epoch, micro-batch 8, accumulation 6, 64-validation-batch protocol
+and formal learning rate 0.00125. V2, V3, and V4 all ended before an epoch
+metric or checkpoint and are discarded implementation probes, not comparison
+results. V5 is the first clean end-to-end fast-solver candidate.
