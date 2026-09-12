@@ -90,8 +90,18 @@ On 2026-09-11, a bounded two-A100 Nautilus Job was submitted as
 `new-optimizer-gpt2-dual-a100` using
 `configs/experiments/nautilus_gpt2_dual_a100_reservation.yaml`.  The namespace
 quota permits nine A100 requests and had only one active request before this
-submission.  The scheduler accepted the Job but it is currently `Pending`; no
-node with two schedulable A100s has been assigned.  It expires after 15 minutes
-if not admitted, so it cannot hold idle GPUs.  The live ABA comparison remains
-single-GPU because its time-axis comparison is intentionally matched; it was
-not modified or duplicated for the Nautilus request.
+submission.  The scheduler accepted the Job, but no node with two schedulable
+A100s was assigned.  Its pod remained Pending and the Job reached its
+15-minute active deadline with zero completions; the terminal Job was then
+deleted.  The manifest remains as the reproducible request evidence.  The live
+ABA comparison remains single-GPU because its time-axis comparison is
+intentionally matched; it was not modified or duplicated for the Nautilus
+request.
+
+## First completed A100 epoch
+
+The effective-rank linear method completed epoch 1 at optimizer step 1,526:
+validation PPL **10.63258** after **3,938.28 seconds** (1.094 hours).  Its
+scheduled floor advanced to 0.32002; 73,248 matrix updates were accepted, zero
+were skipped, and 33 rank-equalization projections were applied.  The process
+then continued into epoch 2 under the same protocol.
