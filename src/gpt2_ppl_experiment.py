@@ -154,12 +154,15 @@ def _optimizer_diagnostics(
     optimizer = optimizers[optimizer_name]
     accepted = skipped = projected = 0
     projection_frobenius = 0.0
+    fast_projection = projection_fallback = 0
     joint_newton = unconstrained = fallback = 0
     for state in optimizer.state.values():
         accepted += int(state.get("accepted_steps", 0))
         skipped += int(state.get("skipped_steps", 0))
         projected += int(state.get("projected_steps", 0))
         projection_frobenius += float(state.get("projection_frobenius", 0.0))
+        fast_projection += int(state.get("fast_projection_steps", 0))
+        projection_fallback += int(state.get("projection_fallback_projection_steps", 0))
         joint_newton += int(state.get("joint_newton_steps", 0))
         unconstrained += int(state.get("unconstrained_steps", 0))
         fallback += int(state.get("certified_fallback_steps", 0))
@@ -170,6 +173,8 @@ def _optimizer_diagnostics(
         "effective_rank_skipped_steps": skipped,
         "effective_rank_projected_steps": projected,
         "effective_rank_projection_frobenius": projection_frobenius,
+        "effective_rank_fast_projection_steps": fast_projection,
+        "effective_rank_projection_fallback_steps": projection_fallback,
         "effective_rank_joint_newton_steps": joint_newton,
         "effective_rank_unconstrained_steps": unconstrained,
         "effective_rank_certified_fallback_steps": fallback,

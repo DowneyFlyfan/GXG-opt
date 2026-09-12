@@ -173,11 +173,14 @@ class EffectiveRankLinear(EffectiveRankHalf):
                 if parameter.grad is None:
                     continue
                 matrix = parameter.reshape(parameter.shape[0], -1)
-                projection_norm = _project_effective_rank(matrix, target)
+                projection_norm, projection_solver = _project_effective_rank(matrix, target)
                 if projection_norm == 0.0:
                     continue
                 state = self.state[parameter]
                 state["projected_steps"] = int(state.get("projected_steps", 0)) + 1
+                state[f"{projection_solver}_projection_steps"] = int(
+                    state.get(f"{projection_solver}_projection_steps", 0)
+                ) + 1
                 state["projection_frobenius"] = float(
                     state.get("projection_frobenius", 0.0)
                 ) + projection_norm
@@ -267,7 +270,7 @@ def _is_effective_rank_feasible(
 
 
 @torch.no_grad()
-def _project_effective_rank(weight: Tensor, minimum_effective_rank: float) -> float:
+def _project_effective_rank_svd(weight: Tensor, minimum_effective_rank: float) -> float:
     """Minimally equalize singular values until the requested floor is feasible.
 
     The interpolation preserves singular vectors and continuously moves the
@@ -302,6 +305,68 @@ def _project_effective_rank(weight: Tensor, minimum_effective_rank: float) -> fl
     distance = float(torch.linalg.matrix_norm(projected - weight, ord="fro"))
     weight.copy_(projected)
     return distance
+
+
+@torch.no_grad()
+def _project_effective_rank(weight: Tensor, minimum_effective_rank: float) -> tuple[float, str]:
+    """Recover a scheduled rank floor with a polar path and an exact fallback.
+
+    For a full-rank matrix ``W=U diag(s) V^T``, its polar factor ``P=UV^T``
+    shifts every singular value by the same nonnegative amount in ``W+aP``.
+    The normalized spectrum therefore approaches the equal spectrum as ``a``
+    grows.  We bracket and bisect this path, rescale it to retain ``||W||_F``,
+    and accept it only after the original effective-rank predicate succeeds.
+    A rank-deficient or insufficiently converged polar factor falls back to the
+    prior exact singular-value projection rather than weakening the schedule.
+    """
+    if _is_effective_rank_feasible(weight, 1.0e-6, minimum_effective_rank):
+        return 0.0, "fast"
+
+    transposed = weight.shape[0] < weight.shape[1]
+    matrix = weight.transpose(-2, -1) if transposed else weight
+    try:
+        polar, _, residual = _polar_newton_schulz(matrix)
+    except ValueError:
+        return _project_effective_rank_svd(weight, minimum_effective_rank), "projection_fallback"
+    if residual > _polar_residual_tolerance(matrix):
+        return _project_effective_rank_svd(weight, minimum_effective_rank), "projection_fallback"
+
+    original_norm = torch.linalg.matrix_norm(matrix, ord="fro")
+    if float(original_norm) == 0.0:
+        return 0.0, "fast"
+
+    def candidate(shift: float) -> Tensor:
+        shifted = matrix + shift * polar
+        return shifted * (original_norm / torch.linalg.matrix_norm(shifted, ord="fro"))
+
+    upper = float(original_norm / math.sqrt(min(matrix.shape)))
+    feasible_upper: Tensor | None = None
+    for _ in range(16):
+        trial = candidate(upper)
+        trial_weight = trial.transpose(-2, -1) if transposed else trial
+        if _is_effective_rank_feasible(trial_weight, 1.0e-6, minimum_effective_rank):
+            feasible_upper = trial
+            break
+        upper *= 2.0
+    if feasible_upper is None:
+        return _project_effective_rank_svd(weight, minimum_effective_rank), "projection_fallback"
+
+    lower = 0.0
+    for _ in range(32):
+        midpoint = (lower + upper) / 2.0
+        trial = candidate(midpoint)
+        trial_weight = trial.transpose(-2, -1) if transposed else trial
+        if _is_effective_rank_feasible(trial_weight, 1.0e-6, minimum_effective_rank):
+            upper = midpoint
+            feasible_upper = trial
+        else:
+            lower = midpoint
+    projected = feasible_upper.transpose(-2, -1) if transposed else feasible_upper
+    if not _is_effective_rank_feasible(projected, 1.0e-6, minimum_effective_rank):
+        return _project_effective_rank_svd(weight, minimum_effective_rank), "projection_fallback"
+    distance = float(torch.linalg.matrix_norm(projected - weight, ord="fro"))
+    weight.copy_(projected)
+    return distance, "fast"
 
 
 def _constraint_name(minimum_effective_rank: float) -> str:

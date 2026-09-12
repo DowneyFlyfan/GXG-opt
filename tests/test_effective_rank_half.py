@@ -286,6 +286,44 @@ def test_linear_optimizer_projects_an_infeasible_matrix_before_certifying_update
     assert optimizer.state[parameter]["projected_steps"] == 1
 
 
+def test_linear_optimizer_uses_polar_fast_projection_for_full_rank_matrix():
+    """A full-rank scheduled recovery must avoid the singular-value fallback.
+
+    Removing the Newton--Schulz recovery path (or routing every recovery through
+    the exact singular-value decomposition) would leave the rank floor intact,
+    but would make the GPT2 experiment unnecessarily slow.  The state counters
+    make that performance-critical branch observable without mocking linalg.
+    """
+    from effective_rank_half import EffectiveRankLinear, effective_rank
+
+    parameter = torch.nn.Parameter(torch.diag(torch.tensor([1.0, 0.5, 0.2])))
+    parameter.grad = torch.zeros_like(parameter)
+    optimizer = EffectiveRankLinear(
+        [parameter],
+        lr=0.01,
+        weight_decay=0.0,
+        schedule_steps=2,
+        start_effective_rank=0.8,
+        end_effective_rank=0.8,
+    )
+    initial_frobenius = torch.linalg.vector_norm(parameter).item()
+    optimizer.step()
+
+    state = optimizer.state[parameter]
+    assert effective_rank(parameter) >= 0.8 - 1.0e-6
+    assert torch.linalg.vector_norm(parameter).item() == pytest.approx(initial_frobenius)
+    assert state["fast_projection_steps"] == 1
+    assert state.get("projection_fallback_steps", 0) == 0
+
+    from gpt2_ppl_experiment import _optimizer_diagnostics
+
+    diagnostics = _optimizer_diagnostics(
+        "effective_rank_linear", {"effective_rank_linear": optimizer}
+    )
+    assert diagnostics["effective_rank_fast_projection_steps"] == 1
+    assert diagnostics["effective_rank_projection_fallback_steps"] == 0
+
+
 def test_float32_boundary_weight_decay_keeps_certified_optimizer_running():
     """Float32 scale-only decay must not reject a feasible boundary matrix."""
     from effective_rank_half import EffectiveRankHalf, effective_rank
