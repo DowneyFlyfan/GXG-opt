@@ -20,6 +20,19 @@ class CertifiedEffectiveRankStep:
     accepted: bool
     effective_rank: float
 
+    @property
+    def direction_solver(self) -> str:
+        """Identify the method used to form the certified direction."""
+        return "svd"
+
+
+class NewtonSchulzCertifiedEffectiveRankStep(CertifiedEffectiveRankStep):
+    """A finite-step certificate whose direction came from Newton--Schulz."""
+
+    @property
+    def direction_solver(self) -> str:
+        return "newton_schulz"
+
 
 @dataclass(frozen=True)
 class JointNewtonEffectiveRankStep(CertifiedEffectiveRankStep):
@@ -29,6 +42,10 @@ class JointNewtonEffectiveRankStep(CertifiedEffectiveRankStep):
     multiplier: float
     residual: float
     certificate_gap: float
+
+    @property
+    def direction_solver(self) -> str:
+        return "newton_schulz" if self.solver == "certified_fallback" else "joint_newton"
 
 
 class EffectiveRankHalf(torch.optim.Optimizer):
@@ -89,6 +106,9 @@ class EffectiveRankHalf(torch.optim.Optimizer):
                 parameter.copy_(update.weight.reshape_as(parameter))
                 state["last_scale"] = update.scale
                 state["accepted_steps"] = int(state.get("accepted_steps", 0)) + int(update.accepted)
+                state[f"{update.direction_solver}_direction_steps"] = int(
+                    state.get(f"{update.direction_solver}_direction_steps", 0)
+                ) + 1
                 if isinstance(update, JointNewtonEffectiveRankStep):
                     state["last_solver"] = update.solver
                     state[f"{update.solver}_steps"] = int(
@@ -377,14 +397,25 @@ def _constraint_name(minimum_effective_rank: float) -> str:
     return "effective-rank"
 
 
-def _partial_polar(gradient: Tensor) -> Tensor:
-    """Return a rank-aware partial polar factor with spectral norm at most one."""
-    left, singular_values, right_transpose = torch.linalg.svd(gradient, full_matrices=False)
-    if singular_values.numel() == 0 or float(singular_values[0]) == 0.0:
+def _partial_polar_newton_schulz(gradient: Tensor) -> Tensor:
+    """Return a spectrally bounded Newton--Schulz partial-polar direction.
+
+    The Frobenius residual bounds the largest eigenvalue error of ``P^T P``.
+    Dividing by ``sqrt(1 + residual)`` therefore bounds the spectral norm by
+    one, including rank-deficient gradients where an exact full polar factor
+    does not exist.  The finite-step test below remains the final acceptance
+    criterion, so this avoids the SVD fallback without weakening feasibility.
+    """
+    if gradient.ndim != 2:
+        raise ValueError("partial-polar direction requires a matrix")
+    transposed = gradient.shape[0] < gradient.shape[1]
+    matrix = gradient.transpose(-2, -1) if transposed else gradient
+    try:
+        polar, _, residual = _polar_newton_schulz(matrix)
+    except ValueError:
         return torch.zeros_like(gradient)
-    threshold = torch.finfo(singular_values.dtype).eps * max(gradient.shape) * singular_values[0]
-    rank = int((singular_values > threshold).sum().item())
-    return left[:, :rank] @ right_transpose[:rank, :]
+    direction = polar / math.sqrt(1.0 + max(residual, 0.0))
+    return direction.transpose(-2, -1) if transposed else direction
 
 
 def certified_effective_rank_step(
@@ -415,12 +446,16 @@ def certified_effective_rank_step(
     if not _is_effective_rank_feasible(weight, tolerance, minimum_effective_rank):
         raise ValueError(f"input matrix is not {_constraint_name(minimum_effective_rank)} feasible")
 
-    direction = _partial_polar(gradient)
+    direction = _partial_polar_newton_schulz(gradient)
     if not torch.any(direction):
-        return CertifiedEffectiveRankStep(weight, direction, 0.0, False, effective_rank(weight))
+        return NewtonSchulzCertifiedEffectiveRankStep(
+            weight, direction, 0.0, False, effective_rank(weight)
+        )
     candidate = weight - step_size * direction
     if _is_effective_rank_feasible(candidate, tolerance, minimum_effective_rank):
-        return CertifiedEffectiveRankStep(candidate, direction, 1.0, True, effective_rank(candidate))
+        return NewtonSchulzCertifiedEffectiveRankStep(
+            candidate, direction, 1.0, True, effective_rank(candidate)
+        )
 
     lower, upper = 0.0, 1.0
     for _ in range(bisection_steps):
@@ -431,7 +466,7 @@ def certified_effective_rank_step(
         else:
             upper = midpoint
     candidate = weight - step_size * lower * direction
-    return CertifiedEffectiveRankStep(
+    return NewtonSchulzCertifiedEffectiveRankStep(
         candidate,
         direction,
         lower,

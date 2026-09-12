@@ -147,3 +147,19 @@ certificate-preserving branch behavior; it is not an end-to-end GPU speed
 claim. The active V2 A100 process had already imported the old source, so it
 remains an isolated solver-quality trace. The committed revision is staged on
 ABA for the next clean effective-rank run and does not mutate the live process.
+
+## SVD-free certified fallback revision
+
+The first V3 start exposed a second SVD route: if the smooth joint Newton solve
+declined a matrix, its certified fallback formed an exact partial polar factor
+by singular-value decomposition. V3 was stopped before any epoch artifact,
+because that route again fails the end-to-end efficient-solver requirement.
+
+The next revision forms the fallback direction with Newton--Schulz and divides
+it by \(\sqrt{1+\delta}\), where \(\delta=\lVert P^\top P-I\rVert_F\). Since
+\(\lVert P\rVert_2^2\le 1+\delta\), the resulting direction remains in the
+spectral-norm ball, including a rank-deficient gradient. The original scalar
+finite-step check still rejects any infeasible candidate. The saved PPL record
+now includes `effective_rank_newton_schulz_direction_steps` in addition to the
+joint-Newton and projection-path counters. The test-first change increased the
+relevant suite to 23 passing tests.

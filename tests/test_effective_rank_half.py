@@ -38,6 +38,38 @@ def test_certified_step_backtracks_at_the_effective_rank_boundary():
     assert effective_rank(update.weight) >= 0.5 - 1.0e-10
 
 
+def test_certified_step_uses_newton_schulz_direction_for_rank_deficient_gradient():
+    """The fast fallback remains spectrally bounded and finite-step certified.
+
+    Replacing this direction with an unscaled Newton--Schulz iterate would
+    violate the spectral ball; reverting it to an SVD would change the reported
+    route and reintroduce the GPT2 bottleneck.
+    """
+    from effective_rank_half import certified_effective_rank_step, effective_rank
+
+    weight = torch.eye(3, dtype=torch.float64)
+    gradient = torch.diag(torch.tensor([1.0, 0.0, 0.0], dtype=torch.float64))
+
+    update = certified_effective_rank_step(weight, gradient, step_size=0.1)
+
+    assert update.direction_solver == "newton_schulz"
+    assert torch.linalg.matrix_norm(update.direction, ord=2) <= 1.0 + 1.0e-10
+    assert effective_rank(update.weight) >= 0.5 - 1.0e-10
+
+
+def test_effective_rank_optimizer_records_newton_schulz_fallback_direction():
+    """Training diagnostics must expose the SVD-free certified route."""
+    from effective_rank_half import EffectiveRankHalf
+
+    parameter = torch.nn.Parameter(torch.eye(3, dtype=torch.float64))
+    parameter.grad = torch.diag(torch.tensor([1.0, 0.0, 0.0], dtype=torch.float64))
+    optimizer = EffectiveRankHalf([parameter], lr=0.01, weight_decay=0.0)
+
+    optimizer.step()
+
+    assert optimizer.state[parameter]["newton_schulz_direction_steps"] == 1
+
+
 def test_joint_newton_step_returns_a_certified_active_constraint_update():
     """A smooth active case converges without falling back to bisection."""
     from effective_rank_half import (
@@ -322,6 +354,7 @@ def test_linear_optimizer_uses_polar_fast_projection_for_full_rank_matrix():
     )
     assert diagnostics["effective_rank_fast_projection_steps"] == 1
     assert diagnostics["effective_rank_projection_fallback_steps"] == 0
+    assert diagnostics["effective_rank_newton_schulz_direction_steps"] == 1
 
 
 def test_float32_boundary_weight_decay_keeps_certified_optimizer_running():
