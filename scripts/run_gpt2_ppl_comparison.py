@@ -22,6 +22,7 @@ def main() -> None:
     parser.add_argument("--adamw-learning-rate", type=float, default=FORMAL_PPL_HYPERPARAMETERS["adamw"]["learning_rate"])
     parser.add_argument("--muon-learning-rate", type=float, default=FORMAL_PPL_HYPERPARAMETERS["muon"]["learning_rate"])
     parser.add_argument("--muown-learning-rate", type=float, default=FORMAL_PPL_HYPERPARAMETERS["muown"]["learning_rate"])
+    parser.add_argument("--muown-momentum", type=float, default=0.95)
     parser.add_argument("--effective-rank-learning-rate", type=float, default=FORMAL_PPL_HYPERPARAMETERS["effective_rank_linear"]["learning_rate"])
     parser.add_argument("--effective-rank-momentum", type=float, default=0.95)
     parser.add_argument("--micro-batch-size", type=int, default=8)
@@ -69,6 +70,9 @@ def main() -> None:
                 arguments.effective_rank_momentum
                 if method in {"effective_rank_half", "effective_rank_joint_newton"}
                 else None
+            ),
+            muown_momentum=(
+                arguments.muown_momentum if method == "muown" else None
             ),
         )
         results.append(result)

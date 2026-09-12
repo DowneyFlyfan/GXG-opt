@@ -240,6 +240,7 @@ def build_optimizers(
     srip_dual_steps: int = 8,
     effective_rank_schedule_steps: int | None = None,
     effective_rank_momentum: float = 0.95,
+    muown_momentum: float = 0.95,
 ) -> dict[str, torch.optim.Optimizer]:
     if optimizer == "adamw":
         return {"adamw": torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=weight_decay, betas=(0.9, 0.95))}
@@ -331,7 +332,12 @@ def build_optimizers(
             muon_parameters, lr=lr, rho=srip_rho, dual_steps=srip_dual_steps
         )
     elif optimizer == "muown":
-        matrix_optimizer = Muown(muon_parameters, lr=lr, weight_decay=weight_decay)
+        matrix_optimizer = Muown(
+            muon_parameters,
+            lr=lr,
+            weight_decay=weight_decay,
+            momentum=muown_momentum,
+        )
     elif optimizer == "effective_rank_half":
         matrix_optimizer = EffectiveRankHalf(
             muon_parameters, lr=lr, weight_decay=weight_decay,

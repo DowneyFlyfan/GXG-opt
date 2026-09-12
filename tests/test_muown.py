@@ -29,6 +29,22 @@ def test_build_optimizers_exposes_muown_and_keeps_auxiliary_parameters_in_adamw(
     assert isinstance(optimizers["adamw_aux"], torch.optim.AdamW)
 
 
+def test_build_optimizers_allows_muown_momentum_tuning():
+    from optimizers import build_optimizers
+
+    model = nn.Sequential(nn.Linear(4, 4, bias=True), nn.LayerNorm(4))
+    optimizers = build_optimizers(
+        model,
+        "muown",
+        lr=0.01,
+        weight_decay=0.0,
+        auxiliary_lr=0.001,
+        muown_momentum=0.8,
+    )
+
+    assert optimizers["muown"].param_groups[0]["momentum"] == 0.8
+
+
 def test_muown_gpt_runner_exposes_matched_screen_controls():
     import subprocess
     import sys
@@ -45,6 +61,38 @@ def test_muown_gpt_runner_exposes_matched_screen_controls():
 
     assert "--learning-rate" in completed.stdout
     assert "--maximum-epochs" in completed.stdout
+
+
+def test_ppl_runner_forwards_muown_momentum(monkeypatch):
+    import run_gpt2_ppl_comparison
+    import sys
+
+    captured = {}
+    monkeypatch.setattr(run_gpt2_ppl_comparison, "language_model_task", lambda **_: object())
+    monkeypatch.setattr(
+        run_gpt2_ppl_comparison,
+        "run_ppl_trial",
+        lambda *args, **kwargs: captured.update(kwargs) or {"status": "mocked"},
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "run_gpt2_ppl_comparison.py",
+            "--label",
+            "screen",
+            "--methods",
+            "muown",
+            "--maximum-updates",
+            "1",
+            "--muown-momentum",
+            "0.8",
+        ],
+    )
+
+    run_gpt2_ppl_comparison.main()
+
+    assert captured["muown_momentum"] == 0.8
 
 
 def test_muown_runner_defaults_to_the_paper_zero_weight_decay(monkeypatch):

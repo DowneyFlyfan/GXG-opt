@@ -217,6 +217,7 @@ def run_ppl_trial(
     weight_decay: float = 0.0,
     auxiliary_learning_rate: float | None = None,
     effective_rank_momentum: float | None = None,
+    muown_momentum: float | None = None,
 ) -> dict:
     """Train one matched run and record measured PPL at actual optimizer steps.
 
@@ -236,6 +237,7 @@ def run_ppl_trial(
         or weight_decay < 0
         or (auxiliary_learning_rate is not None and auxiliary_learning_rate <= 0)
         or (effective_rank_momentum is not None and not 0 <= effective_rank_momentum < 1)
+        or (muown_momentum is not None and not 0 <= muown_momentum < 1)
     ):
         raise ValueError("learning_rate must be positive and weight_decay non-negative")
 
@@ -259,6 +261,7 @@ def run_ppl_trial(
         effective_rank_momentum=(
             0.95 if effective_rank_momentum is None else effective_rank_momentum
         ),
+        muown_momentum=0.95 if muown_momentum is None else muown_momentum,
     )
     schedulers = {
         name: torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=task.estimated_epochs)
