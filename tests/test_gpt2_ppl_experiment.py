@@ -20,6 +20,11 @@ def test_formal_ppl_hyperparameters_match_the_completed_gpt2_comparison():
         "adamw": {"learning_rate": 1.5e-4, "weight_decay": 0.01, "auxiliary_lr": None},
         "muon": {"learning_rate": 2.5e-3, "weight_decay": 0.01, "auxiliary_lr": 5.0e-4},
         "muown": {"learning_rate": 5.0e-3, "weight_decay": 0.0, "auxiliary_lr": 3.0e-4},
+        "effective_rank_half": {
+            "learning_rate": 1.25e-3,
+            "weight_decay": 0.0,
+            "auxiliary_lr": 3.0e-4,
+        },
         "effective_rank_linear": {
             "learning_rate": 1.25e-3,
             "weight_decay": 0.0,
@@ -30,6 +35,17 @@ def test_formal_ppl_hyperparameters_match_the_completed_gpt2_comparison():
             "weight_decay": 0.0,
             "auxiliary_lr": 3.0e-4,
         },
+    }
+
+
+def test_fixed_half_rank_is_available_to_the_ppl_protocol():
+    from gpt2_ppl_experiment import DISPLAY_NAMES, FORMAL_PPL_HYPERPARAMETERS
+
+    assert DISPLAY_NAMES["effective_rank_half"] == "Effective rank (fixed 0.5)"
+    assert FORMAL_PPL_HYPERPARAMETERS["effective_rank_half"] == {
+        "learning_rate": 1.25e-3,
+        "weight_decay": 0.0,
+        "auxiliary_lr": 3.0e-4,
     }
 
 

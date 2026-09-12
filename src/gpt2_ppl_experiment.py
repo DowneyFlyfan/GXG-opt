@@ -24,6 +24,7 @@ DISPLAY_NAMES = {
     "adamw": "AdamW",
     "muon": "Muon",
     "muown": "Muown",
+    "effective_rank_half": "Effective rank (fixed 0.5)",
     "effective_rank_linear": "Effective rank (0.2 to 0.8)",
     "effective_rank_linear_joint_newton": "Effective rank (0.2 to 0.8, joint Newton)",
 }
@@ -35,6 +36,11 @@ FORMAL_PPL_HYPERPARAMETERS = {
     "adamw": {"learning_rate": 1.5e-4, "weight_decay": 0.01, "auxiliary_lr": None},
     "muon": {"learning_rate": 2.5e-3, "weight_decay": 0.01, "auxiliary_lr": 5.0e-4},
     "muown": {"learning_rate": 5.0e-3, "weight_decay": 0.0, "auxiliary_lr": 3.0e-4},
+    "effective_rank_half": {
+        "learning_rate": 1.25e-3,
+        "weight_decay": 0.0,
+        "auxiliary_lr": 3.0e-4,
+    },
     "effective_rank_linear": {
         "learning_rate": 1.25e-3,
         "weight_decay": 0.0,
@@ -149,7 +155,11 @@ def _optimizer_diagnostics(
     optimizer_name: str, optimizers: dict[str, torch.optim.Optimizer]
 ) -> dict[str, float | int]:
     """Expose the effective-rank scheduler and its finite-step decisions."""
-    if optimizer_name not in {"effective_rank_linear", "effective_rank_linear_joint_newton"}:
+    if optimizer_name not in {
+        "effective_rank_half",
+        "effective_rank_linear",
+        "effective_rank_linear_joint_newton",
+    }:
         return {}
     optimizer = optimizers[optimizer_name]
     accepted = skipped = projected = 0
@@ -167,9 +177,8 @@ def _optimizer_diagnostics(
         joint_newton += int(state.get("joint_newton_steps", 0))
         unconstrained += int(state.get("unconstrained_steps", 0))
         fallback += int(state.get("certified_fallback_steps", 0))
-    return {
+    diagnostics = {
         "effective_rank_floor": float(optimizer.minimum_effective_rank),
-        "effective_rank_schedule_step": int(optimizer.schedule_step),
         "effective_rank_accepted_steps": accepted,
         "effective_rank_skipped_steps": skipped,
         "effective_rank_projected_steps": projected,
@@ -181,6 +190,9 @@ def _optimizer_diagnostics(
         "effective_rank_unconstrained_steps": unconstrained,
         "effective_rank_certified_fallback_steps": fallback,
     }
+    if optimizer_name != "effective_rank_half":
+        diagnostics["effective_rank_schedule_step"] = int(optimizer.schedule_step)
+    return diagnostics
 
 
 def run_ppl_trial(
