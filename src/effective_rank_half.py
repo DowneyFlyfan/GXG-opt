@@ -418,6 +418,20 @@ def _partial_polar_newton_schulz(gradient: Tensor) -> Tensor:
     return direction.transpose(-2, -1) if transposed else direction
 
 
+def _certified_bisection_steps(weight: Tensor, requested_steps: int) -> int:
+    """Choose the safe bisection resolution supported by the working dtype.
+
+    Each accepted lower endpoint is checked against the original constraint, so
+    fewer iterations only leaves a slightly smaller feasible step.  Float32
+    cannot usefully resolve the 48-level scalar interval used by the float64
+    reference implementation; twelve levels are already finer than its
+    optimizer-scale numerical resolution.
+    """
+    if weight.dtype in (torch.float16, torch.bfloat16, torch.float32):
+        return min(requested_steps, 12)
+    return requested_steps
+
+
 def certified_effective_rank_step(
     weight: Tensor,
     gradient: Tensor,
@@ -458,7 +472,7 @@ def certified_effective_rank_step(
         )
 
     lower, upper = 0.0, 1.0
-    for _ in range(bisection_steps):
+    for _ in range(_certified_bisection_steps(weight, bisection_steps)):
         midpoint = (lower + upper) / 2.0
         candidate = weight - step_size * midpoint * direction
         if _is_effective_rank_feasible(candidate, tolerance, minimum_effective_rank):

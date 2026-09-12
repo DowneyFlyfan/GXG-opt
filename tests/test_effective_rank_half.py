@@ -70,6 +70,14 @@ def test_effective_rank_optimizer_records_newton_schulz_fallback_direction():
     assert optimizer.state[parameter]["newton_schulz_direction_steps"] == 1
 
 
+def test_certified_bisection_uses_float32_resolution_without_changing_float64_reference():
+    """Float32 GPT updates need only a safe, not 48-bit, bisection endpoint."""
+    from effective_rank_half import _certified_bisection_steps
+
+    assert _certified_bisection_steps(torch.eye(3, dtype=torch.float32), 48) == 12
+    assert _certified_bisection_steps(torch.eye(3, dtype=torch.float64), 48) == 48
+
+
 def test_joint_newton_step_returns_a_certified_active_constraint_update():
     """A smooth active case converges without falling back to bisection."""
     from effective_rank_half import (
