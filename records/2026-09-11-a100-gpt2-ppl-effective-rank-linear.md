@@ -122,3 +122,28 @@ weight decay; AdamW and Muon retain formal 0.01 weight decay. The
 effective-rank entry is the 0.2-to-0.8 linear schedule with the joint-Newton
 efficient-solver path and certified fallback diagnostics. It starts from a new
 model state and does not overlap with the invalid checkpoint.
+
+## Fast scheduled projection revision
+
+The joint-Newton direction solve uses matrix products, but the former schedule
+recovery invoked a full singular-value decomposition whenever a weight fell
+below the current floor. That recovery is outside the direction solve and made
+an end-to-end runtime claim inappropriate.
+
+Commit `ee90416` adds a full-rank fast path. It computes the Newton--Schulz
+polar factor \(P\), searches the equalizing path \(W+aP\), rescales the accepted
+matrix to retain \(\lVert W\rVert_F\), and accepts it only after the original
+effective-rank predicate passes. A rank-deficient, nonconverged, or otherwise
+unbracketed path explicitly falls back to the prior exact singular-value
+projection. The final diagnostic records both `fast_projection_steps` and
+`projection_fallback_steps`; hence a future result can distinguish an actual
+fast path from a safety fallback.
+
+The focused regression first failed against the old code because its fast-path
+counter and norm-preserving recovery did not exist. After the change,
+`PYTHONPATH=src .venv/bin/python -m pytest -q tests/test_effective_rank_half.py
+tests/test_gpt2_ppl_experiment.py` passed 21 tests. This establishes the
+certificate-preserving branch behavior; it is not an end-to-end GPU speed
+claim. The active V2 A100 process had already imported the old source, so it
+remains an isolated solver-quality trace. The committed revision is staged on
+ABA for the next clean effective-rank run and does not mutate the live process.
