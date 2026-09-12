@@ -79,10 +79,8 @@ accuracy rather than being falsely converted.
 
 ## Final-run status
 
-The selected five-epoch A100 protocol started with the effective-rank method.
-This record will be completed with its epoch metrics, the remaining three
-methods, final PPL figures, and an evidence-backed conclusion after all four
-runs finish.
+The first A100 configuration was invalidated before completion; only the fresh
+formal-rate protocol below can provide final PPL figures and a conclusion.
 
 ## Nautilus two-A100 request
 
@@ -100,8 +98,27 @@ request.
 
 ## First completed A100 epoch
 
-The effective-rank linear method completed epoch 1 at optimizer step 1,526:
+The invalidated effective-rank linear method completed epoch 1 at optimizer step 1,526:
 validation PPL **10.63258** after **3,938.28 seconds** (1.094 hours).  Its
 scheduled floor advanced to 0.32002; 73,248 matrix updates were accepted, zero
 were skipped, and 33 rank-equalization projections were applied.  The process
 then continued into epoch 2 under the same protocol.
+
+## Invalidated high-rate A100 attempt
+
+The label `aba_a100_ppl_final_b64` used micro-batch 64, accumulation 1, and
+rates 0.01 (effective rank, Muon, Muown) and 0.001 (AdamW).  On 2026-09-12 it
+was stopped after the user identified that these disagree with the completed
+formal GPT2 comparison: effective-rank 0.00125, Muon 0.0025, Muown 0.005, and
+AdamW 0.00015.  Its two PPL records and checkpoint remain as
+invalid-protocol diagnostics only; they must not appear in a final comparison.
+
+## Replacement formal-rate protocol
+
+The replacement has the fresh label `aba_a100_ppl_formal_b8_a6_joint_newton`,
+effective batch 48 (micro-batch 8, accumulation 6), and the four formal
+learning rates above. Muown and the scheduled effective-rank method use zero
+weight decay; AdamW and Muon retain formal 0.01 weight decay. The
+effective-rank entry is the 0.2-to-0.8 linear schedule with the joint-Newton
+efficient-solver path and certified fallback diagnostics. It starts from a new
+model state and does not overlap with the invalid checkpoint.

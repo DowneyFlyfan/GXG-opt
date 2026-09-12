@@ -13,6 +13,26 @@ def test_perplexity_is_the_exponential_of_mean_negative_log_likelihood():
     assert perplexity_from_nll(3.0) == pytest.approx(20.0855369232)
 
 
+def test_formal_ppl_hyperparameters_match_the_completed_gpt2_comparison():
+    from gpt2_ppl_experiment import FORMAL_PPL_HYPERPARAMETERS
+
+    assert FORMAL_PPL_HYPERPARAMETERS == {
+        "adamw": {"learning_rate": 1.5e-4, "weight_decay": 0.01, "auxiliary_lr": None},
+        "muon": {"learning_rate": 2.5e-3, "weight_decay": 0.01, "auxiliary_lr": 5.0e-4},
+        "muown": {"learning_rate": 5.0e-3, "weight_decay": 0.0, "auxiliary_lr": 3.0e-4},
+        "effective_rank_linear": {
+            "learning_rate": 1.25e-3,
+            "weight_decay": 0.0,
+            "auxiliary_lr": 3.0e-4,
+        },
+        "effective_rank_linear_joint_newton": {
+            "learning_rate": 1.25e-3,
+            "weight_decay": 0.0,
+            "auxiliary_lr": 3.0e-4,
+        },
+    }
+
+
 def test_ppl_renderer_writes_step_and_time_figures(tmp_path: Path):
     from gpt2_ppl_experiment import ppl_trial_paths, write_ppl_comparison_plots
 

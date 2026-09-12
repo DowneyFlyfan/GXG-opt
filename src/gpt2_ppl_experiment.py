@@ -28,6 +28,25 @@ DISPLAY_NAMES = {
     "effective_rank_linear_joint_newton": "Effective rank (0.2 to 0.8, joint Newton)",
 }
 
+# These settings are the previously completed GPT2-12x512 winners.  The
+# common effective batch is 48; the PPL runner defaults to micro-batch 8 with
+# six accumulated gradients, matching the effective-rank and Muown finals.
+FORMAL_PPL_HYPERPARAMETERS = {
+    "adamw": {"learning_rate": 1.5e-4, "weight_decay": 0.01, "auxiliary_lr": None},
+    "muon": {"learning_rate": 2.5e-3, "weight_decay": 0.01, "auxiliary_lr": 5.0e-4},
+    "muown": {"learning_rate": 5.0e-3, "weight_decay": 0.0, "auxiliary_lr": 3.0e-4},
+    "effective_rank_linear": {
+        "learning_rate": 1.25e-3,
+        "weight_decay": 0.0,
+        "auxiliary_lr": 3.0e-4,
+    },
+    "effective_rank_linear_joint_newton": {
+        "learning_rate": 1.25e-3,
+        "weight_decay": 0.0,
+        "auxiliary_lr": 3.0e-4,
+    },
+}
+
 
 @dataclass(frozen=True)
 class PPLTrialPaths:
@@ -170,6 +189,7 @@ def run_ppl_trial(
     maximum_updates: int | None = None,
     validation_batches: int = 64,
     weight_decay: float = 0.0,
+    auxiliary_learning_rate: float | None = None,
 ) -> dict:
     """Train one matched run and record measured PPL at actual optimizer steps.
 
@@ -184,7 +204,11 @@ def run_ppl_trial(
         raise ValueError("maximum_epochs must lie within the task epoch budget")
     if maximum_updates is not None and maximum_updates <= 0:
         raise ValueError("maximum_updates must be positive")
-    if learning_rate <= 0 or weight_decay < 0:
+    if (
+        learning_rate <= 0
+        or weight_decay < 0
+        or (auxiliary_learning_rate is not None and auxiliary_learning_rate <= 0)
+    ):
         raise ValueError("learning_rate must be positive and weight_decay non-negative")
 
     configure_reproducibility(seed)
@@ -202,7 +226,7 @@ def run_ppl_trial(
         optimizer_name,
         learning_rate,
         weight_decay,
-        task.muon_aux_lr,
+        task.muon_aux_lr if auxiliary_learning_rate is None else auxiliary_learning_rate,
         effective_rank_schedule_steps=scheduled_updates,
     )
     schedulers = {

@@ -7,24 +7,29 @@ import json
 from pathlib import Path
 
 from gn_experiment import language_model_task
-from gpt2_ppl_experiment import DISPLAY_NAMES, run_ppl_trial, write_ppl_comparison_plots
+from gpt2_ppl_experiment import (
+    DISPLAY_NAMES,
+    FORMAL_PPL_HYPERPARAMETERS,
+    run_ppl_trial,
+    write_ppl_comparison_plots,
+)
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--label", required=True)
     parser.add_argument("--methods", nargs="+", choices=tuple(DISPLAY_NAMES), required=True)
-    parser.add_argument("--adamw-learning-rate", type=float, default=3.0e-4)
-    parser.add_argument("--muon-learning-rate", type=float, default=1.0e-2)
-    parser.add_argument("--muown-learning-rate", type=float, default=1.0e-2)
-    parser.add_argument("--effective-rank-learning-rate", type=float, default=1.0e-2)
+    parser.add_argument("--adamw-learning-rate", type=float, default=FORMAL_PPL_HYPERPARAMETERS["adamw"]["learning_rate"])
+    parser.add_argument("--muon-learning-rate", type=float, default=FORMAL_PPL_HYPERPARAMETERS["muon"]["learning_rate"])
+    parser.add_argument("--muown-learning-rate", type=float, default=FORMAL_PPL_HYPERPARAMETERS["muown"]["learning_rate"])
+    parser.add_argument("--effective-rank-learning-rate", type=float, default=FORMAL_PPL_HYPERPARAMETERS["effective_rank_linear"]["learning_rate"])
     parser.add_argument("--micro-batch-size", type=int, default=8)
     parser.add_argument("--gradient-accumulation", type=int, default=6)
     parser.add_argument("--maximum-epochs", type=int, default=5)
     parser.add_argument("--maximum-updates", type=int)
     parser.add_argument("--validation-batches", type=int, default=64)
     parser.add_argument("--workers", type=int, default=4)
-    parser.add_argument("--weight-decay", type=float, default=0.0)
+    parser.add_argument("--weight-decay", type=float, help="override the method-specific formal weight decay")
     arguments = parser.parse_args()
     rates = {
         "adamw": arguments.adamw_learning_rate,
@@ -50,7 +55,12 @@ def main() -> None:
             maximum_epochs=arguments.maximum_epochs,
             maximum_updates=arguments.maximum_updates,
             validation_batches=arguments.validation_batches,
-            weight_decay=arguments.weight_decay,
+            weight_decay=(
+                FORMAL_PPL_HYPERPARAMETERS[method]["weight_decay"]
+                if arguments.weight_decay is None
+                else arguments.weight_decay
+            ),
+            auxiliary_learning_rate=FORMAL_PPL_HYPERPARAMETERS[method]["auxiliary_lr"],
         )
         results.append(result)
     if arguments.maximum_updates is None:
