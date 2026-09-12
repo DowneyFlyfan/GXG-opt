@@ -63,3 +63,40 @@ def test_ppl_renderer_writes_step_and_time_figures(tmp_path: Path):
         "gpt2_ppl_test_time.png",
     ]
     assert all(path.exists() and path.stat().st_size > 0 for path in outputs)
+
+
+def test_ppl_renderer_combines_records_with_distinct_run_labels(tmp_path: Path):
+    from gpt2_ppl_experiment import (
+        ppl_trial_paths,
+        write_labeled_ppl_comparison_plots,
+    )
+
+    trials = (
+        ("adamw", "baseline", "AdamW"),
+        ("effective_rank_linear_joint_newton", "effective-rank", "Effective rank"),
+    )
+    for index, (method, label, _) in enumerate(trials):
+        paths = ppl_trial_paths(tmp_path, method, run_label=label)
+        paths.metric.parent.mkdir(parents=True, exist_ok=True)
+        paths.metric.write_text(
+            json.dumps(
+                {
+                    "epoch": 1,
+                    "step": 10,
+                    "elapsed_seconds": index + 1,
+                    "validation_nll": 1.0,
+                    "perplexity": 2.0 + index,
+                }
+            )
+            + "\n"
+        )
+
+    outputs = write_labeled_ppl_comparison_plots(
+        tmp_path, label="four-way", trials=trials
+    )
+
+    assert [path.name for path in outputs] == [
+        "gpt2_ppl_four-way_steps.png",
+        "gpt2_ppl_four-way_time.png",
+    ]
+    assert all(path.exists() and path.stat().st_size > 0 for path in outputs)

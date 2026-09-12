@@ -374,3 +374,58 @@ def write_ppl_comparison_plots(
         figure.savefig(output, dpi=160)
         plot.close(figure)
     return outputs
+
+
+def write_labeled_ppl_comparison_plots(
+    root: Path, *, label: str, trials: Iterable[tuple[str, str, str]]
+) -> tuple[Path, Path]:
+    """Render measured PPL traces whose optimizer trials have distinct labels.
+
+    Each trial is ``(optimizer, run_label, display_name)``.  Keeping the source
+    label per trace preserves provenance when a remote continuation used a
+    distinct label from the locally completed baselines.
+    """
+    trial_list = tuple(trials)
+    if not trial_list or any(
+        method not in DISPLAY_NAMES or not run_label or not display_name
+        for method, run_label, display_name in trial_list
+    ):
+        raise ValueError("the labeled PPL comparison requires registered, labeled trials")
+    traces = [
+        (
+            display_name,
+            _read_records(ppl_trial_paths(root, method, run_label=run_label).metric),
+        )
+        for method, run_label, display_name in trial_list
+    ]
+    if any(not records for _, records in traces):
+        raise ValueError("every plotted PPL method needs measured records")
+    output_root = root / "results" / "nlp"
+    output_root.mkdir(parents=True, exist_ok=True)
+    outputs = (
+        output_root / f"gpt2_ppl_{label}_steps.png",
+        output_root / f"gpt2_ppl_{label}_time.png",
+    )
+    for output, key, xlabel, scale in (
+        (outputs[0], "step", "Completed optimizer step", 1.0),
+        (outputs[1], "elapsed_seconds", "Wall-clock time (hours)", 3600.0),
+    ):
+        figure, axis = plot.subplots(figsize=(9, 5))
+        for name, records in traces:
+            axis.plot(
+                [record[key] / scale for record in records],
+                [record["perplexity"] for record in records],
+                marker="o",
+                label=name,
+            )
+        axis.set(
+            xlabel=xlabel,
+            ylabel="Validation perplexity (lower is better)",
+            title="GPT2-12x512 matched optimizer comparison",
+        )
+        axis.grid(alpha=0.2)
+        axis.legend()
+        figure.tight_layout()
+        figure.savefig(output, dpi=160)
+        plot.close(figure)
+    return outputs
