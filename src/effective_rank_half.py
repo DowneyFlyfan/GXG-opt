@@ -413,6 +413,20 @@ def _polar_newton_schulz(
     return iterate, tangent, residual
 
 
+def _polar_residual_tolerance(matrix: Tensor) -> float:
+    """Return a dtype-aware orthogonality gate for a computed polar factor.
+
+    Newton--Schulz stagnates at the working precision; an absolute ``1e-8``
+    gate is below float32 roundoff for GPT projection matrices.  The accepted
+    factor is subsequently scaled by this residual, preserving the spectral
+    bound used by the finite-step certificate.
+    """
+    return max(
+        1.0e-8,
+        16.0 * torch.finfo(matrix.dtype).eps * math.sqrt(min(matrix.shape)),
+    )
+
+
 def _joint_constraint_terms(
     weight: Tensor, direction: Tensor, step_size: float, minimum_effective_rank: float
 ) -> tuple[Tensor, Tensor, Tensor, Tensor, Tensor]:
@@ -538,23 +552,15 @@ def joint_newton_effective_rank_step(
             certified.effective_rank, "certified_fallback", 0.0, math.inf, math.inf,
         )
 
-    screening_iterations = min(8, polar_iterations)
-    try:
-        direction, _, polar_residual = _polar_newton_schulz(
-            gradient, iterations=screening_iterations
-        )
-    except ValueError:
-        return fallback()
-    if polar_residual > 1.0e-8:
-        return fallback()
     try:
         direction, _, polar_residual = _polar_newton_schulz(
             gradient, iterations=polar_iterations
         )
     except ValueError:
         return fallback()
-    if polar_residual > 1.0e-8:
+    if polar_residual > _polar_residual_tolerance(gradient):
         return fallback()
+    direction = direction / math.sqrt(1.0 + polar_residual)
     if _is_effective_rank_feasible(
         weight - step_size * direction, tolerance, minimum_effective_rank
     ):
@@ -580,7 +586,7 @@ def joint_newton_effective_rank_step(
             )
         except ValueError:
             return fallback()
-        if polar_residual > 1.0e-7:
+        if polar_residual > _polar_residual_tolerance(corrected_gradient):
             return fallback()
         polar_normal = polar_directions[0]
         residual_direction = direction - polar
@@ -591,7 +597,11 @@ def joint_newton_effective_rank_step(
             float(torch.sum(residual_direction.square()))
             + float(scalar_residual.square()) / initial_normal_scale**2
         )
-        if combined_residual <= 1.0e-8:
+        newton_tolerance = max(
+            1.0e-8,
+            16.0 * torch.finfo(weight.dtype).eps * math.sqrt(weight.numel()),
+        )
+        if combined_residual <= newton_tolerance:
             accepted_residual = combined_residual
             break
 
@@ -602,7 +612,7 @@ def joint_newton_effective_rank_step(
                 )
             except ValueError:
                 return torch.full_like(tangent, math.nan)
-            if residual > 1.0e-7:
+            if residual > _polar_residual_tolerance(corrected_gradient):
                 return torch.full_like(tangent, math.nan)
             return tangents[0]
 
@@ -642,7 +652,9 @@ def joint_newton_effective_rank_step(
                 )
             except ValueError:
                 continue
-            if next_polar_residual > 1.0e-7:
+            if next_polar_residual > _polar_residual_tolerance(
+                gradient + next_multiplier * next_normal
+            ):
                 continue
             next_residual_direction = next_direction - next_polar
             next_scalar_residual = (next_constraint + margin) / step_size
@@ -677,7 +689,7 @@ def joint_newton_effective_rank_step(
     )
     feasible_direction = polar / torch.sqrt(1.0 + orthogonality_error)
     updated = weight - step_size * feasible_direction
-    if polar_residual > 1.0e-7 or not _is_effective_rank_feasible(
+    if polar_residual > _polar_residual_tolerance(corrected_gradient) or not _is_effective_rank_feasible(
         updated, tolerance, minimum_effective_rank
     ):
         return fallback()

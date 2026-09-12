@@ -73,6 +73,38 @@ def test_joint_newton_step_returns_a_certified_active_constraint_update():
     assert effective_rank(update.weight) >= 0.5 - 1.0e-10
 
 
+def test_joint_newton_float32_active_constraint_does_not_fail_the_polar_preflight():
+    """The float32 GPT optimizer path must not reject a converged active solve."""
+    from effective_rank_half import (
+        effective_rank,
+        joint_newton_effective_rank_step,
+    )
+
+    weight = torch.tensor(
+        [
+            [0.0667522043586033, -0.6291102570899281, -0.2722289854045090],
+            [-0.5852130630390915, 0.1897551684060146, 0.0467166644690034],
+            [0.1524841993186392, 0.2608752343528235, -0.9306904363832025],
+        ],
+        dtype=torch.float32,
+    )
+    gradient = torch.tensor(
+        [
+            [-1.0973077042250232, 0.5250752320866116, 0.7969625170665243],
+            [0.1443745847855657, -0.7399100063415882, -0.3533482254419504],
+            [-1.5493114901666452, 0.8235255343228248, 0.1169950046842461],
+        ],
+        dtype=torch.float32,
+    )
+
+    update = joint_newton_effective_rank_step(
+        weight, gradient, step_size=0.7384175083695312, minimum_effective_rank=0.5
+    )
+
+    assert update.solver == "joint_newton"
+    assert effective_rank(update.weight) >= 0.5 - 1.0e-6
+
+
 def test_joint_newton_falls_back_for_a_rank_deficient_polar_derivative():
     """A nonsmooth gradient must use the existing finite-step certificate."""
     from effective_rank_half import joint_newton_effective_rank_step
