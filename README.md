@@ -18,6 +18,11 @@ The repository-native implementation of the Kronecker GGN baseline and its signe
 
 ![Effective-Rank-Half metric versus steps](results/nlp/effective_rank_half_lr000125_b8_a6_final_metric_steps.png)
 
+The completed five-epoch GPT2-12x512 perplexity comparison, including the
+joint-Newton effective-rank continuation, is shown below.
+
+![Five-epoch GPT2-12x512 effective-rank comparison](results/nlp/gpt2_ppl_aba_a100_ppl_formal_b8_a6_joint_newton_four_way_steps.png)
+
 # Hybrid Stiefel-Muon
 
 ![Hybrid Stiefel-Muon metric versus steps](results/nlp/hybrid_stiefel_muon_b12_a4_mu0006_st003_formal_metric_steps.png)

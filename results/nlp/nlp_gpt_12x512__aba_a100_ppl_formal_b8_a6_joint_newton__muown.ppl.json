@@ -1,0 +1,18 @@
+{
+  "epochs_completed": 5,
+  "final_perplexity": 2.2966193953898952,
+  "final_validation_nll": 0.8314382135868073,
+  "gradient_accumulation": 6,
+  "learning_rate": 0.005,
+  "micro_batch_size": 8,
+  "model": "gpt_12x512",
+  "optimizer": "muown",
+  "parameters": 54682624,
+  "peak_memory_mb": 9142.17431640625,
+  "seconds": 9769.595744094026,
+  "status": "completed",
+  "task": "nlp_gpt_12x512",
+  "updates": 10170,
+  "validation_batches": 64,
+  "weight_decay": 0.0
+}

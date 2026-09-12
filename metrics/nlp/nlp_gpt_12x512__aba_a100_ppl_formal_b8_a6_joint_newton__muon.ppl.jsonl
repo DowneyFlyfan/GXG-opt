@@ -1,0 +1,5 @@
+{"elapsed_seconds": 1949.279495005001, "epoch": 1, "perplexity": 2.625287501269294, "step": 2034, "validation_nll": 0.965190414339304}
+{"elapsed_seconds": 3898.0462281280197, "epoch": 2, "perplexity": 2.457921500556819, "step": 4068, "validation_nll": 0.8993160743266344}
+{"elapsed_seconds": 5846.811556175031, "epoch": 3, "perplexity": 2.362235926799436, "step": 6102, "validation_nll": 0.8596085971221328}
+{"elapsed_seconds": 7795.649627435021, "epoch": 4, "perplexity": 2.2953777270500377, "step": 8136, "validation_nll": 0.8308974169194698}
+{"elapsed_seconds": 9744.465003544028, "epoch": 5, "perplexity": 2.280087069284355, "step": 10170, "validation_nll": 0.8242136305198073}
