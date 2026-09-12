@@ -31,6 +31,7 @@ def main() -> None:
         "muon": arguments.muon_learning_rate,
         "muown": arguments.muown_learning_rate,
         "effective_rank_linear": arguments.effective_rank_learning_rate,
+        "effective_rank_linear_joint_newton": arguments.effective_rank_learning_rate,
     }
     root = Path(__file__).resolve().parents[1]
     task = language_model_task(

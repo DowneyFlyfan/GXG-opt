@@ -12,7 +12,14 @@ from low_spectral_variance import (
     low_spectral_variance_parameter_names,
 )
 from srip_band import SRIPBand, srip_band_parameter_names
-from effective_rank_half import EffectiveRankHalf, EffectiveRankLinear, EffectiveRankThird, effective_rank
+from effective_rank_half import (
+    EffectiveRankHalf,
+    EffectiveRankJointNewton,
+    EffectiveRankLinear,
+    EffectiveRankLinearJointNewton,
+    EffectiveRankThird,
+    effective_rank,
+)
 from spectral_sphere_muon import SpectralSphereMuon
 from stiefel_muon import StiefelMuon
 
@@ -235,7 +242,7 @@ def build_optimizers(
 ) -> dict[str, torch.optim.Optimizer]:
     if optimizer == "adamw":
         return {"adamw": torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=weight_decay, betas=(0.9, 0.95))}
-    if optimizer not in {"muon", "muown", "effective_rank_half", "effective_rank_third", "effective_rank_linear", "spectral_sphere_muon", "stiefel_muon", "hybrid_stiefel_muon", "low_spectral_variance", "srip_band"}:
+    if optimizer not in {"muon", "muown", "effective_rank_half", "effective_rank_joint_newton", "effective_rank_third", "effective_rank_linear", "effective_rank_linear_joint_newton", "spectral_sphere_muon", "stiefel_muon", "hybrid_stiefel_muon", "low_spectral_variance", "srip_band"}:
         raise ValueError(f"Unsupported optimizer: {optimizer}")
     if optimizer == "hybrid_stiefel_muon":
         if stiefel_lr is None or stiefel_lr <= 0:
@@ -293,8 +300,8 @@ def build_optimizers(
         if srip_rho is None or not 0 < srip_rho < 1:
             raise ValueError("SRIP-band requires rho strictly between zero and one")
         selected = srip_band_parameter_names(model, rho=srip_rho, candidates=selected)
-    if optimizer in {"effective_rank_half", "effective_rank_third", "effective_rank_linear"}:
-        minimum_effective_rank = 0.5 if optimizer == "effective_rank_half" else (1.0 / 3.0 if optimizer == "effective_rank_third" else 0.2)
+    if optimizer in {"effective_rank_half", "effective_rank_joint_newton", "effective_rank_third", "effective_rank_linear", "effective_rank_linear_joint_newton"}:
+        minimum_effective_rank = 0.5 if optimizer in {"effective_rank_half", "effective_rank_joint_newton"} else (1.0 / 3.0 if optimizer == "effective_rank_third" else 0.2)
         named = dict(model.named_parameters())
         selected = {
             name
@@ -324,10 +331,21 @@ def build_optimizers(
         matrix_optimizer = Muown(muon_parameters, lr=lr, weight_decay=weight_decay)
     elif optimizer == "effective_rank_half":
         matrix_optimizer = EffectiveRankHalf(muon_parameters, lr=lr, weight_decay=weight_decay)
+    elif optimizer == "effective_rank_joint_newton":
+        matrix_optimizer = EffectiveRankJointNewton(
+            muon_parameters, lr=lr, weight_decay=weight_decay
+        )
     elif optimizer == "effective_rank_third":
         matrix_optimizer = EffectiveRankThird(muon_parameters, lr=lr, weight_decay=weight_decay)
     elif optimizer == "effective_rank_linear":
         matrix_optimizer = EffectiveRankLinear(
+            muon_parameters,
+            lr=lr,
+            weight_decay=weight_decay,
+            schedule_steps=36_250 if effective_rank_schedule_steps is None else effective_rank_schedule_steps,
+        )
+    elif optimizer == "effective_rank_linear_joint_newton":
+        matrix_optimizer = EffectiveRankLinearJointNewton(
             muon_parameters,
             lr=lr,
             weight_decay=weight_decay,

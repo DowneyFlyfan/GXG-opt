@@ -38,6 +38,60 @@ def test_certified_step_backtracks_at_the_effective_rank_boundary():
     assert effective_rank(update.weight) >= 0.5 - 1.0e-10
 
 
+def test_joint_newton_step_returns_a_certified_active_constraint_update():
+    """A smooth active case converges without falling back to bisection."""
+    from effective_rank_half import (
+        effective_rank,
+        joint_newton_effective_rank_step,
+    )
+
+    weight = torch.tensor(
+        [
+            [0.0667522043586033, -0.6291102570899281, -0.2722289854045090],
+            [-0.5852130630390915, 0.1897551684060146, 0.0467166644690034],
+            [0.1524841993186392, 0.2608752343528235, -0.9306904363832025],
+        ],
+        dtype=torch.float64,
+    )
+    gradient = torch.tensor(
+        [
+            [-1.0973077042250232, 0.5250752320866116, 0.7969625170665243],
+            [0.1443745847855657, -0.7399100063415882, -0.3533482254419504],
+            [-1.5493114901666452, 0.8235255343228248, 0.1169950046842461],
+        ],
+        dtype=torch.float64,
+    )
+
+    update = joint_newton_effective_rank_step(
+        weight, gradient, step_size=0.7384175083695312, minimum_effective_rank=0.5
+    )
+
+    assert update.accepted
+    assert update.solver == "joint_newton"
+    assert update.multiplier > 0.0
+    assert torch.linalg.matrix_norm(update.direction, ord=2) <= 1.0 + 1.0e-10
+    assert effective_rank(update.weight) >= 0.5 - 1.0e-10
+
+
+def test_joint_newton_falls_back_for_a_rank_deficient_polar_derivative():
+    """A nonsmooth gradient must use the existing finite-step certificate."""
+    from effective_rank_half import joint_newton_effective_rank_step
+
+    small_singular_value_squared = 2.0 - math.sqrt(3.0)
+    weight = torch.diag(
+        torch.tensor([1.0, math.sqrt(small_singular_value_squared), 0.0], dtype=torch.float64)
+    )
+    gradient = torch.diag(torch.tensor([0.0, 1.0, 0.0], dtype=torch.float64))
+
+    update = joint_newton_effective_rank_step(
+        weight, gradient, step_size=0.55, minimum_effective_rank=0.5
+    )
+
+    assert update.accepted
+    assert update.solver == "certified_fallback"
+    assert update.effective_rank >= 0.5 - 1.0e-10
+
+
 def test_certified_step_admits_and_preserves_the_one_third_constraint():
     from effective_rank_half import certified_effective_rank_step, effective_rank
 
@@ -115,6 +169,42 @@ def test_linear_optimizer_advances_and_restores_its_effective_rank_schedule():
         Model(), "effective_rank_linear", lr=0.01, weight_decay=0.0, auxiliary_lr=0.001
     )
     assert isinstance(optimizers["effective_rank_linear"], EffectiveRankLinear)
+
+
+def test_linear_joint_newton_optimizer_preserves_schedule_and_reports_solver_path():
+    from effective_rank_half import EffectiveRankLinearJointNewton, effective_rank
+    from optimizers import build_optimizers
+
+    parameter = torch.nn.Parameter(torch.eye(3, dtype=torch.float64))
+    parameter.grad = torch.tensor(
+        [[0.2, -0.3, 0.1], [0.1, 0.4, -0.2], [0.3, 0.3, 0.2]], dtype=torch.float64
+    )
+    optimizer = EffectiveRankLinearJointNewton(
+        [parameter], lr=0.1, weight_decay=0.0, schedule_steps=4
+    )
+    optimizer.step()
+
+    state = optimizer.state[parameter]
+    assert optimizer.schedule_step == 1
+    assert effective_rank(parameter) >= 0.2 - 1.0e-10
+    assert sum(
+        int(state.get(key, 0))
+        for key in ("joint_newton_steps", "unconstrained_steps", "certified_fallback_steps")
+    ) == 1
+
+    class Model(torch.nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.matrix = torch.nn.Parameter(torch.eye(3))
+            self.bias = torch.nn.Parameter(torch.zeros(3))
+
+    optimizers = build_optimizers(
+        Model(), "effective_rank_linear_joint_newton", lr=0.01, weight_decay=0.0,
+        auxiliary_lr=0.001,
+    )
+    assert isinstance(
+        optimizers["effective_rank_linear_joint_newton"], EffectiveRankLinearJointNewton
+    )
 
 
 def test_linear_optimizer_projects_an_infeasible_matrix_before_certifying_update():
