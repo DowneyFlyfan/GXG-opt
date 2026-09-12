@@ -1,0 +1,51 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: new-optimizer-gpt2-muon-formal
+  labels:
+    app: new-optimizer-gpt2
+    purpose: formal-perplexity-muon
+spec:
+  activeDeadlineSeconds: 28800
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        app: new-optimizer-gpt2
+        purpose: formal-perplexity-muon
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: muon-ppl
+          image: nvcr.io/nvidia/pytorch:26.04-py3
+          workingDir: /workspace/New_Optimizer
+          command: ["bash", "-lc"]
+          args:
+            - |
+              PYTHONUNBUFFERED=1 PYTHONPATH=src python scripts/run_gpt2_ppl_comparison.py \
+                --label aba_a100_ppl_formal_b8_a6_joint_newton \
+                --methods muon \
+                --maximum-epochs 5 \
+                --micro-batch-size 8 \
+                --gradient-accumulation 6 \
+                --workers 2 \
+                --validation-batches 64 \
+                --skip-plots
+          resources:
+            requests:
+              cpu: "8"
+              memory: 32Gi
+              ephemeral-storage: 20Gi
+              nvidia.com/a100: "1"
+            limits:
+              cpu: "8"
+              memory: 32Gi
+              ephemeral-storage: 20Gi
+              nvidia.com/a100: "1"
+          volumeMounts:
+            - name: results
+              mountPath: /workspace
+      volumes:
+        - name: results
+          persistentVolumeClaim:
+            claimName: new-optimizer-gpt2-results
