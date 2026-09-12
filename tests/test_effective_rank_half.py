@@ -92,6 +92,34 @@ def test_joint_newton_falls_back_for_a_rank_deficient_polar_derivative():
     assert update.effective_rank >= 0.5 - 1.0e-10
 
 
+def test_joint_newton_solves_the_equivalent_transposed_wide_problem():
+    from effective_rank_half import joint_newton_effective_rank_step
+
+    weight = torch.tensor(
+        [
+            [0.0667522043586033, -0.6291102570899281, -0.2722289854045090],
+            [-0.5852130630390915, 0.1897551684060146, 0.0467166644690034],
+            [0.1524841993186392, 0.2608752343528235, -0.9306904363832025],
+        ],
+        dtype=torch.float64,
+    ).transpose(0, 1)
+    gradient = torch.tensor(
+        [
+            [-1.0973077042250232, 0.5250752320866116, 0.7969625170665243],
+            [0.1443745847855657, -0.7399100063415882, -0.3533482254419504],
+            [-1.5493114901666452, 0.8235255343228248, 0.1169950046842461],
+        ],
+        dtype=torch.float64,
+    ).transpose(0, 1)
+
+    update = joint_newton_effective_rank_step(
+        weight, gradient, step_size=0.7384175083695312, minimum_effective_rank=0.5
+    )
+
+    assert update.solver == "joint_newton"
+    assert update.weight.shape == weight.shape
+
+
 def test_certified_step_admits_and_preserves_the_one_third_constraint():
     from effective_rank_half import certified_effective_rank_step, effective_rank
 

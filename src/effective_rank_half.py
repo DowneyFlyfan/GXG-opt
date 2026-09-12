@@ -497,6 +497,31 @@ def joint_newton_effective_rank_step(
         or linear_iterations <= 0
     ):
         raise ValueError("joint Newton effective-rank hyperparameters are invalid")
+    # Newton--Schulz is written below for a tall matrix.  The objective,
+    # spectral bound, and effective-rank constraint are transpose invariant,
+    # so wide GPT projection matrices use the same solve on their transpose.
+    if weight.shape[0] < weight.shape[1]:
+        transposed = joint_newton_effective_rank_step(
+            weight.transpose(-2, -1),
+            gradient.transpose(-2, -1),
+            step_size=step_size,
+            tolerance=tolerance,
+            minimum_effective_rank=minimum_effective_rank,
+            maximum_newton_steps=maximum_newton_steps,
+            polar_iterations=polar_iterations,
+            linear_iterations=linear_iterations,
+        )
+        return JointNewtonEffectiveRankStep(
+            transposed.weight.transpose(-2, -1),
+            transposed.direction.transpose(-2, -1),
+            transposed.scale,
+            transposed.accepted,
+            transposed.effective_rank,
+            transposed.solver,
+            transposed.multiplier,
+            transposed.residual,
+            transposed.certificate_gap,
+        )
     maximum_step = float(torch.linalg.matrix_norm(weight, ord="fro") / math.sqrt(min(weight.shape)))
     if not step_size < maximum_step:
         raise ValueError("step_size must be smaller than ||W||_F / sqrt(r)")
@@ -513,6 +538,15 @@ def joint_newton_effective_rank_step(
             certified.effective_rank, "certified_fallback", 0.0, math.inf, math.inf,
         )
 
+    screening_iterations = min(8, polar_iterations)
+    try:
+        direction, _, polar_residual = _polar_newton_schulz(
+            gradient, iterations=screening_iterations
+        )
+    except ValueError:
+        return fallback()
+    if polar_residual > 1.0e-8:
+        return fallback()
     try:
         direction, _, polar_residual = _polar_newton_schulz(
             gradient, iterations=polar_iterations
