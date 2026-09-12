@@ -30,6 +30,7 @@ def main() -> None:
     parser.add_argument("--validation-batches", type=int, default=64)
     parser.add_argument("--workers", type=int, default=4)
     parser.add_argument("--weight-decay", type=float, help="override the method-specific formal weight decay")
+    parser.add_argument("--skip-plots", action="store_true", help="defer rendering until distributed method records are consolidated")
     arguments = parser.parse_args()
     rates = {
         "adamw": arguments.adamw_learning_rate,
@@ -63,7 +64,7 @@ def main() -> None:
             auxiliary_learning_rate=FORMAL_PPL_HYPERPARAMETERS[method]["auxiliary_lr"],
         )
         results.append(result)
-    if arguments.maximum_updates is None:
+    if arguments.maximum_updates is None and not arguments.skip_plots:
         plots = write_ppl_comparison_plots(root, label=arguments.label, methods=arguments.methods)
         print(json.dumps({"results": results, "plots": [str(path) for path in plots]}, sort_keys=True))
     else:
