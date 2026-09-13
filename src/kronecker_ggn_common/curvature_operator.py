@@ -186,14 +186,34 @@ class GGNLinearOperator:
 class GGNFullOperator:
     """Matrix-free generalized Gauss--Newton product over all trainable parameters."""
 
-    def __init__(self, model: nn.Module, batch: FunctionalCurvatureBatch) -> None:
+    def __init__(
+        self,
+        model: nn.Module,
+        batch: FunctionalCurvatureBatch,
+        *,
+        parameter_names: tuple[str, ...] | None = None,
+    ) -> None:
         self.model = model
         self.batch = batch
-        named = tuple(
+        named_all = tuple(
             (name, parameter)
             for name, parameter in model.named_parameters()
             if parameter.requires_grad
         )
+        if parameter_names is None:
+            named = named_all
+        else:
+            requested = tuple(parameter_names)
+            available = {name: parameter for name, parameter in named_all}
+            missing = tuple(name for name in requested if name not in available)
+            if missing:
+                raise ValueError(
+                    "GGNFullOperator parameter_names are not trainable model parameters: "
+                    f"{missing}"
+                )
+            # Preserve the caller's block order: this is the vectorization order
+            # used by constrained joint solvers.
+            named = tuple((name, available[name]) for name in requested)
         if not named:
             raise ValueError("GGNFullOperator requires trainable parameters")
         self.parameter_names = tuple(name for name, _ in named)
