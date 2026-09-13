@@ -127,14 +127,15 @@ schedule:
     final_lr_fraction: 0.01
     decay_end_update: 12288
 evaluation:
-  metric: token_weighted_next_token_nll_nats
-  secondary_metric: exp_nll_perplexity
+  metric: exp_nll_perplexity
+  secondary_metric: token_weighted_next_token_nll_nats
   quick_validation_prediction_tokens: 262144
   quick_validation_interval_seconds: 300
   full_validation_at_start_and_end: true
   paired_prefix_evaluation_interval_updates: 1024
   prefix_evaluations_only_before_time_decay: true
   audit_use: frozen_finalists_only
+  # Statistical effects use log perplexity (NLL), in nats.
   practical_effect_threshold_nats: 0.01
   training_seed_uncertainty: paired_differences_95_percent_t_interval
   validation_uncertainty: paired_document_cluster_bootstrap
@@ -173,7 +174,7 @@ tuning:
   final_horizon_seconds_per_trial: 3600
   initial_budget_seconds_per_method: 10200
   preserve_all_trials: true
-  selection_metric: final_validation_nll
+  selection_metric: final_validation_perplexity
   require_fresh_confirmation_seeds: true
   boundary_winner_requires_search_extension_or_undertuned_label: true
 output:

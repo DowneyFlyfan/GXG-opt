@@ -3,8 +3,9 @@
 The [local evolvement research design](records/local_evolvement.md) specifies a
 63.82M GPT-style transformer on a frozen FineWeb-Edu sample, targeting one hour
 per optimizer per seed on the RTX 5090, with separate AdamW/Muon tuning and
-paired-seed confirmation. It includes measured local timing, dataset access,
-evaluation rules, and an optional equal-token comparison.
+paired-seed confirmation. Validation perplexity is the primary metric (lower is
+better), with NLL retained as a secondary metric. It includes measured local
+timing, dataset access, evaluation rules, and an optional equal-token comparison.
 
 The [YAML specification](configs/experiments/local_evolvement.yaml) is a design
 artifact; a full training entry point is not implemented. The bounded

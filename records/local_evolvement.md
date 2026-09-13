@@ -4,7 +4,7 @@
 
 Use a **randomly initialized, 63.82M-parameter GPT-style decoder with 12 layers, width 512, eight attention heads, and context length 512**, trained on a frozen sample of **FineWeb-Edu** with the GPT-2 BPE tokenizer. Give each optimizer and seed approximately **one hour on one RTX 5090**. Budget hyperparameter tuning separately. Keep AdamW and Muon as independently tuned baselines.
 
-This is an experiment for developing transformer optimizers: detecting changes in learning speed, validation loss, stability, memory use, and implementation cost. It is not a claim that a one-hour model reaches full pretraining convergence or that its optimizer ranking transfers to large models. The design supports an honest “inconclusive” outcome when differences are below the experiment's resolution.
+This is an experiment for developing transformer optimizers: detecting changes in learning speed, validation perplexity, stability, memory use, and implementation cost. It is not a claim that a one-hour model reaches full pretraining convergence or that its optimizer ranking transfers to large models. The design supports an honest “inconclusive” outcome when differences are below the experiment's resolution.
 
 The configuration is `configs/experiments/local_evolvement.yaml`. It is explicitly an **experiment specification**, not a runnable configuration for the existing five-epoch trainer. A working, bounded calibration utility is included at `scripts/calibrate_local_evolvement.py`. The model has been instantiated and timed on the local RTX 5090; public dataset streaming has been verified. Full dataset preparation, one-hour real-data runs, and empirical confirmation of optimizer separation remain execution steps.
 
@@ -21,7 +21,7 @@ The configuration is `configs/experiments/local_evolvement.yaml`. It is explicit
 | Numerical settings | FP32 parameters and optimizer state; BF16 autocast; SDPA; TF32 enabled |
 | Regularization | Dropout 0, weight decay 0, gradient clipping at global norm 1 |
 | Primary budget | Freeze training state at 3,540 active seconds; reserve 60 seconds for final evaluation and saving |
-| Primary outcome | Final held-out next-token negative log-likelihood, in nats per prediction token |
+| Primary outcome | Final held-out next-token perplexity, `exp(token-weighted NLL)`; lower is better |
 | Confirmation | Three fresh paired seeds; add two if uncertainty remains |
 
 ## Existing repository and compatibility
@@ -163,7 +163,7 @@ For training window `k`, take 513 consecutive IDs starting at `512*k`. Use the f
 
 For development and audit, reset context per document. Split each document into input/target windows with the same one-token overlap. Pad only the final partial window and mask its padding targets. Retain EOS as a scored target. This gives a reproducible document-level evaluation and supports resampling entire documents. Training loss and held-out loss need not match because their boundary contexts differ, but all optimizers use the same definitions.
 
-Compute `NLL = sum(valid target cross-entropies) / number of valid targets`, with FP32 cross-entropy accumulation and an FP64 dataset sum. Perplexity is `exp(NLL)`. Do not average batch means with unequal token counts. Auxiliary curvature/probe tokens are charged to cost, but do not inflate the count of primary training targets.
+Compute `NLL = sum(valid target cross-entropies) / number of valid targets`, with FP32 cross-entropy accumulation and an FP64 dataset sum. The primary evaluation metric is perplexity, `PPL = exp(NLL)`, matching the cloud GPT-2 experiment; lower is better. Retain NLL in nats per prediction token as the training loss and secondary evaluation metric. Exponentiate only after aggregating the valid targets; do not average batch perplexities or batch means with unequal token counts. Auxiliary curvature/probe tokens are charged to cost, but do not inflate the count of primary training targets.
 
 ## One-hour comparison and equal-token comparison
 
@@ -171,7 +171,7 @@ It is impossible to guarantee all three of the following for arbitrary optimizer
 
 ### Primary: fixed wall clock
 
-The primary question is: **Which optimizer produces the best held-out loss in roughly one hour on this GPU?** Start the active clock immediately before per-run model/optimizer initialization. Include initial evaluation, batch loading and transfers, forward/backward passes, updates, proposal calculations, periodic probes, validation, diagnostics, and checkpoint I/O. Dataset preparation and the separate tuning campaign are excluded and reported separately.
+The primary question is: **Which optimizer produces the lowest held-out perplexity in roughly one hour on this GPU?** Start the active clock immediately before per-run model/optimizer initialization. Include initial evaluation, batch loading and transfers, forward/backward passes, updates, proposal calculations, periodic probes, validation, diagnostics, and checkpoint I/O. Dataset preparation and the separate tuning campaign are excluded and reported separately.
 
 Freeze the final training state no later than 3,540 active seconds. Before launching another update, allow enough time for a conservative estimate of its complete cost, including scheduled expensive work. Never score a half-applied update or a partially accumulated gradient as a completed optimizer step. Use the remaining 60 seconds for full development evaluation and final saving. If this reserve is insufficient in calibration, enlarge it for **all** methods before the comparison; record any actual overrun.
 
@@ -213,7 +213,7 @@ Use these starting search ranges, not claims of optimal settings:
 
 Hold the listed betas, momentum, epsilon, clipping, and schedule constant during the initial LR sweep. This is a budget-limited baseline search, not exhaustive tuning. Candidate-specific parameters can consume the same allowed trial budget; report the actual search spaces rather than concealing manual iterations.
 
-Run five 10-minute screens per method on seed 42. These screens use the opening portion of the full hourly schedule; they must not compress an hour's cooldown into ten minutes. Extend the two best settings to full-hour trials from identical initial conditions, then select by full development NLL. Total initial tuning allocation is **170 minutes per method**. Early screens can misrank slow-starting methods, so retain all curves and keep a documented, equal-budget extension route.
+Run five 10-minute screens per method on seed 42. These screens use the opening portion of the full hourly schedule; they must not compress an hour's cooldown into ten minutes. Extend the two best settings to full-hour trials from identical initial conditions, then select by the lowest final full development perplexity. Total initial tuning allocation is **170 minutes per method**. Early screens can misrank slow-starting methods, so retain all curves and keep a documented, equal-budget extension route.
 
 If the winning LR is at a boundary, extend the grid or explicitly label the baseline undertuned. Do not publish an improvement over an obviously undertuned baseline. If tuning auxiliary LR or a second momentum parameter, grant the same additional tuning budget to the competing methods and record its use. Keep all tuning logs, configurations, failures, and time costs; do not count seed 42 as a fresh confirmation seed.
 
@@ -223,7 +223,7 @@ Use one screened seed to discard clear divergence, excessive overhead, or no mea
 
 Order runs in a balanced or randomized sequence across seeds so one method does not consistently run on a colder GPU or during a busier desktop period. Record GPU driver, runtime versions, clock/power settings, peak memory, and background contention. Pairing reduces nuisance variation; it does not guarantee bitwise reproducibility of all BF16 kernels. Do not force a slow attention implementation for only one method and call the resulting runtime an optimizer-only comparison.
 
-Define the effect for seed `s` as `delta_s = NLL(candidate, s) - NLL(baseline, s)`. Negative is better. Report each paired delta, the mean, the standard deviation of paired deltas, and a 95% paired Student-t interval. With three seeds the interval is wide: its half-width is `4.303 * sd(delta) / sqrt(3)`. For example, a paired standard deviation of 0.01 nats gives a half-width of about 0.025 nats; three runs would not resolve a 0.01-nat gain reliably. Add seeds 404 and 505 when useful, and report inconclusive results if uncertainty remains.
+Use log perplexity for statistical comparisons: define the effect for seed `s` as `delta_s = NLL(candidate, s) - NLL(baseline, s) = log(PPL(candidate, s) / PPL(baseline, s))`. Negative is better. Report each paired delta, the mean, the standard deviation of paired deltas, and a 95% paired Student-t interval, alongside each run's primary perplexity. With three seeds the interval is wide: its half-width is `4.303 * sd(delta) / sqrt(3)`. For example, a paired standard deviation of 0.01 nats gives a half-width of about 0.025 nats; three runs would not resolve a 0.01-nat gain reliably. Add seeds 404 and 505 when useful, and report inconclusive results if uncertainty remains.
 
 Predeclare **0.01 nats per token** as the initial smallest practically interesting difference. It corresponds to a perplexity reduction of approximately `1 - exp(-0.01) = 0.995%`. This is a decision threshold, not a promised detection limit or a threshold derived from the public papers. A negative interval with a tiny effect is statistically different but may not be practically useful. A strong improvement claim requires the uncertainty bound to support the chosen practical threshold, not just a favorable mean.
 
@@ -235,10 +235,10 @@ Keep the audit holdout unused until architecture, hyperparameters, finalists, an
 
 | Observation | Interpretation |
 | --- | --- |
-| Lower loss at equal tokens and at one hour, replicated on fresh seeds | Evidence of learning-efficiency and practical runtime improvement on this profile |
-| Lower loss at equal tokens, worse loss at one hour | Better token efficiency whose compute overhead is too high locally |
+| Lower held-out perplexity at equal tokens and at one hour, replicated on fresh seeds | Evidence of learning-efficiency and practical runtime improvement on this profile |
+| Lower held-out perplexity at equal tokens, worse perplexity at one hour | Better token efficiency whose compute overhead is too high locally |
 | Better one-hour result but no equal-token gain | Useful runtime improvement; separate implementation throughput from the optimizer's learning behavior |
-| Better training loss but worse held-out loss | Faster fitting or a generalization change, not a held-out improvement |
+| Better training loss but worse held-out perplexity | Faster fitting or a generalization change, not a held-out improvement |
 | Overlapping paired uncertainty or an effect below the resolution | Inconclusive or practically negligible; preserve the result |
 | Repeated OOM, nonfinite losses, or incomplete updates | Feasibility/stability failure for this configuration |
 
@@ -246,9 +246,9 @@ Before calling the benchmark sensitive, complete tuned AdamW/Muon hourly pilots,
 
 ## Reproducibility, artifacts, and execution sequence
 
-Every completed experiment should retain resolved configuration, code revisions and hashes, model/optimizer routing, dataset manifest, initialization hash, RNG states, resume metadata, token and step counters, per-step or interval timings, validation NLL, and optimizer diagnostics. Save both **metric_steps.png** and **metric_time.png**, including tuned AdamW and Muon from the same protocol. Show NLL as the primary metric and optionally perplexity; use completed optimizer updates rather than epochs on the step axis.
+Every completed experiment should retain resolved configuration, code revisions and hashes, model/optimizer routing, dataset manifest, initialization hash, RNG states, resume metadata, token and step counters, per-step or interval timings, validation perplexity and NLL, and optimizer diagnostics. Save both **metric_steps.png** and **metric_time.png**, including tuned AdamW and Muon from the same protocol. Show perplexity as the primary metric with the axis label **Validation perplexity (lower is better)**, and optionally add separate NLL plots; use completed optimizer updates rather than epochs on the step axis.
 
-In `summary.csv`, include method, seed, NLL/PPL, completed updates, primary training targets, auxiliary targets and forward/backward calls, active wall seconds, training-only seconds, evaluation/save time, tokens per second, peak allocated/reserved VRAM, LR settings, failure status, and experiment mode. Keep equal-time and equal-token endpoints identifiable. Save per-document loss sums and token counts for audit resampling.
+In `summary.csv`, include method, seed, primary `final_validation_perplexity` and secondary `final_validation_nll`, completed updates, primary training targets, auxiliary targets and forward/backward calls, active wall seconds, training-only seconds, evaluation/save time, tokens per second, peak allocated/reserved VRAM, LR settings, failure status, and experiment mode. Keep equal-time and equal-token endpoints identifiable. Save per-document loss sums and token counts for audit resampling.
 
 Keep results under `results/local_evolvement/` and checkpoints under `.cache/local_evolvement/checkpoints/`. Retain the final model and a latest resumable checkpoint, with periodic atomic replacement rather than an unlimited copy at every metric point. Include the model, optimizer, schedule state, data cursor/order, RNG states, and active elapsed time in resumable state. Do not reset an hour's budget when resuming. Mark interrupted runs and record restart overhead.
 
