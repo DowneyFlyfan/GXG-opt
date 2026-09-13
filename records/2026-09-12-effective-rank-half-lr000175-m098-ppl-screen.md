@@ -40,3 +40,9 @@ accepted 277,260 constrained matrix updates, skipped none, and recorded zero
 projection, certified-fallback, or joint-Newton steps. The final perplexity
 improves the previous strict rank-half five-epoch result of 2.386942 by
 0.012819, but it does not beat the matched Muon baseline (2.280087).
+
+The matched PPL comparison artifacts pair this run with the recorded AdamW,
+Muon, and Muown five-epoch baselines at the same 10,170 optimizer steps:
+
+- `results/nlp/gpt2_ppl_aba_a100_effective_rank_half_lr000175_m098_final_e5_baselines_steps.png`
+- `results/nlp/gpt2_ppl_aba_a100_effective_rank_half_lr000175_m098_final_e5_baselines_time.png`
