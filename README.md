@@ -1,3 +1,17 @@
+# Local evolvement
+
+The [local evolvement research design](records/local_evolvement.md) specifies a
+63.82M GPT-style transformer on a frozen FineWeb-Edu sample, targeting one hour
+per optimizer per seed on the RTX 5090, with separate AdamW/Muon tuning and
+paired-seed confirmation. It includes measured local timing, dataset access,
+evaluation rules, and an optional equal-token comparison.
+
+The [YAML specification](configs/experiments/local_evolvement.yaml) is a design
+artifact; a full training entry point is not implemented. The bounded
+[calibration utility](scripts/calibrate_local_evolvement.py) is runnable and its
+recorded measurements are linked from the design. Existing five-epoch profiles
+remain separate.
+
 # Ideas
 
 The repository-native implementation of the Kronecker GGN baseline and its signed low-rank relative-residual correction is documented in [KRONECKER_GGN_README.md](KRONECKER_GGN_README.md).

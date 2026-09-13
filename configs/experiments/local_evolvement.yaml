@@ -1,0 +1,198 @@
+# Research specification, not an input to the existing five-epoch v2 runner.
+# Read records/local_evolvement.md for the evidence, timing, and run contract.
+schema_version: 1
+experiment_name: local_evolvement
+artifact_type: experiment_design
+status: designed_and_shape_calibrated
+training_runner_implemented: false
+purpose: one_hour_transformer_optimizer_screen
+hardware:
+  gpu: NVIDIA GeForce RTX 5090
+  gpu_count: 1
+  advertised_memory_gib: 32
+  target_process_reserved_memory_gib: 24
+  minimum_global_free_headroom_gib: 3
+  target: local_wsl
+model:
+  implementation: transformers.GPT2LMHeadModel
+  initialization: random
+  parameter_count: 63823360
+  config:
+    vocab_size: 50257
+    n_positions: 512
+    n_ctx: 512
+    n_layer: 12
+    n_embd: 512
+    n_head: 8
+    n_inner: 2048
+    activation_function: gelu_new
+    resid_pdrop: 0.0
+    embd_pdrop: 0.0
+    attn_pdrop: 0.0
+    initializer_range: 0.02
+    layer_norm_epsilon: 1.0e-5
+    tie_word_embeddings: true
+    use_cache: false
+    bos_token_id: 50256
+    eos_token_id: 50256
+  train_attention: sdpa
+  parameter_dtype: float32
+  autocast_dtype: bfloat16
+  optimizer_state_dtype: float32
+  compile: false
+  gradient_checkpointing: false
+tokenizer:
+  name: openai-community/gpt2
+  revision: 607a30d783dfa663caf39e06633721c8d4cfcd7e
+  add_special_tokens: false
+  append_eos_per_document: true
+dataset:
+  name: HuggingFaceFW/fineweb-edu
+  config: sample-10BT
+  revision: 87f09149ef4734204d70ed1d046ddc9ca3f2b8f9
+  url: https://huggingface.co/datasets/HuggingFaceFW/fineweb-edu
+  gated: false
+  source_split: train
+  preparation_only_streaming: true
+  training_requires_frozen_local_files: true
+  cache_path: .cache/local_evolvement/fineweb_edu_gpt2_512
+  token_storage: uint16_little_endian
+  training_prediction_token_capacity: 536870912
+  validation_prediction_tokens: 4194304
+  audit_prediction_tokens: 4194304
+  split:
+    unit: document_before_packing
+    exact_dedup: global_sha256_of_nfkc_whitespace_normalized_text
+    key: canonical_url_or_normalized_text_sha256
+    algorithm: sha256_salted_mod_1000
+    salt: local_evolvement_v1
+    train_buckets: [0, 979]
+    validation_buckets: [980, 989]
+    audit_buckets: [990, 999]
+  training_packing:
+    stored_stream_overlap: 1
+    input_length: 512
+    target_length: 512
+    stride: 512
+    cross_document_attention: true
+  evaluation_packing:
+    reset_context_per_document: true
+    pad_last_window: true
+    ignore_padding_targets: true
+    retain_document_ids_for_resampling: true
+training:
+  effective_batch_sequences: 64
+  prediction_tokens_per_update: 32768
+  micro_batch_size: 32
+  gradient_accumulation_steps: 2
+  fallback_micro_batches: [16, 8]
+  preserve_effective_batch_on_fallback: true
+  data_order: random_permutation_of_frozen_stride_512_training_windows
+  data_seed: run_seed_plus_1000003
+  data_sampling_replacement: false
+  on_training_pool_exhaustion: stop_and_mark_incomplete_do_not_repeat
+  gradient_clip_norm: 1.0
+  tf32: true
+  seeds_screen: [42]
+  seeds_confirmation: [101, 202, 303]
+  seeds_additional_if_uncertain: [404, 505]
+  weight_decay: 0.0
+budget:
+  scope: per_optimizer_per_seed_tuning_separate
+  primary_mode: fixed_wall_clock
+  target_total_seconds: 3600
+  checkpoint_freeze_seconds: 3540
+  final_evaluation_and_save_reserve_seconds: 60
+  initial_evaluation_and_setup_charged: true
+  validation_and_candidate_probes_charged: true
+  dataset_preparation_and_hparam_tuning_charged: false
+  auxiliary_model_passes_reported_separately: true
+  optional_matched_tokens_mode:
+    updates: 12288
+    prediction_tokens: 402653184
+    expected_baseline_minutes_before_evaluation: [52.8, 55.9]
+    arbitrary_candidate_one_hour_guarantee: false
+schedule:
+  primary:
+    warmup_updates: 200
+    warmup: linear
+    stable_until_elapsed_seconds: 2655
+    decay: linear
+    final_lr_fraction: 0.01
+    decay_end_elapsed_seconds: 3540
+  matched_tokens:
+    warmup_updates: 200
+    stable_until_update: 9216
+    decay: linear
+    final_lr_fraction: 0.01
+    decay_end_update: 12288
+evaluation:
+  metric: token_weighted_next_token_nll_nats
+  secondary_metric: exp_nll_perplexity
+  quick_validation_prediction_tokens: 262144
+  quick_validation_interval_seconds: 300
+  full_validation_at_start_and_end: true
+  paired_prefix_evaluation_interval_updates: 1024
+  prefix_evaluations_only_before_time_decay: true
+  audit_use: frozen_finalists_only
+  practical_effect_threshold_nats: 0.01
+  training_seed_uncertainty: paired_differences_95_percent_t_interval
+  validation_uncertainty: paired_document_cluster_bootstrap
+  bootstrap_repetitions: 10000
+  inconclusive_when_interval_crosses_zero: true
+baselines:
+  adamw:
+    implementation: torch.optim.AdamW
+    lr_starting_point: 6.0e-4
+    lr_grid: [1.0e-4, 3.0e-4, 6.0e-4, 1.0e-3, 2.0e-3]
+    betas: [0.9, 0.95]
+    eps: 1.0e-8
+    fused: true
+    weight_decay: 0.0
+  muon:
+    implementation: torch.optim.Muon
+    parameter_group: full_hidden_2d_matrices_exclude_embeddings_and_vectors
+    adjust_lr_fn: match_rms_adamw
+    adjustment_formula: lr_times_0.2_times_sqrt_max_rows_columns
+    lr_starting_point: 1.0e-2
+    lr_grid: [3.0e-4, 1.0e-3, 3.0e-3, 1.0e-2, 3.0e-2]
+    momentum: 0.95
+    nesterov: true
+    ns_steps: 5
+    ns_coefficients: [3.4445, -4.775, 2.0315]
+    eps: 1.0e-7
+    weight_decay: 0.0
+    auxiliary_optimizer: torch.optim.AdamW
+    auxiliary_lr: use_separately_tuned_adamw_peak_lr
+    auxiliary_betas: [0.9, 0.95]
+tuning:
+  seed: 42
+  screening_trials_per_method: 5
+  screening_seconds_per_trial: 600
+  final_horizon_trials_per_method: 2
+  final_horizon_seconds_per_trial: 3600
+  initial_budget_seconds_per_method: 10200
+  preserve_all_trials: true
+  selection_metric: final_validation_nll
+  require_fresh_confirmation_seeds: true
+  boundary_winner_requires_search_extension_or_undertuned_label: true
+output:
+  results_path: results/local_evolvement
+  checkpoint_path: .cache/local_evolvement/checkpoints
+  required_files:
+    - frozen_config.yaml
+    - provenance.json
+    - metrics.jsonl
+    - diagnostics.jsonl
+    - per_document_nll.jsonl
+    - summary.csv
+    - metric_steps.png
+    - metric_time.png
+    - paired_comparisons.csv
+  never_merge_with_historical_byte_level_or_wikitext_results: true
+validation_status:
+  gpu_shape_calibration_complete: true
+  dataset_ungated_stream_access_verified: true
+  dataset_full_freeze_complete: false
+  one_hour_real_data_training_complete: false
+  optimizer_effect_size_confirmed: false
