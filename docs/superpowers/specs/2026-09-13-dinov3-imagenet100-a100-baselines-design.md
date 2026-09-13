@@ -11,6 +11,9 @@ artifacts.
 
 - Model: the existing DINOv3 ViT-B classifier (85,737,316 parameters), with its 100-way
   classifier head and the current frozen embeddings plus first eight transformer blocks.
+- DINOv3 is an encoder-only Vision Transformer, not a variational autoencoder (VAE). It has a
+  16-by-16 patch projection, twelve transformer blocks, feature normalization, and a downstream
+  classifier; it has no encoder-decoder latent-variable path.
 - Dataset: `clane9/imagenet-100`, which has 126,689 training images and 5,000 validation
   images in two ImageNet-format splits. Its fixed `ClassLabel` mapping has exactly 100 labels,
   so the classifier head remains compatible.
@@ -37,6 +40,11 @@ batch, epoch count, and validation definition as the final trials.
 - Muown exposes two independent rates: `direction_lr` for its tangent Muon update and `gain_lr`
   for the Adam row-gain update. Its auxiliary AdamW rate is independently configured as well.
   A single shared rate is prohibited.
+- No matrix-based optimizer is used on a first or last neural-network layer. The frozen patch
+  projection remains untouched; all trainable matrices in the final transformer block, the final
+  feature normalization, and the classifier use AdamW. Muon and Muown operate only on eligible
+  interior matrices of trainable blocks 8 through 10. Existing one-dimensional parameters also
+  remain in AdamW.
 
 The selected settings are those that remain numerically finite and maximize full-validation
 top-1 accuracy after their matched screen. Every screen is retained as metrics and a record, but
