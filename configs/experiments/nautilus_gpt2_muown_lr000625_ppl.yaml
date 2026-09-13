@@ -1,0 +1,53 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: new-optimizer-gpt2-muown-lr000625
+  labels:
+    app: new-optimizer-gpt2
+    purpose: muown-learning-rate-screen
+spec:
+  activeDeadlineSeconds: 28800
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        app: new-optimizer-gpt2
+        purpose: muown-learning-rate-screen
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: muown-ppl
+          image: nvcr.io/nvidia/pytorch:26.04-py3
+          workingDir: /workspace/New_Optimizer
+          command: ["bash", "-lc"]
+          args:
+            - |
+              PYTHONUNBUFFERED=1 PYTHONPATH=src .venv/bin/python scripts/run_gpt2_ppl_comparison.py \
+                --label nautilus_a100_muown_lr000625_m095_e1 \
+                --methods muown \
+                --muown-learning-rate 0.00625 \
+                --muown-momentum 0.95 \
+                --maximum-updates 2034 \
+                --micro-batch-size 8 \
+                --gradient-accumulation 6 \
+                --workers 4 \
+                --validation-batches 64 \
+                --skip-plots
+          resources:
+            requests:
+              cpu: "8"
+              memory: 32Gi
+              ephemeral-storage: 20Gi
+              nvidia.com/a100: "1"
+            limits:
+              cpu: "8"
+              memory: 32Gi
+              ephemeral-storage: 50Gi
+              nvidia.com/a100: "1"
+          volumeMounts:
+            - name: results
+              mountPath: /workspace
+      volumes:
+        - name: results
+          persistentVolumeClaim:
+            claimName: new-optimizer-gpt2-results

@@ -5,7 +5,6 @@ from functools import lru_cache
 from pathlib import Path
 
 import torch
-from datasets import load_dataset
 from torch.utils.data import DataLoader, Dataset
 
 from models import CONTEXT_LENGTH
@@ -107,6 +106,8 @@ def wikitext_loaders(root: Path, batch_size: int, workers: int, seed: int = 1337
     cache.mkdir(parents=True, exist_ok=True)
     train_cache, validation_cache = cache / "wikitext103_train_100m.pt", cache / "wikitext103_validation_10m.pt"
     if not train_cache.exists() or not validation_cache.exists():
+        from datasets import load_dataset
+
         dataset = load_dataset("Salesforce/wikitext", "wikitext-103-raw-v1", cache_dir=str(cache / "hf"))
         torch.save(_byte_tokens(dataset["train"]["text"], 100_000_000), train_cache)
         torch.save(_byte_tokens(dataset["validation"]["text"], 10_000_000), validation_cache)
@@ -141,6 +142,8 @@ def smollm2_wikitext_loaders(
     train_cache = cache / f"smollm2_wikitext103_train_{train_tokens}.pt"
     validation_cache = cache / f"smollm2_wikitext103_validation_{validation_tokens}.pt"
     if not train_cache.exists() or not validation_cache.exists():
+        from datasets import load_dataset
+
         dataset = load_dataset(
             "Salesforce/wikitext",
             "wikitext-103-raw-v1",
