@@ -1,0 +1,10 @@
+{
+  "completed_epochs": 0,
+  "completed_updates": 1000,
+  "data_manifest_sha256": "97a4ad1da6bbc128a2161a276c2d093821783133e50b27587fa20c9dd45f672c",
+  "elapsed_seconds": 1634.6056866850704,
+  "final_perplexity": 17.90217466667765,
+  "optimizer": "muon",
+  "peak_memory_mib": 36183.65087890625,
+  "run_label": "muon_lr1e4_aux5e5_s1000_aba_a100_mb4a2_20m"
+}

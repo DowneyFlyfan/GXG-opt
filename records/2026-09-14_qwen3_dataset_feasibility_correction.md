@@ -520,3 +520,13 @@ match the formal AdamW curve.  At update 1,000 it produced perplexity
 The formal AdamW result at the same step is `16.5583577720`; therefore
 `1e-4` is rejected for AdamW, despite being finite and resource-valid.  The
 next narrower but still higher-rate bracket is `5e-5` on the released A100.
+
+## ABA Muon `1e-4` / `5e-5` matched point
+
+Muon's ABA screen used micro-batch four and accumulation two, retaining the
+formal effective batch of eight while sharing GPU 0 safely.  At update 1,000
+it recorded `17.9021746667` perplexity after `1,634.6057` seconds with
+`36,183.65MiB` peak allocation.  This is `1.3709739233` above the matched
+formal Muon value `16.5312007434`, so matrix `1e-4` with auxiliary `5e-5` is
+rejected.  The next Muon bracket is matrix `7.5e-5` and auxiliary `4e-5`,
+using batch eight on the released A100 GPU.
