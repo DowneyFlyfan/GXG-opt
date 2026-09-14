@@ -206,6 +206,38 @@ def qwen_block_loaders(
     )
 
 
+def _file_sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1 << 20), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def load_qwen_token_cache(root: Path) -> QwenTokenCache:
+    """Load a packed cache only after verifying both files against its manifest."""
+    cache_root, train_path, validation_path, manifest_path = _cache_paths(root)
+    if not manifest_path.is_file():
+        raise FileNotFoundError(f"missing Qwen token manifest: {manifest_path}")
+    manifest = json.loads(manifest_path.read_text())
+    if manifest.get("format") != "qwen3-packed-token-cache-v1":
+        raise ValueError("unsupported Qwen token cache format")
+    for split, path in (("train", train_path), ("validation", validation_path)):
+        expected_size = int(manifest["written_tokens"][split]) * np.dtype("<u4").itemsize
+        if not path.is_file() or path.stat().st_size != expected_size:
+            raise ValueError(f"{split} token cache has an unexpected size")
+        if _file_sha256(path) != manifest["sha256"][split]:
+            raise ValueError(f"{split} token cache digest does not match the manifest")
+    return QwenTokenCache(
+        root=cache_root,
+        train_path=train_path,
+        validation_path=validation_path,
+        manifest_path=manifest_path,
+        sequence_length=int(manifest["sequence_length"]),
+        manifest=manifest,
+    )
+
+
 def stream_fineweb_edu_tokens(
     root: Path,
     *,

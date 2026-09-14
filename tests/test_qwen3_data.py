@@ -57,3 +57,24 @@ def test_preparation_stops_streaming_once_both_targets_are_full(tmp_path):
     )
 
     assert cache.manifest["written_tokens"] == {"train": 8, "validation": 8}
+
+
+def test_load_cache_rejects_a_token_file_with_the_wrong_digest(tmp_path):
+    from qwen3_data import load_qwen_token_cache, prepare_qwen_fineweb_cache
+
+    cache = prepare_qwen_fineweb_cache(
+        tmp_path,
+        train_tokens=8,
+        validation_tokens=8,
+        sequence_length=4,
+        eos_token_id=9,
+        source=[("train", "a", [1] * 8), ("validation", "b", [2] * 8)],
+    )
+    cache.train_path.write_bytes(b"\0" * 32)
+
+    try:
+        load_qwen_token_cache(tmp_path)
+    except ValueError as error:
+        assert "digest" in str(error)
+    else:
+        raise AssertionError("corrupt cache was accepted")
