@@ -181,14 +181,56 @@ def cifar100_loaders(root: Path, batch_size: int, workers: int, seed: int = 1337
 def dinov3_cifar100_loaders(root: Path, batch_size: int, workers: int, seed: int = 1337) -> tuple[DataLoader, DataLoader]:
     from torchvision import datasets, transforms
 
-    normalize = transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
-    train_transform = transforms.Compose(
-        [transforms.RandomResizedCrop(224), transforms.RandomHorizontalFlip(), transforms.ToTensor(), normalize]
-    )
-    validation_transform = transforms.Compose([transforms.Resize(256), transforms.CenterCrop(224), transforms.ToTensor(), normalize])
+    train_transform, validation_transform = _dinov3_train_transform(), _dinov3_validation_transform()
     cache = root / ".cache" / "cv"
     train = datasets.CIFAR100(cache, train=True, download=False, transform=train_transform)
     validation = datasets.CIFAR100(cache, train=False, download=False, transform=validation_transform)
+    return (
+        DataLoader(train, shuffle=True, **loader_options(batch_size, workers, seed)),
+        DataLoader(validation, shuffle=False, **loader_options(batch_size, workers, seed + 1)),
+    )
+
+
+def _dinov3_train_transform():
+    from torchvision import transforms
+
+    normalize = transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
+    return transforms.Compose(
+        [transforms.RandomResizedCrop(224), transforms.RandomHorizontalFlip(), transforms.ToTensor(), normalize]
+    )
+
+
+def _dinov3_validation_transform():
+    from torchvision import transforms
+
+    normalize = transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
+    return transforms.Compose(
+        [transforms.Resize(256), transforms.CenterCrop(224), transforms.ToTensor(), normalize]
+    )
+
+
+class ImageNet100TransformDataset(Dataset):
+    def __init__(self, split, transform) -> None:
+        self.split = split
+        self.transform = transform
+
+    def __len__(self) -> int:
+        return len(self.split)
+
+    def __getitem__(self, index: int) -> tuple[torch.Tensor, int]:
+        row = self.split[index]
+        return self.transform(row["image"].convert("RGB")), int(row["label"])
+
+
+def dinov3_imagenet100_loaders(
+    root: Path, batch_size: int, workers: int, seed: int = 1337
+) -> tuple[DataLoader, DataLoader]:
+    from datasets import load_dataset
+
+    cache = root / ".cache" / "cv" / "imagenet100" / "hf"
+    splits = load_dataset("clane9/imagenet-100", cache_dir=str(cache))
+    train = ImageNet100TransformDataset(splits["train"], _dinov3_train_transform())
+    validation = ImageNet100TransformDataset(splits["validation"], _dinov3_validation_transform())
     return (
         DataLoader(train, shuffle=True, **loader_options(batch_size, workers, seed)),
         DataLoader(validation, shuffle=False, **loader_options(batch_size, workers, seed + 1)),

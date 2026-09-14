@@ -70,6 +70,51 @@ def test_dinov3_cifar100_loader_emits_pretrained_model_resolution():
     assert len(validation.dataset) == 10_000
 
 
+def test_imagenet100_transform_dataset_preserves_image_and_label_contract():
+    from PIL import Image
+
+    class Split:
+        def __len__(self):
+            return 2
+
+        def __getitem__(self, index):
+            return {"image": Image.new("RGB", (240, 260)), "label": index}
+
+    dataset = data.ImageNet100TransformDataset(Split(), data._dinov3_validation_transform())
+    image, label = dataset[1]
+
+    assert image.shape == (3, 224, 224)
+    assert image.dtype == torch.float32
+    assert label == 1
+
+
+def test_dinov3_imagenet100_loader_uses_project_cache(monkeypatch, tmp_path):
+    import datasets
+
+    class Split:
+        def __len__(self):
+            return 2
+
+        def __getitem__(self, index):
+            from PIL import Image
+
+            return {"image": Image.new("RGB", (240, 260)), "label": index}
+
+    calls = []
+    monkeypatch.setattr(
+        datasets,
+        "load_dataset",
+        lambda *args, **kwargs: calls.append((args, kwargs)) or {"train": Split(), "validation": Split()},
+    )
+
+    train, validation = data.dinov3_imagenet100_loaders(tmp_path, batch_size=2, workers=0)
+
+    assert calls == [
+        (("clane9/imagenet-100",), {"cache_dir": str(tmp_path / ".cache/cv/imagenet100/hf")})
+    ]
+    assert len(train.dataset) == len(validation.dataset) == 2
+
+
 def test_owsm_transcript_labels_include_the_asr_prefix(tmp_path):
     root = Path(__file__).resolve().parents[1]
 
