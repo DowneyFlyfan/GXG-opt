@@ -74,12 +74,11 @@ Run: `git add src/qwen3_data.py tests/test_qwen3_data.py && git commit -m "feat:
 
 **Files:**
 - Create: `src/qwen3_model.py`
-- Modify: `src/optimizers.py`
 - Create: `tests/test_qwen3_model.py`
 
 **Interfaces:**
 - Produces `load_qwen3_model(root: Path) -> PreTrainedModel` and `qwen_muon_parameter_names(model) -> set[str]`.
-- `build_optimizers(..., parameter_selector=qwen_muon_parameter_names)` accepts an optional selector and preserves legacy behavior when omitted.
+- `build_qwen_optimizers(model, optimizer_name, ...)` constructs Qwen-specific groups without changing the legacy optimizer contract.
 
 - [ ] **Step 1: Write failing routing tests**
 
