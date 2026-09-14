@@ -81,3 +81,27 @@ def test_qwen_feature_prediction_diagnostic_accepts_an_exact_held_out_drift_map(
 
     assert result["module"]["accepted"] is True
     assert result["module"]["map_error"] < result["module"]["raw_error"]
+
+
+def test_qwen_snapshot_preflight_uses_fit_and_check_anchors_without_parameter_grads():
+    from qwen3_feature import qwen_feature_drift_preflight
+
+    torch.manual_seed(31)
+    before = _TinyQwenFeatureModel()
+    after = _TinyQwenFeatureModel()
+    after.load_state_dict(before.state_dict())
+    with torch.no_grad():
+        after.model.layers[0].mlp.down_proj.weight.add_(0.01)
+
+    diagnostics = qwen_feature_drift_preflight(
+        before,
+        after,
+        torch.tensor([[1, 2, 3, 4]]),
+        torch.tensor([[4, 3, 2, 1]]),
+        ["model.layers.0.mlp.down_proj"],
+        block_size=4,
+    )
+
+    assert "model.layers.0.mlp.down_proj" in diagnostics
+    assert before.model.layers[0].mlp.down_proj.weight.grad is None
+    assert after.model.layers[0].mlp.down_proj.weight.grad is None

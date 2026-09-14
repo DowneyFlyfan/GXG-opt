@@ -110,3 +110,39 @@ def qwen_feature_prediction_diagnostics(
             old_fit[name], new_fit[name], old_check[name], new_check[name], block_size=block_size
         )
     return diagnostics
+
+
+def qwen_feature_drift_preflight(
+    before: torch.nn.Module,
+    after: torch.nn.Module,
+    fit_input_ids: torch.Tensor,
+    check_input_ids: torch.Tensor,
+    module_names: list[str],
+    *,
+    block_size: int = 32,
+) -> dict[str, dict]:
+    """Measure held-out feature-map prediction between two Qwen snapshots.
+
+    Both snapshots use deterministic evaluation mode for every factor pass.
+    The caller supplies fixed training-only fit and check anchors; this helper
+    neither samples data nor writes model parameter gradients.
+    """
+    if next(before.parameters()).device != next(after.parameters()).device:
+        raise ValueError("feature-drift snapshots must be on the same device")
+    device = next(before.parameters()).device
+    fit_input_ids = fit_input_ids.to(device)
+    check_input_ids = check_input_ids.to(device)
+    modes = [(module, module.training) for model in (before, after) for module in model.modules()]
+    try:
+        before.eval()
+        after.eval()
+        return qwen_feature_prediction_diagnostics(
+            collect_qwen_dense_factors(before, fit_input_ids, module_names),
+            collect_qwen_dense_factors(after, fit_input_ids, module_names),
+            collect_qwen_dense_factors(before, check_input_ids, module_names),
+            collect_qwen_dense_factors(after, check_input_ids, module_names),
+            block_size=block_size,
+        )
+    finally:
+        for module, training in modes:
+            module.training = training

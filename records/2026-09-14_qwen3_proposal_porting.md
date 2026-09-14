@@ -112,6 +112,14 @@ lower held-out gradient error than the unremapped historical gradient.  This
 is the required prediction-first gate; an actual Qwen anchor trajectory will
 be collected after the formal matched baselines are complete.
 
+`qwen_feature_drift_preflight` is the snapshot-level runner for that gate.  It
+takes before/after Qwen snapshots, fixed fit/check training anchors, and named
+dense modules; it forces both models to the same evaluation mode, captures all
+four factor sets, and returns only the held-out diagnostics.  Its test changes
+a tiny dense layer between snapshots and verifies that neither model receives
+a parameter gradient.  This is the exact operation to run on the initial and
+formal-Muon final snapshots before feature-remap training is authorized.
+
 ## Candidate comparison artifacts
 
 `render_qwen_candidate_comparison` and the `render-candidate` command render
