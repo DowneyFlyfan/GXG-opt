@@ -18,7 +18,7 @@ def main() -> None:
     parser.add_argument("--epochs", type=int, default=5)
     parser.add_argument("--micro-batch-size", type=int, default=64)
     parser.add_argument("--gradient-accumulation", type=int, default=4)
-    parser.add_argument("--learning-rate", type=float, required=True)
+    parser.add_argument("--learning-rate", type=float)
     parser.add_argument("--auxiliary-learning-rate", type=float, default=1e-4)
     parser.add_argument("--direction-learning-rate", type=float)
     parser.add_argument("--gain-learning-rate", type=float)
@@ -28,7 +28,19 @@ def main() -> None:
         arguments.direction_learning_rate is None or arguments.gain_learning_rate is None
     ):
         parser.error("Muown requires --direction-learning-rate and --gain-learning-rate")
-    if min(arguments.learning_rate, arguments.auxiliary_learning_rate) <= 0:
+    if arguments.optimizer != "muown" and arguments.learning_rate is None:
+        parser.error("AdamW and Muon require --learning-rate")
+    learning_rate = (
+        arguments.direction_learning_rate
+        if arguments.optimizer == "muown"
+        else arguments.learning_rate
+    )
+    assert learning_rate is not None
+    rates = [learning_rate, arguments.auxiliary_learning_rate]
+    if arguments.optimizer == "muown":
+        assert arguments.gain_learning_rate is not None
+        rates.append(arguments.gain_learning_rate)
+    if min(rates) <= 0:
         parser.error("learning rates must be positive")
     task = replace(
         DINOV3_IMAGENET100_TASK,
@@ -43,7 +55,7 @@ def main() -> None:
         workers=arguments.workers,
         run_label=arguments.label,
         maximum_epochs=arguments.epochs,
-        learning_rate=arguments.learning_rate,
+        learning_rate=learning_rate,
         weight_decay=0.0,
         auxiliary_learning_rate=arguments.auxiliary_learning_rate,
         muown_direction_lr=arguments.direction_learning_rate,
