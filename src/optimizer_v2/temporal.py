@@ -25,6 +25,8 @@ def df2t_step(direction, first, second, coefficients):
 
 
 def spectral_detector(history):
+    # Existing checkpoints may contain BF16 sketches; FFT is computed in FP32.
+    history = history.float()
     length = len(history)
     window = torch.hann_window(length, periodic=False, dtype=history.dtype, device=history.device)
     spectrum = torch.fft.rfft((history - history.mean(0)) * window[:, None], dim=0)
@@ -51,6 +53,7 @@ def fixed_sketch(direction, seed, signs=None):
 
 def guarded_filter_step(direction, weight, state, step, sketch, *, radius=0.8):
     state = dict(state)
+    sketch = sketch.float()
     history = state.get("history", sketch.new_empty((0, 8)))
     state["history"] = torch.cat([history, sketch[None]])[-64:]
     diagnostic = {}

@@ -144,6 +144,16 @@ def test_resistance_sampler_keeps_cpu_rng_on_cpu_under_cuda_default_device():
     assert len(samples) == 24
 
 
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="requires CUDA sampler path")
+def test_resistance_sampler_accepts_cuda_probabilities_and_rng():
+    probabilities = torch.tensor([0.02, 0.17, 0.81], device="cuda", dtype=torch.float32)
+    generator = torch.Generator(device="cuda").manual_seed(92)
+
+    samples = sample_unordered_edges(probabilities, 24, generator)
+
+    assert len(samples) == 24
+
+
 def test_routing_rank_one_gradients_gram_and_dense_inverse():
     x, wq, wk = rand(6, 4), rand(4, 2), rand(4, 2)
     wq.requires_grad_()
@@ -278,6 +288,14 @@ def test_notch_detection_dwell_and_guard_reset():
     assert "first" not in state and state["cooldown_until"] == 289
     torch.testing.assert_close(output, direction, atol=0, rtol=0)
     assert not spectral_detector(torch.zeros(64, 8))["eligible"]
+
+
+def test_notch_detector_upcasts_bfloat16_history_for_fft():
+    history = torch.zeros(64, 8, dtype=torch.bfloat16)
+
+    diagnostic = spectral_detector(history)
+
+    assert diagnostic["eligible"] is False
 
 
 @pytest.mark.parametrize("mode", ["active", "cooldown", "switched"])

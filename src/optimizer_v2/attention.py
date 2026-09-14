@@ -115,7 +115,7 @@ def edge_probability(p, j, k, mixture=0.05):
 
 
 def sample_unordered_edges(p, count, generator, mixture=0.05):
-    p = p.detach().cpu()
+    p = p.detach()
     n = len(p)
     if n < 2:
         return []
