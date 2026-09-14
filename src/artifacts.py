@@ -39,11 +39,12 @@ def write_metric_plot(
     muown = _read_metrics(muown_path) if muown_path is not None else []
     output.parent.mkdir(parents=True, exist_ok=True)
     figure, axis = plot.subplots(figsize=(8, 5))
-    axis.plot([item["epoch"] for item in adamw], [item["metric"] for item in adamw], label="AdamW")
-    axis.plot([item["epoch"] for item in muon], [item["metric"] for item in muon], label="Muon")
+    coordinate = "step" if all("step" in item for item in [*adamw, *muon]) else "epoch"
+    axis.plot([item[coordinate] for item in adamw], [item["metric"] for item in adamw], label="AdamW")
+    axis.plot([item[coordinate] for item in muon], [item["metric"] for item in muon], label="Muon")
     if muown:
-        axis.plot([item["epoch"] for item in muown], [item["metric"] for item in muown], label="Muown")
-    axis.set(xlabel="Epoch", ylabel=ylabel)
+        axis.plot([item[coordinate] for item in muown], [item["metric"] for item in muown], label="Muown")
+    axis.set(xlabel="Completed optimizer step" if coordinate == "step" else "Epoch", ylabel=ylabel)
     if runtimes is not None:
         axis.set_title(
             f"Wall-clock time\nAdamW: {_format_runtime(runtimes['AdamW'])} | "
@@ -73,6 +74,8 @@ def write_metric_time_plot(
     muown = _read_metrics(muown_path) if muown_path is not None else []
 
     def metric_times(records: list[dict], seconds: float) -> list[float]:
+        if all("elapsed_seconds" in record for record in records):
+            return [record["elapsed_seconds"] / 60 for record in records]
         total_epochs = max(record["epoch"] for record in records)
         return [seconds * record["epoch"] / total_epochs / 60 for record in records]
 

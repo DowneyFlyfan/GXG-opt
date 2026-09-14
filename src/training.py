@@ -15,6 +15,7 @@ from decoder_initialization import initialize_decoder_transformer
 from data import (
     cifar100_loaders,
     dinov3_cifar100_loaders,
+    dinov3_imagenet100_loaders,
     librispeech_loaders,
     owsm_decode_ctc_ids,
     owsm_librispeech_loaders,
@@ -58,6 +59,8 @@ def _loaders(task: FormalTask, root: Path, workers: int, seed: int = 1337):
     if task.domain == "cv":
         if task.model == "dinov3_vitb16":
             return dinov3_cifar100_loaders(root, task.micro_batch_size, workers, seed)
+        if task.model == "dinov3_vitb16_imagenet100":
+            return dinov3_imagenet100_loaders(root, task.micro_batch_size, workers, seed)
         return cifar100_loaders(root, task.micro_batch_size, workers, seed)
     if task.domain == "audio":
         if task.model == "owsm_v3.1_base":
@@ -108,11 +111,13 @@ def _character_error(prediction: str, target: str) -> tuple[int, int]:
 
 
 @torch.no_grad()
-def _evaluate(task: FormalTask, model: nn.Module, loader, device: torch.device, maximum_batches: int = 64) -> float:
+def _evaluate(
+    task: FormalTask, model: nn.Module, loader, device: torch.device, maximum_batches: int | None = 64
+) -> float:
     model.eval()
     correct = total = errors = characters = 0
     for index, batch in enumerate(loader):
-        if index >= maximum_batches:
+        if maximum_batches is not None and index >= maximum_batches:
             break
         if task.domain == "nlp":
             token_ids, targets = (value.to(device, non_blocking=True) for value in batch)
@@ -258,6 +263,9 @@ def run_trial(
     maximum_epochs: int | None = None,
     learning_rate: float | None = None,
     weight_decay: float | None = None,
+    auxiliary_learning_rate: float | None = None,
+    muown_direction_lr: float | None = None,
+    muown_gain_lr: float | None = None,
 ) -> dict:
     if not torch.cuda.is_available():
         raise RuntimeError("CUDA is required")
@@ -281,16 +289,20 @@ def run_trial(
         optimizer_name,
         resolved_learning_rate,
         resolved_weight_decay,
-        task.muon_aux_lr,
+        task.muon_aux_lr if auxiliary_learning_rate is None else auxiliary_learning_rate,
+        muown_direction_lr=muown_direction_lr,
+        muown_gain_lr=muown_gain_lr,
     )
     schedulers = {name: torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=task.estimated_epochs) for name, optimizer in optimizers.items()}
     paths = trial_artifact_paths(root, task, optimizer_name, run_label=run_label)
     metric_path = paths.metric
     checkpoint_path = paths.checkpoint
     completed_epoch = 0
+    completed_steps = 0
     elapsed_seconds = 0.0
     if checkpoint_path.exists():
         completed_epoch, elapsed_seconds = _load_trial_checkpoint(checkpoint_path, model, optimizers, schedulers)
+        completed_steps = completed_epoch * (len(train_loader) // task.gradient_accumulation)
     elif metric_path.exists():
         metric_path.unlink()
     torch.cuda.reset_peak_memory_stats(device)
@@ -305,11 +317,15 @@ def run_trial(
             if (batch_index + 1) % task.gradient_accumulation == 0:
                 for optimizer in optimizers.values():
                     optimizer.step()
+                completed_steps += 1
         for scheduler in schedulers.values():
             scheduler.step()
-        metric = _evaluate(task, model, validation_loader, device)
-        write_metric(metric_path, {"epoch": epoch, "metric": metric})
+        metric = _evaluate(task, model, validation_loader, device, task.evaluation_batches)
         elapsed_seconds += time.perf_counter() - started
+        write_metric(
+            metric_path,
+            {"epoch": epoch, "step": completed_steps, "elapsed_seconds": elapsed_seconds, "metric": metric},
+        )
         _save_trial_checkpoint(checkpoint_path, model, optimizers, schedulers, epoch, elapsed_seconds)
         started = time.perf_counter()
         print(f"task={task.identifier} optimizer={optimizer_name} epoch={epoch}/{target_epochs} metric={metric:.6f}", flush=True)
@@ -321,6 +337,9 @@ def run_trial(
         "parameters": parameter_count(model),
         "epochs": target_epochs,
         "learning_rate": resolved_learning_rate,
+        "auxiliary_learning_rate": task.muon_aux_lr if auxiliary_learning_rate is None else auxiliary_learning_rate,
+        "muown_direction_lr": muown_direction_lr,
+        "muown_gain_lr": muown_gain_lr,
         "weight_decay": resolved_weight_decay,
         "micro_batch_size": task.micro_batch_size,
         "gradient_accumulation": task.gradient_accumulation,

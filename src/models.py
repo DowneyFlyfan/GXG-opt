@@ -119,7 +119,7 @@ def create_nlp_model(name: str) -> nn.Module:
 
 
 def create_cv_model(name: str) -> nn.Module:
-    if name == "dinov3_vitb16":
+    if name in {"dinov3_vitb16", "dinov3_vitb16_imagenet100"}:
         return DINOv3CIFAR100Classifier()
     if name != "vit_base_12x768":
         raise ValueError(f"Unsupported CV model: {name}")
