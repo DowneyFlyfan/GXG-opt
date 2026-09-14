@@ -39,7 +39,7 @@
 ```python
 def test_prepare_cache_writes_disjoint_uint32_streams_and_manifest(tmp_path):
     cache = prepare_qwen_fineweb_cache(tmp_path, train_tokens=16, validation_tokens=8,
-        sequence_length=4, source=[("train", "a", [1, 2]), ("validation", "b", [3, 4])])
+        sequence_length=4, source=[("train", "a", [1] * 16), ("validation", "b", [2] * 8)])
     assert cache.train_path.stat().st_size == 16 * 4
     assert cache.manifest["written_tokens"] == {"train": 16, "validation": 8}
 
