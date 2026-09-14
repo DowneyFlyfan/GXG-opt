@@ -37,3 +37,20 @@ def test_disabled_filter_can_commit_the_unmodified_learning_increment():
     adapter.commit(proposal, {"matrix": torch.zeros_like(parameter)})
 
     assert torch.allclose(parameter, proposal["matrix"].value)
+
+
+def test_qwen_notch_bypasses_the_first_unqualified_proposal_exactly():
+    from qwen3_proposals import QwenMuonProposalAdapter, qwen_notch_corrections
+
+    parameter = torch.nn.Parameter(torch.arange(12, dtype=torch.float32).reshape(4, 3))
+    parameter.grad = torch.full_like(parameter, 0.2)
+    adapter = QwenMuonProposalAdapter({"matrix": parameter}, {"matrix"})
+    proposal = adapter.propose({"matrix": 0.01}, {"matrix": 0.0})
+
+    corrections, state, diagnostics = qwen_notch_corrections(
+        proposal, {"matrix": parameter}, {}, step=1, seed=11, learning_rates={"matrix": 0.01}
+    )
+
+    assert torch.equal(corrections["matrix"], torch.zeros_like(parameter))
+    assert diagnostics["matrix"]["active"] is False
+    assert state["filters"]["matrix"]["active"] is False

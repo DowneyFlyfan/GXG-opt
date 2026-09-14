@@ -12,6 +12,7 @@ from dataclasses import dataclass
 import torch
 
 from optimizers import Muon
+from optimizer_v2.temporal import fixed_sketch, guarded_filter_step
 
 
 @dataclass(frozen=True)
@@ -116,3 +117,42 @@ class QwenMuonProposalAdapter:
             if name in corrections:
                 self.parameters[name].add_(corrections[name])
             self.state[name] = {key: value.detach().clone() for key, value in proposal.next_state.items()}
+
+
+@torch.no_grad()
+def qwen_notch_corrections(
+    proposals: dict[str, QwenProposal],
+    parameters: dict[str, torch.nn.Parameter],
+    state: dict,
+    *,
+    step: int,
+    seed: int,
+    learning_rates: dict[str, float],
+    radius: float = 0.8,
+) -> tuple[dict[str, torch.Tensor], dict, dict[str, dict]]:
+    """Return post-polar notch corrections without committing a proposal.
+
+    ``QwenProposal.direction`` is the Muon direction after its shape scaling
+    and before the scalar learning rate.  This is precisely the signal the
+    resonance specification permits the notch to observe and filter.
+    """
+    if set(proposals) != set(learning_rates) or not set(proposals) <= parameters.keys():
+        raise ValueError("proposal parameters and learning rates must agree")
+    filters = dict(state.get("filters", {}))
+    signs = dict(state.get("signs", {}))
+    corrections: dict[str, torch.Tensor] = {}
+    diagnostics: dict[str, dict] = {}
+    for index, name in enumerate(sorted(proposals)):
+        direction = proposals[name].direction
+        sketch, signs[name] = fixed_sketch(direction, seed + 10_007 * (index + 1), signs.get(name))
+        output, filters[name], diagnostics[name] = guarded_filter_step(
+            direction,
+            parameters[name],
+            filters.get(name, {}),
+            step,
+            sketch,
+            radius=radius,
+        )
+        filters[name].setdefault("active", False)
+        corrections[name] = -float(learning_rates[name]) * (output - direction)
+    return corrections, {"filters": filters, "signs": signs}, diagnostics
