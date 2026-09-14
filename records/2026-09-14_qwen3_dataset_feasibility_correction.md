@@ -488,3 +488,15 @@ It is finite and numerically almost identical to the Muon high-rate screen
 (`0.0001253447` lower), but this short local screen alone cannot select either
 variant.  Muon is extended first to the next shared checkpoint interval;
 Muown's checkpoint remains intact for the same continuation.
+
+## Muown independent-rate `1e-4` 200-update local continuation
+
+Muown was resumed from the preserved 50-update checkpoint under the same
+effective-batch-eight protocol.  Its step 50/100/150/200 perplexities are
+`18.8076339301`, `18.6541403022`, `18.6993103125`, and `18.6429582433`.
+Its best 200-update value is only `0.0060422984` below Muon's corresponding
+`18.6490005416`, which is too small for a one-seed selection claim.  It took
+`619.6277` seconds with `10,038.49MiB` peak allocation.  The next test moves
+the selected Muown high-rate configuration to ABA with micro-batch four and
+accumulation two, preserving effective batch eight while fitting beside the
+unrelated 20GiB-per-GPU workload.
