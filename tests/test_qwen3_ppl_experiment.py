@@ -172,6 +172,58 @@ def test_proposal_admission_requires_completed_manifest_matched_formal_baselines
     )
 
 
+def test_proposal_trial_uses_a_separate_completed_baseline_label(tmp_path, monkeypatch):
+    from qwen3_data import load_qwen_token_cache, prepare_qwen_fineweb_cache
+    from qwen3_ppl_experiment import QwenTrialConfig, _manifest_sha256, qwen_trial_paths, run_qwen_trial
+
+    prepare_qwen_fineweb_cache(
+        tmp_path,
+        train_tokens=17,
+        validation_tokens=9,
+        sequence_length=4,
+        eos_token_id=31,
+        source=[("train", "a", list(range(17))), ("validation", "b", list(range(9)))],
+    )
+    manifest_digest = _manifest_sha256(load_qwen_token_cache(tmp_path).manifest)
+    for optimizer in ("adamw", "muon", "muown"):
+        paths = qwen_trial_paths(tmp_path, optimizer, "formal")
+        paths.result.parent.mkdir(parents=True, exist_ok=True)
+        paths.result.write_text(
+            json.dumps(
+                {
+                    "optimizer": optimizer,
+                    "run_label": "formal",
+                    "completed_epochs": 3,
+                    "completed_updates": 1,
+                    "final_perplexity": 2.0,
+                    "data_manifest_sha256": manifest_digest,
+                }
+            )
+        )
+    monkeypatch.setattr("qwen3_ppl_experiment.load_qwen3_model", lambda _: _TinyCausalLM())
+    monkeypatch.setattr(
+        "qwen3_ppl_experiment.build_qwen_optimizers",
+        lambda model, *args, **kwargs: {"candidate": torch.optim.SGD(model.parameters(), lr=0.001)},
+    )
+
+    result = run_qwen_trial(
+        QwenTrialConfig(
+            root=tmp_path,
+            optimizer="proposal_notch_v1",
+            run_label="notch_screen",
+            baseline_run_label="formal",
+            learning_rate=0.001,
+            micro_batch_size=1,
+            maximum_updates=1,
+            validation_batches=1,
+            device="cpu",
+        )
+    )
+
+    assert result["run_label"] == "notch_screen"
+    assert qwen_trial_paths(tmp_path, "proposal_notch_v1", "notch_screen").result.is_file()
+
+
 class _TinyCausalLM(nn.Module):
     def __init__(self) -> None:
         super().__init__()

@@ -168,7 +168,8 @@ trial; both are equal under the CPU test contract.
 The Qwen runner now enforces the baseline boundary rather than relying only on
 the external monitor.  Any non-baseline proposal (`proposal_notch_v1`,
 `routing_resistance_v1`, or `tied_path_curvature_v1`) is rejected before model
-loading unless all three results named by its run label exist and each records
+loading unless all three results named by its selected baseline run label (or
+the candidate label when no separate label is supplied) exist and each records
 its own optimizer name, that label, a positive update count, finite final
 perplexity, exactly the requested epoch count, and the candidate cache's
 manifest digest.  This prevents a partial, differently-tokenized, or
@@ -184,6 +185,9 @@ the candidate run label together with the baseline label, so a 50-update
 tuning trace cannot overwrite or masquerade as the final candidate comparison.
 Tests cover both the command-line label split and rendering a separately
 labelled proposal alongside three formally labelled baseline traces.
+An end-to-end tiny proposal trial additionally proves that the separate label
+owns the candidate result while admission is satisfied only by the three
+completed formal-label result files.
 
 ## Remaining before a Qwen proposal screen
 
