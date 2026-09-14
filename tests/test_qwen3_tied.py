@@ -62,3 +62,14 @@ def test_paired_tied_sketch_uses_one_column_per_shared_categorical_probe():
     assert len(columns) == len(diagnostics) == 2
     assert all(column.shape == model.model.embed_tokens.weight.shape for column in columns)
     assert all(item["input_norm"] > 0 and item["output_norm"] > 0 for item in diagnostics)
+
+
+def test_tied_proximal_filter_has_an_exact_zero_strength_bypass():
+    from qwen3_tied import qwen_tied_proximal_correction
+
+    learning = torch.randn(11, 4)
+    columns = [torch.randn_like(learning), torch.randn_like(learning)]
+    correction, diagnostics = qwen_tied_proximal_correction(learning, columns, rho=0.0)
+
+    assert torch.equal(correction, torch.zeros_like(learning))
+    assert diagnostics["kappa"] == 0.0

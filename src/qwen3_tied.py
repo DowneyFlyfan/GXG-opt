@@ -7,6 +7,8 @@ import math
 import torch
 from torch.func import functional_call
 
+from optimizer_v2.linalg import low_rank_prox
+
 
 def split_qwen_tied_forward(
     model: torch.nn.Module,
@@ -81,3 +83,24 @@ def qwen_paired_embedding_sketch(
             }
         )
     return columns, diagnostics
+
+
+@torch.no_grad()
+def qwen_tied_proximal_correction(
+    learning_increment: torch.Tensor,
+    columns: list[torch.Tensor],
+    *,
+    rho: float,
+) -> tuple[torch.Tensor, dict]:
+    """Return the joint-sketch proximal correction before embedding decay.
+
+    The direct zero-strength branch is intentional: it preserves the baseline
+    floating-point trajectory rather than merely relying on a zero Woodbury
+    coefficient after extra operations.
+    """
+    if rho < 0 or not columns or any(column.shape != learning_increment.shape for column in columns):
+        raise ValueError("invalid tied-path proximal inputs")
+    if rho == 0:
+        return torch.zeros_like(learning_increment), {"kappa": 0.0, "gram_eigenvalues": []}
+    filtered, diagnostics = low_rank_prox(learning_increment.float(), columns, rho)
+    return (filtered - learning_increment.float()).to(learning_increment.dtype), diagnostics
