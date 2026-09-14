@@ -1,0 +1,10 @@
+{
+  "completed_epochs": 0,
+  "completed_updates": 50,
+  "data_manifest_sha256": "97a4ad1da6bbc128a2161a276c2d093821783133e50b27587fa20c9dd45f672c",
+  "elapsed_seconds": 150.5728913169587,
+  "final_perplexity": 4263.868096517579,
+  "optimizer": "adamw",
+  "peak_memory_mib": 8899.095703125,
+  "run_label": "adamw_lr5e3_s50_local5070ti_ckpt_mb1a8_20m"
+}

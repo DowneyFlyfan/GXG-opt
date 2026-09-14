@@ -369,3 +369,21 @@ was produced, so this is a local-hardware feasibility failure, not evidence
 about the `5e-3` learning rate.  A valid high-rate screen requires an A100
 with sufficient free memory; it must retain the declared rate, cache manifest,
 and effective batch when that capacity becomes available.
+
+## AdamW `5e-3` local high-rate screen
+
+The baseline-only retry is feasible with the same local RTX 5070 Ti, the
+opt-in activation checkpointing mode, micro-batch one, and accumulation eight.
+It completed 50 updates and exposed 819,200 training tokens from the formal
+cache manifest.  The 64-batch validation perplexity was `4263.8680965176`
+after `150.5729` seconds, with `8,899.10MiB` peak allocated memory.  The
+metric/result pair is retained as
+`qwen3_0p6b__adamw_lr5e3_s50_local5070ti_ckpt_mb1a8_20m__adamw`.
+
+This is a valid numerical-stability screen, unlike the earlier candidate
+memory failure: it completed and produced a finite metric.  It also decisively
+rejects AdamW learning rate `5e-3` for this protocol: the value is orders of
+magnitude worse than the formal AdamW held-out perplexity `16.0881141034`.
+It must not be extended to 1,000 updates or promoted to a formal baseline.
+The next rate is selected from a lower but still aggressive bracket, while
+Muon and Muown retain separate matrix/direction, gain, and auxiliary rates.
