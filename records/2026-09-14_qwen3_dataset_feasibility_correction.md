@@ -134,3 +134,13 @@ three-epoch, batch-8, 64-batch-validation protocol and its separately tuned
 direction/gain/auxiliary rates `5e-5` / `3e-6` / `3e-5`.  It reached 100% GPU
 utilization during model loading/training setup.  No prior Muown metric,
 checkpoint, result, or trainer existed, so this did not duplicate a run.
+
+## Completed Muon baseline
+
+Muon completed the same three epochs and 3,663 updates on the identical
+manifest.  Its final 64-batch validation perplexity is `17.1557168418` after
+3,537.4299 seconds, with 60,014,592 exposed tokens and a 67,445.61MiB peak
+allocation.  Relative to the completed AdamW run, this final intermediate
+validation value is 0.6677122577 higher and its elapsed time is 367.67 seconds
+longer.  Full held-out validation for all three formal baselines remains
+pending until Muown completes; these values do not yet select a winner.
