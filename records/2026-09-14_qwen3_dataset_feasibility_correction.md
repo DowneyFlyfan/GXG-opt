@@ -466,3 +466,14 @@ accumulation eight.  It completed 50 updates with `18.8077592748`
 `8,119.10MiB` peak allocation.  It is finite enough to extend before a formal
 selection, but cannot be compared to the formal curves until a matched longer
 point is available.
+
+## Muown independent-rate `1e-4` local screen
+
+The corresponding Muown screen used direction `1e-4`, gain `6e-6`, and
+auxiliary AdamW `5e-5`; it did not reuse Muon's rate for the gain update.  It
+completed the same 50 updates with `18.8076339301` 64-batch perplexity in
+`159.5453` seconds, 819,200 exposed tokens, and `8,901.53MiB` peak allocation.
+It is finite and numerically almost identical to the Muon high-rate screen
+(`0.0001253447` lower), but this short local screen alone cannot select either
+variant.  Muon is extended first to the next shared checkpoint interval;
+Muown's checkpoint remains intact for the same continuation.
