@@ -133,6 +133,17 @@ def test_resistance_probabilities_exact_expectation_and_sampler():
     assert sample_unordered_edges(torch.ones(1), 4, torch.Generator()) == []
 
 
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="requires CUDA default-device context")
+def test_resistance_sampler_keeps_cpu_rng_on_cpu_under_cuda_default_device():
+    probabilities = torch.tensor([0.02, 0.17, 0.81], dtype=torch.float64)
+    generator = torch.Generator().manual_seed(92)
+
+    with torch.device("cuda"):
+        samples = sample_unordered_edges(probabilities, 24, generator)
+
+    assert len(samples) == 24
+
+
 def test_routing_rank_one_gradients_gram_and_dense_inverse():
     x, wq, wk = rand(6, 4), rand(4, 2), rand(4, 2)
     wq.requires_grad_()

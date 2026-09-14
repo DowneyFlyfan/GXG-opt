@@ -121,11 +121,11 @@ def sample_unordered_edges(p, count, generator, mixture=0.05):
         return []
     pairs = []
     for _ in range(count):
-        if float(torch.rand((), generator=generator)) < mixture:
-            j = int(torch.randint(n, (), generator=generator))
+        if float(torch.rand((), generator=generator, device=p.device)) < mixture:
+            j = int(torch.randint(n, (), generator=generator, device=p.device))
         else:
             j = int(torch.multinomial(p, 1, generator=generator))
-        k = int(torch.randint(n - 1, (), generator=generator))
+        k = int(torch.randint(n - 1, (), generator=generator, device=p.device))
         k += k >= j
         pairs.append((min(j, k), max(j, k)))
     return pairs
