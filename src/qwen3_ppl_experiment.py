@@ -258,6 +258,11 @@ def _write_qwen_checkpoint(
     partial.replace(paths.checkpoint)
 
 
+def _restore_cuda_rng_states(states: list[torch.Tensor]) -> None:
+    """Restore serialized CUDA RNG bytes on the CPU, as required by PyTorch."""
+    torch.cuda.set_rng_state_all([state.cpu() for state in states])
+
+
 def _resume_checkpoint(
     *,
     paths: QwenTrialPaths,
@@ -304,7 +309,7 @@ def _resume_checkpoint(
     torch.set_rng_state(checkpoint["torch_rng_state"].cpu())
     cuda_states = checkpoint.get("cuda_rng_states")
     if device.type == "cuda" and cuda_states is not None:
-        torch.cuda.set_rng_state_all(cuda_states)
+        _restore_cuda_rng_states(cuda_states)
     return checkpoint
 
 

@@ -532,6 +532,29 @@ def test_trial_extends_a_completed_update_limited_screen_without_duplicate_metri
     assert [record["step"] for record in records] == [1, 2]
 
 
+def test_cuda_rng_restore_converts_checkpoint_states_to_cpu_bytes(monkeypatch):
+    from qwen3_ppl_experiment import _restore_cuda_rng_states
+
+    class CheckpointState:
+        def __init__(self):
+            self.cpu_called = False
+
+        def cpu(self):
+            self.cpu_called = True
+            return torch.tensor([1, 2], dtype=torch.uint8)
+
+    checkpoint_state = CheckpointState()
+    restored: list[torch.Tensor] = []
+    monkeypatch.setattr(torch.cuda, "set_rng_state_all", lambda states: restored.extend(states))
+
+    _restore_cuda_rng_states([checkpoint_state])
+
+    assert checkpoint_state.cpu_called is True
+    assert len(restored) == 1
+    assert restored[0].device.type == "cpu"
+    assert restored[0].dtype == torch.uint8
+
+
 def test_trial_passes_the_training_batch_to_an_optimizer_prepare_batch_hook(tmp_path, monkeypatch):
     from qwen3_data import prepare_qwen_fineweb_cache
     from qwen3_ppl_experiment import QwenTrialConfig, run_qwen_trial
