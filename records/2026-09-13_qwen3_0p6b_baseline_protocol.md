@@ -67,10 +67,12 @@ The admission checkpoints, JSON traces, and logs were removed after this table w
 
 Both 50-update screens retained the accepted common microbatch eight, the same cache manifest, deterministic seed, and 64 fixed validation batches.
 
+The matched zero-update measurement is **22.720 perplexity**.  It used the unmodified cached Qwen snapshot, microbatch eight, and the same first 64 unshuffled validation batches.  It is the reference for all screens below.
+
 | Optimizer | Rate(s) | Validation perplexity after 50 updates | Time for 50 updates | Decision |
 | --- | --- | ---: | ---: | --- |
-| AdamW | learning rate `3e-5` | 17.629 | 42.468 s | retain provisionally; test `1e-5` against a zero-update reference |
-| Muon | learning rate `2.5e-4`, AdamW auxiliary `3e-5` | 24.519 | 50.354 s | lower Muon direction rate required |
+| AdamW | learning rate `3e-5` | 17.629 | 42.468 s | improves 5.090 perplexity from initialization; retain provisionally and test `1e-5` |
+| Muon | learning rate `2.5e-4`, AdamW auxiliary `3e-5` | 24.519 | 50.354 s | degrades 1.800 perplexity; lower Muon direction rate required |
 
 The two result files reported all 50 completed updates and finite validation perplexity.  These are short tuning screens only; neither is a formal baseline.  Their remote checkpoints (3.58 GB AdamW and 2.76 GB Muon) and logs are temporary calibration artifacts and are removed after recording.
 
