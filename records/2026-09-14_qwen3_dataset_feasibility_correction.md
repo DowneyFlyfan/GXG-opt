@@ -194,3 +194,16 @@ Thus AdamW is the formal incumbent for this Qwen3-0.6B/FineWeb-Edu protocol;
 Muown is 0.0050412811 lower than Muon but both are materially above AdamW.
 These checkpoint evaluations, rather than the 64-batch curve points, are the
 baseline selection evidence for proposal trials.
+
+## Proposal-notch stability screen
+
+The first independent proposal screen used `proposal_notch_v1` at learning rate
+`1e-4`, auxiliary rate `3e-5`, batch 8, and the same formal cache/seed.  It
+completed 50 updates (819,200 exposed tokens) without a nonfinite update or
+out-of-memory failure.  Its 64-batch validation perplexity was
+`17.9260624942` after 69.8084 seconds; peak allocated memory was
+70,566.03MiB.  This is a stability and resource result only: the formal
+baselines have no 50-update validation point, so a ranking against their
+1,000-update values would be an invalid comparison.  The next notch run must
+reach at least step 128 to exercise the specified resonance detector, and
+step 1,000 to obtain a directly matched curve point.
