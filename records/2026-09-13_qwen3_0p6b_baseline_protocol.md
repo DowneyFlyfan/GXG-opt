@@ -59,9 +59,20 @@ Both 20-update screens used microbatch eight, the same cache manifest, one deter
 | AdamW | learning rate `1e-4` | 19.759 | 17.551 s | lower-rate screen required |
 | Muon | learning rate `2.5e-3`, AdamW auxiliary `3e-4` | 135.540 | 22.514 s | reject this rate; screen one order lower |
 
-The cache's one-update diagnostic perplexity was approximately 13–17 depending on its initial deterministic batch.  Both displayed rates worsen the fixed held-out measurement, so they cannot be promoted to formal baselines.
+The cache's one-update diagnostic perplexity was approximately 13–17 depending on its initial deterministic batch.  It is not a 64-batch zero-update reference, so these 20-step values only establish that the selected high rates are unsuitable relative to lower-rate candidates; they do not quantify improvement from initialization.
 
 The admission checkpoints, JSON traces, and logs were removed after this table was recorded; they were calibration artifacts, not trained model checkpoints.
+
+## Second rate screen
+
+Both 50-update screens retained the accepted common microbatch eight, the same cache manifest, deterministic seed, and 64 fixed validation batches.
+
+| Optimizer | Rate(s) | Validation perplexity after 50 updates | Time for 50 updates | Decision |
+| --- | --- | ---: | ---: | --- |
+| AdamW | learning rate `3e-5` | 17.629 | 42.468 s | retain provisionally; test `1e-5` against a zero-update reference |
+| Muon | learning rate `2.5e-4`, AdamW auxiliary `3e-5` | 24.519 | 50.354 s | lower Muon direction rate required |
+
+The two result files reported all 50 completed updates and finite validation perplexity.  These are short tuning screens only; neither is a formal baseline.  Their remote checkpoints (3.58 GB AdamW and 2.76 GB Muon) and logs are temporary calibration artifacts and are removed after recording.
 
 ## Initial screen protocol
 
