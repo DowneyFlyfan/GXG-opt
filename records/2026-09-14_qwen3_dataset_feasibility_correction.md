@@ -240,3 +240,18 @@ seconds, with 39,304.10MiB peak allocation.  This is finite and resource-valid
 but 1.2923356300 higher than the matched Muon value (`16.5312007434`), so the
 tested notch configuration is not competitive.  Its standalone 50-update
 screen is retained as stability evidence; no advantage is inferred from it.
+
+## Routing-resistance matched point
+
+The memory-safe routing-resistance run also reached step 1,000 with the same
+micro-batch-4/accumulation-2 effective batch, cache manifest, seed, and
+64-batch validation convention.  Its perplexity was `17.8226207706` after
+`1,040.3120` seconds, using `36,183.65MiB` peak allocated memory.  This is
+finite and resource-valid, but `1.2914200272` higher than Muon's matched
+step-1,000 value (`16.5312007434`), so this tested routing configuration is
+not competitive.  Its full held-out checkpoint evaluation is
+`16.9405418546` perplexity over all `4,999,168` validation tokens (611
+micro-batch-4 passes), `0.8524277512` above the formal AdamW incumbent
+(`16.0881141034`).  It therefore supplies a valid negative screening result,
+not evidence of a general failure of routing-aware curvature or of every
+hyperparameter setting.
