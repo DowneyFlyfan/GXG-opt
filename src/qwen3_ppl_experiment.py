@@ -25,6 +25,7 @@ TRIAL_DISPLAY_NAMES = {
     "routing_resistance_v1": "Routing-resistance Muon",
     "tied_path_curvature_v1": "Tied-path curvature",
     "feature_remap_cohort_v1": "Feature-remap cohort Muon",
+    "feature_scalar_cohort_v1": "Feature-scalar cohort Muon",
 }
 
 
@@ -449,7 +450,7 @@ def run_qwen_trial(config: QwenTrialConfig) -> dict:
         tied_interval=config.tied_interval,
         tied_max_age=config.tied_max_age,
     )
-    feature_optimizer = optimizers.get("feature_remap_cohort_v1")
+    feature_optimizer = optimizers.get("feature_remap_cohort_v1") or optimizers.get("feature_scalar_cohort_v1")
     if feature_optimizer is not None:
         fit_ids, _ = train_loader.dataset[0]
         check_ids, _ = train_loader.dataset[1]
@@ -459,7 +460,8 @@ def run_qwen_trial(config: QwenTrialConfig) -> dict:
             if name.endswith("mlp.down_proj.weight")
         )
         feature_optimizer.configure_anchors(
-            model, fit_ids.unsqueeze(0), check_ids.unsqueeze(0), target_modules, interval=8
+            model, fit_ids.unsqueeze(0), check_ids.unsqueeze(0), target_modules, interval=8,
+            mode="scalar" if config.optimizer == "feature_scalar_cohort_v1" else "map",
         )
     paths.metric.parent.mkdir(parents=True, exist_ok=True)
     started = time.perf_counter()

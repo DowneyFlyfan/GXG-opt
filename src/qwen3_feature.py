@@ -179,6 +179,7 @@ class QwenFeatureCohortOptimizer:
         self.check_ids: torch.Tensor | None = None
         self.module_names: list[str] = []
         self.interval = 8
+        self.mode = "map"
         self.snapshots: dict[str, dict[str, tuple[torch.Tensor, torch.Tensor]]] = {}
         self.steps = 0
         self.last_diagnostics: dict[str, dict] = {}
@@ -191,11 +192,12 @@ class QwenFeatureCohortOptimizer:
         module_names: list[str],
         *,
         interval: int = 8,
+        mode: str = "map",
     ) -> None:
-        if interval <= 0 or not module_names or fit_ids.ndim != 2 or check_ids.ndim != 2:
+        if interval <= 0 or mode not in {"map", "scalar"} or not module_names or fit_ids.ndim != 2 or check_ids.ndim != 2:
             raise ValueError("feature anchors require nonempty two-dimensional IDs and interval")
         self.model, self.fit_ids, self.check_ids = model, fit_ids.detach().cpu(), check_ids.detach().cpu()
-        self.module_names, self.interval = list(module_names), interval
+        self.module_names, self.interval, self.mode = list(module_names), interval, mode
 
     def zero_grad(self, set_to_none: bool = True) -> None:
         for parameter in self.adapter.parameters.values():
@@ -248,7 +250,16 @@ class QwenFeatureCohortOptimizer:
                         old["fit"][module], fit[module], old["check"][module], check[module]
                     )
                     name = module + ".weight"
-                    maps[name] = accepted_maps if diagnostic["accepted"] else None
+                    if self.mode == "map":
+                        maps[name] = accepted_maps if diagnostic["accepted"] else None
+                    else:
+                        old_gradient = old["check"][module][0].T @ old["check"][module][1]
+                        current_gradient = check[module][0].T @ check[module][1]
+                        scalar = float((old_gradient * current_gradient).sum() / old_gradient.square().sum().clamp_min(1e-30))
+                        if scalar > 0:
+                            left, right = accepted_maps
+                            maps[name] = ([torch.eye(len(value), device=value.device, dtype=value.dtype) * scalar**0.5 for value in left], right)
+                        diagnostic["scalar"] = scalar
                     diagnostics[name] = diagnostic
             self.snapshots = {"fit": fit, "check": check}
         self.step_with_maps(maps, refresh=due)

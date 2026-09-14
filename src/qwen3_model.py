@@ -165,9 +165,9 @@ def build_qwen_optimizers(
             edges_per_row=routing_edges_per_row,
             mixture=routing_mixture,
         )
-    elif optimizer_name == "feature_remap_cohort_v1":
+    elif optimizer_name in {"feature_remap_cohort_v1", "feature_scalar_cohort_v1"}:
         if learning_rate is None or learning_rate <= 0:
-            raise ValueError("feature_remap_cohort_v1 requires a positive learning_rate")
+            raise ValueError("feature cohort optimizers require a positive learning_rate")
         matrix_optimizer = QwenFeatureCohortOptimizer(
             {name: named[name] for name in selected_names},
             selected_names,
