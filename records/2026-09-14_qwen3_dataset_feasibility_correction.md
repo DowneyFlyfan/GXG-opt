@@ -91,3 +91,13 @@ AdamW reached step 2,000 during epoch 2 on the same manifest and with
 allocation.  This is a 0.1287087000 perplexity reduction from its matched
 step-1,000 point.  Muon was still training when this evidence was captured, so
 this is a within-AdamW trajectory observation, not a cross-optimizer result.
+
+## Matched second-interval evidence
+
+Muon reached step 2,000 during epoch 2 on the same manifest and 32,768,000
+exposed training tokens.  Its 64-batch validation perplexity was
+`16.6182285301` at 1,908.0183 seconds with a 67,445.61MiB peak allocation.
+That is 0.0870277867 above its own step-1,000 value and 0.1885794582 above
+AdamW at the matched step, while taking 215.06 seconds longer.  These are
+intermediate matched measurements only; final full-validation evidence is
+required before selecting a baseline or judging either optimizer.
