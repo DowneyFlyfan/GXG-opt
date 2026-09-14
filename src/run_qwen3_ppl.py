@@ -10,6 +10,7 @@ from qwen3_data import (
     DEFAULT_SEQUENCE_LENGTH,
     FINEWEB_EDU_CONFIG,
     FINEWEB_EDU_DATASET,
+    fineweb_edu_revision,
     prepare_qwen_fineweb_cache,
     stream_fineweb_edu_tokens,
 )
@@ -64,7 +65,7 @@ def _prepare(root: Path, arguments: argparse.Namespace) -> dict:
             selection_seed=arguments.seed,
         ),
         source_name=f"{FINEWEB_EDU_DATASET}/{FINEWEB_EDU_CONFIG}",
-        source_revision="streaming-default",
+        source_revision=fineweb_edu_revision(),
         selection_seed=arguments.seed,
     )
     return {"manifest": str(cache.manifest_path), "written_tokens": cache.manifest["written_tokens"]}

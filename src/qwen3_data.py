@@ -19,6 +19,16 @@ FINEWEB_EDU_CONFIG = "sample-10BT"
 DEFAULT_SEQUENCE_LENGTH = 2_048
 
 
+def fineweb_edu_revision() -> str:
+    """Return the Hub commit hash recorded in every production cache manifest."""
+    from huggingface_hub import HfApi
+
+    revision = HfApi().dataset_info(FINEWEB_EDU_DATASET).sha
+    if not revision:
+        raise RuntimeError("FineWeb-Edu metadata did not include a dataset revision")
+    return str(revision)
+
+
 @dataclass(frozen=True)
 class QwenTokenCache:
     """Paths and verified metadata for one immutable packed-token cache."""

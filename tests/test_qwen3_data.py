@@ -78,3 +78,17 @@ def test_load_cache_rejects_a_token_file_with_the_wrong_digest(tmp_path):
         assert "digest" in str(error)
     else:
         raise AssertionError("corrupt cache was accepted")
+
+
+def test_fineweb_revision_comes_from_the_hub_dataset_metadata(monkeypatch):
+    import huggingface_hub
+    from qwen3_data import fineweb_edu_revision
+
+    class Api:
+        def dataset_info(self, dataset_id):
+            assert dataset_id == "HuggingFaceFW/fineweb-edu"
+            return type("Info", (), {"sha": "pinned-sha"})()
+
+    monkeypatch.setattr(huggingface_hub, "HfApi", Api)
+
+    assert fineweb_edu_revision() == "pinned-sha"
