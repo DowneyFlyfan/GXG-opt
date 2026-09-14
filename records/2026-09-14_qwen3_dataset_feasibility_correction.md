@@ -521,6 +521,15 @@ The formal AdamW result at the same step is `16.5583577720`; therefore
 `1e-4` is rejected for AdamW, despite being finite and resource-valid.  The
 next narrower but still higher-rate bracket is `5e-5` on the released A100.
 
+## ABA AdamW `5e-5` matched point
+
+The narrowed AdamW screen uses the same batch-eight ABA protocol as formal
+AdamW.  It reached update 1,000 with `16.6631990511` perplexity after
+`860.1101` seconds and `68,225.61MiB` peak allocation.  This is only
+`0.1048412791` above the formal `3e-5` value `16.5583577720`, but it is still
+worse; `5e-5` is therefore not selected.  The remaining intermediate high
+rate `4e-5` is tested before concluding which AdamW curve is best.
+
 ## ABA Muon `1e-4` / `5e-5` matched point
 
 Muon's ABA screen used micro-batch four and accumulation two, retaining the
