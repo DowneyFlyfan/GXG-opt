@@ -17,6 +17,21 @@ def test_muown_keeps_effective_rows_at_the_tracked_gains():
     assert state["gain_exp_avg"].shape == state["gain"].shape
 
 
+def test_muown_uses_two_rates_for_direction_and_gain_updates():
+    from optimizers import Muown
+
+    parameter = nn.Parameter(torch.eye(2))
+    parameter.grad = torch.ones_like(parameter)
+    optimizer = Muown(
+        [parameter], direction_lr=0.2, gain_lr=0.01, weight_decay=0.0, ns_steps=1
+    )
+
+    optimizer.step()
+
+    assert optimizer.param_groups[0]["direction_lr"] == 0.2
+    assert optimizer.param_groups[0]["gain_lr"] == 0.01
+
+
 def test_build_optimizers_exposes_muown_and_keeps_auxiliary_parameters_in_adamw():
     from optimizers import Muown, build_optimizers
 

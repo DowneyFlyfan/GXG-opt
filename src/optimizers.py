@@ -98,20 +98,32 @@ class Muown(torch.optim.Optimizer):
     def __init__(
         self,
         params: Iterable[nn.Parameter],
-        lr: float,
-        weight_decay: float,
+        lr: float | None = None,
+        weight_decay: float = 0.0,
+        direction_lr: float | None = None,
+        gain_lr: float | None = None,
         momentum: float = 0.95,
         nesterov: bool = True,
         ns_steps: int = 5,
         betas: tuple[float, float] = (0.9, 0.95),
         eps: float = 1.0e-8,
     ) -> None:
-        if lr <= 0 or weight_decay < 0 or not 0 <= momentum < 1:
+        direction_lr = lr if direction_lr is None else direction_lr
+        gain_lr = lr if gain_lr is None else gain_lr
+        if (
+            direction_lr is None
+            or gain_lr is None
+            or direction_lr <= 0
+            or gain_lr <= 0
+            or weight_decay < 0
+            or not 0 <= momentum < 1
+        ):
             raise ValueError("Muown hyperparameters are invalid")
         super().__init__(
             params,
             dict(
-                lr=lr,
+                direction_lr=direction_lr,
+                gain_lr=gain_lr,
                 weight_decay=weight_decay,
                 momentum=momentum,
                 nesterov=nesterov,
@@ -149,9 +161,12 @@ class Muown(torch.optim.Optimizer):
                 )
                 directional_update = Muon.orthogonalize(directional_update, group["ns_steps"])
                 rows, columns = direction.shape
-                direction.add_(directional_update, alpha=-Muon.scaled_lr(group["lr"], rows, columns))
+                direction.add_(
+                    directional_update,
+                    alpha=-Muon.scaled_lr(group["direction_lr"], rows, columns),
+                )
 
-                gain.mul_(1 - group["lr"] * group["weight_decay"])
+                gain.mul_(1 - group["gain_lr"] * group["weight_decay"])
                 gain_exp_avg = state.setdefault("gain_exp_avg", torch.zeros_like(gain))
                 gain_exp_avg_sq = state.setdefault("gain_exp_avg_sq", torch.zeros_like(gain))
                 step = int(state.get("gain_step", 0)) + 1
@@ -163,7 +178,7 @@ class Muown(torch.optim.Optimizer):
                 gain.addcdiv_(
                     gain_exp_avg,
                     gain_exp_avg_sq.sqrt().div_(math.sqrt(bias_correction2)).add_(group["eps"]),
-                    value=-group["lr"] / bias_correction1,
+                    value=-group["gain_lr"] / bias_correction1,
                 )
                 gain.abs_().clamp_min_(group["eps"])
                 row_norm.copy_(direction.norm(dim=1).clamp_min(group["eps"]))
@@ -172,6 +187,17 @@ class Muown(torch.optim.Optimizer):
 
 
 def muon_parameter_names(model: nn.Module) -> set[str]:
+    backbone = getattr(model, "backbone", None)
+    dino_layers = getattr(backbone, "layer", None)
+    if dino_layers is not None and hasattr(backbone, "embeddings"):
+        last_layer = len(dino_layers) - 1
+        return {
+            name
+            for name, parameter in model.named_parameters()
+            if parameter.requires_grad
+            and parameter.ndim >= 2
+            and any(name.startswith(f"backbone.layer.{index}.") for index in range(8, last_layer))
+        }
     convolution_types = (nn.Conv1d, nn.Conv2d, nn.Conv3d)
     first_convolution = next((module for module in model.modules() if isinstance(module, convolution_types)), None)
     first_ids = {id(parameter) for parameter in first_convolution.parameters(recurse=False)} if first_convolution else set()
@@ -241,6 +267,8 @@ def build_optimizers(
     effective_rank_schedule_steps: int | None = None,
     effective_rank_momentum: float = 0.95,
     muown_momentum: float = 0.95,
+    muown_direction_lr: float | None = None,
+    muown_gain_lr: float | None = None,
 ) -> dict[str, torch.optim.Optimizer]:
     if optimizer == "adamw":
         return {"adamw": torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=weight_decay, betas=(0.9, 0.95))}
@@ -337,6 +365,8 @@ def build_optimizers(
             lr=lr,
             weight_decay=weight_decay,
             momentum=muown_momentum,
+            direction_lr=muown_direction_lr,
+            gain_lr=muown_gain_lr,
         )
     elif optimizer == "effective_rank_half":
         matrix_optimizer = EffectiveRankHalf(

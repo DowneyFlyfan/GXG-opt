@@ -79,7 +79,17 @@ def test_dinov3_routes_patch_projection_and_classifier_to_adamw():
 
     assert "backbone.embeddings.patch_embeddings.projection.weight" not in names
     assert "classifier.weight" not in names
-    assert "backbone.layer.0.attention.q_proj.weight" in names
+    assert "backbone.layer.8.attention.q_proj.weight" in names
+
+
+def test_dinov3_routes_only_trainable_interior_matrices_to_muon():
+    names = muon_parameter_names(create_cv_model("dinov3_vitb16"))
+
+    assert "backbone.layer.8.attention.q_proj.weight" in names
+    assert "backbone.layer.10.mlp.up_proj.weight" in names
+    assert not any(name.startswith("backbone.layer.11.") for name in names)
+    assert "backbone.embeddings.patch_embeddings.projection.weight" not in names
+    assert "classifier.weight" not in names
 
 
 def test_dinov3_freezes_the_patch_embedder_and_first_eight_transformer_blocks():
