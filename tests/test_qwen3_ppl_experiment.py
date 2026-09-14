@@ -299,6 +299,19 @@ def test_trial_resumes_from_periodic_checkpoint_without_duplicate_metric_steps(t
     assert [record["step"] for record in records] == [1, 2, 3]
     assert result["completed_updates"] == 3
 
+    control = run_qwen_trial(
+        QwenTrialConfig(**{**config.__dict__, "run_label": "control"})
+    )
+    resumed_checkpoint = torch.load(
+        qwen_trial_paths(tmp_path, "adamw", "resume").checkpoint, weights_only=False
+    )
+    control_checkpoint = torch.load(
+        qwen_trial_paths(tmp_path, "adamw", "control").checkpoint, weights_only=False
+    )
+    for name, parameter in control_checkpoint["model"].items():
+        torch.testing.assert_close(resumed_checkpoint["model"][name], parameter)
+    assert result["final_perplexity"] == pytest.approx(control["final_perplexity"])
+
 
 def test_trial_passes_the_training_batch_to_an_optimizer_prepare_batch_hook(tmp_path, monkeypatch):
     from qwen3_data import prepare_qwen_fineweb_cache

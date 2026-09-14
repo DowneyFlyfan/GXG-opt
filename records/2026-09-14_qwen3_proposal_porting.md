@@ -159,6 +159,9 @@ The interruption regression deliberately raises after checkpointing step 1,
 then resumes to step 3 with exactly `[1, 2, 3]` in the metric trace.  The two
 currently active formal processes began before this format existed and are not
 restarted; future Muown and proposal trials receive this recovery capability.
+The same test runs an uninterrupted control with identical seed and data, then
+compares every final model-state tensor and final perplexity to the resumed
+trial; both are equal under the CPU test contract.
 
 ## Formal-baseline admission gate
 
