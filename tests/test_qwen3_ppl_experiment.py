@@ -47,6 +47,13 @@ def test_proposal_notch_is_a_valid_trial_but_not_a_baseline_render_requirement(t
     assert routing_arguments.routing_rho == 0.5
     assert routing_arguments.routing_interval == 3
 
+    tied_paths = qwen_trial_paths(tmp_path, "tied_path_curvature_v1", "screen")
+    tied_arguments = parse_args(
+        ["run", "--optimizer", "tied_path_curvature_v1", "--run-label", "screen", "--learning-rate", "5e-5"]
+    )
+    assert tied_paths.checkpoint.parent == tmp_path / ".cache" / "qwen3_0p6b" / "checkpoints"
+    assert tied_arguments.optimizer == "tied_path_curvature_v1"
+
 
 def test_renderer_uses_perplexity_and_completed_optimizer_steps(tmp_path):
     from qwen3_ppl_experiment import qwen_trial_paths, render_qwen_comparison
@@ -144,6 +151,55 @@ def test_trial_records_periodic_perplexity_at_completed_steps(tmp_path, monkeypa
         for line in qwen_trial_paths(tmp_path, "adamw", "periodic").metric.read_text().splitlines()
     ]
     assert [record["step"] for record in records] == [1, 2, 3]
+
+
+def test_trial_passes_the_training_batch_to_an_optimizer_prepare_batch_hook(tmp_path, monkeypatch):
+    from qwen3_data import prepare_qwen_fineweb_cache
+    from qwen3_ppl_experiment import QwenTrialConfig, run_qwen_trial
+
+    class Recorder:
+        def __init__(self) -> None:
+            self.batches: list[torch.Tensor] = []
+
+        def zero_grad(self, set_to_none: bool = True) -> None:
+            del set_to_none
+
+        def prepare_batch(self, input_ids: torch.Tensor) -> None:
+            self.batches.append(input_ids.detach().clone())
+
+        def step(self) -> None:
+            pass
+
+        def state_dict(self) -> dict:
+            return {}
+
+    prepare_qwen_fineweb_cache(
+        tmp_path,
+        train_tokens=9,
+        validation_tokens=5,
+        sequence_length=4,
+        eos_token_id=31,
+        source=[("train", "a", list(range(9))), ("validation", "b", list(range(5)))],
+    )
+    recorder = Recorder()
+    monkeypatch.setattr("qwen3_ppl_experiment.load_qwen3_model", lambda _: _TinyCausalLM())
+    monkeypatch.setattr("qwen3_ppl_experiment.build_qwen_optimizers", lambda *args, **kwargs: {"hook": recorder})
+
+    run_qwen_trial(
+        QwenTrialConfig(
+            root=tmp_path,
+            optimizer="adamw",
+            run_label="hook",
+            learning_rate=0.001,
+            micro_batch_size=1,
+            maximum_updates=1,
+            validation_batches=1,
+            device="cpu",
+        )
+    )
+
+    assert len(recorder.batches) == 1
+    assert tuple(recorder.batches[0].shape) == (1, 4)
 
 
 def test_cli_parses_a_render_request_without_training_arguments():

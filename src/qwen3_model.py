@@ -9,6 +9,7 @@ from torch import nn
 
 from optimizers import Muon, Muown
 from qwen3_proposals import QwenProposalNotchOptimizer, QwenRoutingResistanceOptimizer
+from qwen3_tied import QwenTiedPathOptimizer
 
 
 QWEN3_MODEL_ID = "Qwen/Qwen3-0.6B"
@@ -77,6 +78,10 @@ def build_qwen_optimizers(
     routing_query_rows: int = 4,
     routing_edges_per_row: int = 4,
     routing_mixture: float = 0.05,
+    tied_rho: float = 1.0,
+    tied_probes: int = 2,
+    tied_interval: int = 16,
+    tied_max_age: int = 16,
 ) -> dict[str, object]:
     """Build the pinned Qwen optimizer routes, including proposal-notch Muon."""
     if auxiliary_lr <= 0 or weight_decay < 0:
@@ -93,6 +98,32 @@ def build_qwen_optimizers(
     named = dict(model.named_parameters())
     matrices = [named[name] for name in sorted(selected_names)]
     matrix_ids = {id(parameter) for parameter in matrices}
+    if optimizer_name == "tied_path_curvature_v1":
+        if learning_rate is None or learning_rate <= 0:
+            raise ValueError("tied_path_curvature_v1 requires a positive matrix learning_rate")
+        tied = named.get("model.embed_tokens.weight")
+        if tied is None:
+            raise ValueError("Qwen model is missing its tied embedding parameter")
+        tied_optimizer = QwenTiedPathOptimizer(
+            model,
+            tied,
+            learning_rate=auxiliary_lr,
+            weight_decay=weight_decay,
+            rho=tied_rho,
+            probes=tied_probes,
+            interval=tied_interval,
+            max_age=tied_max_age,
+        )
+        auxiliary = [
+            parameter for parameter in model.parameters() if id(parameter) not in matrix_ids | {id(tied)}
+        ]
+        return {
+            "muon": Muon(matrices, lr=learning_rate, weight_decay=weight_decay),
+            "tied_path_curvature_v1": tied_optimizer,
+            "adamw_aux": torch.optim.AdamW(
+                auxiliary, lr=auxiliary_lr, weight_decay=weight_decay, betas=(0.9, 0.95)
+            ),
+        }
     auxiliary = [parameter for parameter in model.parameters() if id(parameter) not in matrix_ids]
     if optimizer_name == "muon":
         if learning_rate is None or learning_rate <= 0:

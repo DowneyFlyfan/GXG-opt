@@ -16,6 +16,69 @@ class _TinyTiedQwen(torch.nn.Module):
         return type("Output", (), {"logits": self.lm_head(self.model.embed_tokens(input_ids))})()
 
 
+def test_tied_adamw_proposal_commit_matches_two_direct_adamw_steps():
+    from qwen3_tied import QwenTiedAdamWProposalAdapter
+
+    torch.manual_seed(25)
+    reference = torch.nn.Parameter(torch.randn(11, 4))
+    candidate = torch.nn.Parameter(reference.detach().clone())
+    direct = torch.optim.AdamW([reference], lr=3e-4, betas=(0.9, 0.95), eps=1e-8, weight_decay=0.1)
+    adapter = QwenTiedAdamWProposalAdapter(candidate, learning_rate=3e-4, weight_decay=0.1)
+    for _ in range(2):
+        gradient = torch.randn_like(reference)
+        reference.grad = gradient.clone()
+        candidate.grad = gradient.clone()
+        direct.step()
+        proposal = adapter.propose()
+        adapter.commit(proposal)
+
+    assert torch.allclose(candidate, reference, atol=2e-7, rtol=2e-7)
+
+
+def test_disabled_tied_path_controller_matches_direct_adamw_with_one_physical_embedding():
+    from qwen3_tied import QwenTiedPathOptimizer
+
+    torch.manual_seed(26)
+    model = _TinyTiedQwen()
+    candidate = model.model.embed_tokens.weight
+    reference = torch.nn.Parameter(candidate.detach().clone())
+    direct = torch.optim.AdamW([reference], lr=3e-4, betas=(0.9, 0.95), weight_decay=0.1)
+    gradient = torch.randn_like(candidate)
+    candidate.grad = gradient.clone()
+    reference.grad = gradient.clone()
+    optimizer = QwenTiedPathOptimizer(
+        model, candidate, learning_rate=3e-4, weight_decay=0.1, rho=0.0, seed=27
+    )
+
+    optimizer.prepare_batch(torch.tensor([[1, 2, 3]]))
+    direct.step()
+    optimizer.step()
+
+    assert torch.allclose(candidate, reference, atol=2e-7, rtol=2e-7)
+    assert optimizer.steps == 1
+    assert optimizer.last_diagnostics["disabled"] is True
+
+
+def test_tied_path_controller_refreshes_a_paired_joint_sketch_before_one_commit():
+    from qwen3_tied import QwenTiedPathOptimizer
+
+    torch.manual_seed(28)
+    model = _TinyTiedQwen()
+    parameter = model.model.embed_tokens.weight
+    parameter.grad = torch.randn_like(parameter)
+    optimizer = QwenTiedPathOptimizer(
+        model, parameter, learning_rate=3e-4, weight_decay=0.0, rho=1.0, probes=2, interval=1, seed=29
+    )
+
+    optimizer.prepare_batch(torch.tensor([[1, 2, 3]]))
+    optimizer.step()
+
+    assert optimizer.steps == 1
+    assert optimizer.last_diagnostics["refresh"] is True
+    assert optimizer.last_diagnostics["metric_age"] == 0
+    assert len(optimizer.columns) == 2
+
+
 def test_split_tied_forward_matches_the_physical_tied_forward():
     from qwen3_tied import split_qwen_tied_forward
 

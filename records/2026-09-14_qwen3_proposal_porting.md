@@ -76,6 +76,30 @@ diagnostics, and hook removal; the disabled-path test numerically matches
 direct Muon.  The local Qwen-specific suite passed: 20 tests.  No GPU screen
 has been launched; the formal baseline gate remains in force.
 
+## Tied-path curvature controller
+
+`QwenTiedAdamWProposalAdapter` mirrors the tuned auxiliary AdamW route
+(`betas=(0.9, 0.95)`) without mutating the physical embedding or its first and
+second moments until commit.  Its two-step test agrees with direct PyTorch
+AdamW.  `QwenTiedPathOptimizer` owns that one embedding state, refreshes the
+paired split-leaf sketch on a saved training sequence, applies
+`qwen_tied_proximal_correction` only to the AdamW learning increment, and then
+commits decay and state once.  The Qwen factory keeps interior matrices under
+Muon and removes the physical embedding from the remaining AdamW auxiliary
+group, preventing tied-alias double updates.
+
+The initial candidate settings are the design-document values: `rho=1`, two
+paired categorical probes, refresh interval 16, and maximum cache age 16.
+All are explicit trial arguments.  Zero strength directly bypasses both batch
+retention and the split-leaf probe.  For Qwen's vocabulary 151,936 and width
+1,024, two retained FP32 sketch columns occupy 1,244,659,712 bytes
+(approximately 1.16 GiB), excluding the two temporary split leaves, their
+gradients, and probe activations.  Capacity must therefore be checked on an
+idle A100 before launch; an equal effective batch with gradient accumulation
+is permitted if the probe peak exceeds the standard microbatch's headroom.
+Local verification including runner handoff passed: 29 tests.  No tied-path
+GPU screen has started before the matched-baseline gate.
+
 ## Remaining before a Qwen proposal screen
 
 1. Add a Qwen attention replay/probe for the routing-resistance factors using separate Q/K projections and grouped-query heads.

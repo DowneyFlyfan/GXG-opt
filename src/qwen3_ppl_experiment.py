@@ -23,6 +23,7 @@ TRIAL_DISPLAY_NAMES = {
     **BASELINE_DISPLAY_NAMES,
     "proposal_notch_v1": "Proposal-notch Muon",
     "routing_resistance_v1": "Routing-resistance Muon",
+    "tied_path_curvature_v1": "Tied-path curvature",
 }
 
 
@@ -48,6 +49,10 @@ class QwenTrialConfig:
     routing_query_rows: int = 4
     routing_edges_per_row: int = 4
     routing_mixture: float = 0.05
+    tied_rho: float = 1.0
+    tied_probes: int = 2
+    tied_interval: int = 16
+    tied_max_age: int = 16
     micro_batch_size: int = 1
     gradient_accumulation: int = 1
     maximum_epochs: int = 3
@@ -212,6 +217,10 @@ def run_qwen_trial(config: QwenTrialConfig) -> dict:
         routing_query_rows=config.routing_query_rows,
         routing_edges_per_row=config.routing_edges_per_row,
         routing_mixture=config.routing_mixture,
+        tied_rho=config.tied_rho,
+        tied_probes=config.tied_probes,
+        tied_interval=config.tied_interval,
+        tied_max_age=config.tied_max_age,
     )
     paths.metric.parent.mkdir(parents=True, exist_ok=True)
     started = time.perf_counter()
@@ -234,6 +243,9 @@ def run_qwen_trial(config: QwenTrialConfig) -> dict:
                 prepare_forward = getattr(optimizer, "prepare_forward", None)
                 if prepare_forward is not None:
                     prepare_forward()
+                prepare_batch = getattr(optimizer, "prepare_batch", None)
+                if prepare_batch is not None:
+                    prepare_batch(input_ids)
             with autocast:
                 logits = _logits(model(input_ids=input_ids.to(device), use_cache=False))
                 loss = functional.cross_entropy(

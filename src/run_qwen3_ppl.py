@@ -40,6 +40,10 @@ def parse_args(arguments: list[str] | None = None) -> argparse.Namespace:
     run.add_argument("--routing-query-rows", type=int, default=4)
     run.add_argument("--routing-edges-per-row", type=int, default=4)
     run.add_argument("--routing-mixture", type=float, default=0.05)
+    run.add_argument("--tied-rho", type=float, default=1.0)
+    run.add_argument("--tied-probes", type=int, default=2)
+    run.add_argument("--tied-interval", type=int, default=16)
+    run.add_argument("--tied-max-age", type=int, default=16)
     run.add_argument("--micro-batch-size", type=int, default=1)
     run.add_argument("--gradient-accumulation", type=int, default=1)
     run.add_argument("--maximum-epochs", type=int, default=3)
@@ -98,6 +102,10 @@ def main(arguments: list[str] | None = None) -> None:
                 routing_query_rows=parsed.routing_query_rows,
                 routing_edges_per_row=parsed.routing_edges_per_row,
                 routing_mixture=parsed.routing_mixture,
+                tied_rho=parsed.tied_rho,
+                tied_probes=parsed.tied_probes,
+                tied_interval=parsed.tied_interval,
+                tied_max_age=parsed.tied_max_age,
                 micro_batch_size=parsed.micro_batch_size,
                 gradient_accumulation=parsed.gradient_accumulation,
                 maximum_epochs=parsed.maximum_epochs,

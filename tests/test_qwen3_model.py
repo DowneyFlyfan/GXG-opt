@@ -96,3 +96,22 @@ def test_routing_resistance_uses_the_same_muon_matrix_and_adamw_auxiliary_split(
     assert optimizers["routing_resistance_v1"].query_rows == 2
     assert optimizers["routing_resistance_v1"].edges_per_row == 3
     assert optimizers["adamw_aux"].param_groups[0]["lr"] == 0.0003
+
+
+def test_tied_path_owns_the_tied_embedding_once_and_leaves_other_auxiliaries_in_adamw():
+    from qwen3_model import build_qwen_optimizers
+    from qwen3_tied import QwenTiedPathOptimizer
+
+    model = _TinyQwen()
+    optimizers = build_qwen_optimizers(
+        model,
+        "tied_path_curvature_v1",
+        learning_rate=0.02,
+        auxiliary_lr=0.0003,
+        weight_decay=0.01,
+    )
+    auxiliary_ids = {id(parameter) for group in optimizers["adamw_aux"].param_groups for parameter in group["params"]}
+
+    assert isinstance(optimizers["tied_path_curvature_v1"], QwenTiedPathOptimizer)
+    assert id(model.model.embed_tokens.weight) not in auxiliary_ids
+    assert optimizers["adamw_aux"].param_groups[0]["lr"] == 0.0003
