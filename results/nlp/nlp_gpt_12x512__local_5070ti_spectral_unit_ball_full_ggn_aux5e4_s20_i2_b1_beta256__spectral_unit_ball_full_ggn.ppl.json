@@ -1,0 +1,32 @@
+{
+  "auxiliary_learning_rate": 0.0005,
+  "auxiliary_parameters": 16933888,
+  "auxiliary_weight_decay": 0.0,
+  "final_perplexity": 23.592875004172562,
+  "initial_beta": 256.0,
+  "inner_iterations": 2,
+  "last_step": {
+    "accepted": true,
+    "beta": 256.0,
+    "curvature_matvecs": 2,
+    "final_loss": 3.2161238193511963,
+    "initial_loss": 3.244417190551758,
+    "inner_iterations": 2,
+    "maximum_spectral_norm": 0.004993385635316372,
+    "model_value": -0.03146151080727577,
+    "predicted_reduction": 0.03146151080727577,
+    "step_scale": 1.0
+  },
+  "maximum_steps": 20,
+  "micro_batch_size": 1,
+  "model": "gpt_12x512",
+  "optimizer": "spectral_unit_ball_full_ggn",
+  "parameters": 54682624,
+  "peak_memory_mb": 3199.09423828125,
+  "seconds": 68.79538868897362,
+  "selected_matrix_blocks": 48,
+  "selected_parameters": 37748736,
+  "status": "screen_completed",
+  "task": "nlp_gpt_12x512",
+  "validation_batches": 4
+}

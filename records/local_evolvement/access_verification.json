@@ -1,0 +1,17 @@
+{
+  "evidence_kind": "public_access_and_local_design_verification",
+  "dataset": "HuggingFaceFW/fineweb-edu",
+  "config": "sample-10BT",
+  "revision": "87f09149ef4734204d70ed1d046ddc9ca3f2b8f9",
+  "gated": false,
+  "unauthenticated_stream_first_row_succeeded": true,
+  "first_row_text_characters": 3665,
+  "first_row_has_id": true,
+  "source_shards": 14,
+  "source_parquet_bytes": 28518193415,
+  "tokenizer": "openai-community/gpt2",
+  "tokenizer_revision": "607a30d783dfa663caf39e06633721c8d4cfcd7e",
+  "full_dataset_prepared": false,
+  "full_training_implemented": false,
+  "one_hour_quality_runs_completed": false
+}
