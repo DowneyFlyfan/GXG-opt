@@ -440,3 +440,29 @@ rates, however, it is not an immediate exploding trajectory.  The exact saved
 checkpoint will therefore be resumed to 200 updates under the same label and
 all other controls before deciding whether a 1,000-update comparison is
 justified.
+
+## AdamW `1e-4` 200-update local continuation
+
+The exact 50-update checkpoint was extended without reinitializing the model
+or replaying metric steps.  The matched 64-batch perplexities at updates 100,
+150, and 200 were `19.6552786200`, `19.7794295693`, and `19.6312532669`.
+The final point took `594.8787` seconds and used `10,036.15MiB` peak
+allocation.  This flat, high trajectory is not suitable for a 1,000-update
+comparison and rejects AdamW `1e-4`; it is higher-rate evidence, not a change
+to the formal `3e-5` incumbent.
+
+## ABA availability race and local Muon `1e-4` screen
+
+Both ABA A100s were observed at 4MiB used and an AdamW `5e-5` screen was
+started immediately.  During model loading, unrelated CryoET trainers began
+using about 19.7GiB on each GPU; AdamW then could not allocate its 9.27GiB
+backward workspace.  It produced no metric, checkpoint, or result JSON, so it
+is not learning-rate evidence and was not retried against those active jobs.
+
+The matched fallback screen for Muon uses matrix learning rate `1e-4` and its
+separate auxiliary AdamW rate `5e-5`, with local micro-batch one and
+accumulation eight.  It completed 50 updates with `18.8077592748`
+64-batch perplexity after `158.0378` seconds, 819,200 exposed tokens, and
+`8,119.10MiB` peak allocation.  It is finite enough to extend before a formal
+selection, but cannot be compared to the formal curves until a matched longer
+point is available.

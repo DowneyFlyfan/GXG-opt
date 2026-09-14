@@ -1,10 +1,10 @@
 {
   "completed_epochs": 0,
-  "completed_updates": 50,
+  "completed_updates": 200,
   "data_manifest_sha256": "97a4ad1da6bbc128a2161a276c2d093821783133e50b27587fa20c9dd45f672c",
-  "elapsed_seconds": 150.1721423289855,
-  "final_perplexity": 19.90089785168783,
+  "elapsed_seconds": 594.8787028389634,
+  "final_perplexity": 19.631253266861997,
   "optimizer": "adamw",
-  "peak_memory_mib": 8899.095703125,
+  "peak_memory_mib": 10036.14599609375,
   "run_label": "adamw_lr1e4_s50_local5070ti_ckpt_mb1a8_20m"
 }
