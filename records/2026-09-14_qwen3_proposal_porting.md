@@ -189,6 +189,18 @@ An end-to-end tiny proposal trial additionally proves that the separate label
 owns the candidate result while admission is satisfied only by the three
 completed formal-label result files.
 
+## Real-Qwen factory smoke
+
+On ABA with `CUDA_VISIBLE_DEVICES` empty, the cached real Qwen3-0.6B model
+loaded on CPU as 596,049,920 parameters and exposed 182 selected interior
+Muon matrices.  Factory construction succeeded without a training update for
+all three runnable proposals: proposal notch returned
+`proposal_notch_v1` plus `adamw_aux`; routing resistance returned
+`routing_resistance_v1` plus `adamw_aux`; and tied-path curvature returned
+`muon`, `tied_path_curvature_v1`, and `adamw_aux`.  This is a binding smoke
+test only, not candidate training evidence.  Both active formal A100 trainers
+remained at full utilization during the CPU check.
+
 ## Remaining before a Qwen proposal screen
 
 1. Let the active formal AdamW and Muon runs complete, then launch the exact
