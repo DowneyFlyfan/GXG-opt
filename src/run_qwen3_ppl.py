@@ -65,6 +65,7 @@ def parse_args(arguments: list[str] | None = None) -> argparse.Namespace:
     run.add_argument("--workers", type=int, default=0)
     run.add_argument("--seed", type=int, default=1337)
     run.add_argument("--device", default="cuda")
+    run.add_argument("--activation-checkpointing", action="store_true")
     run.add_argument("--resume", action="store_true", help="continue a compatible periodic checkpoint")
     render = commands.add_parser("render", help="render the three baseline comparison curves")
     render.add_argument("--run-label", required=True)
@@ -144,6 +145,7 @@ def main(arguments: list[str] | None = None) -> None:
                 workers=parsed.workers,
                 seed=parsed.seed,
                 device=parsed.device,
+                activation_checkpointing=parsed.activation_checkpointing,
                 resume=parsed.resume,
             )
         )

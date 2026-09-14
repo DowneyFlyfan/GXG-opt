@@ -65,6 +65,7 @@ class QwenTrialConfig:
     workers: int = 0
     seed: int = 1337
     device: str = "cuda"
+    activation_checkpointing: bool = False
     resume: bool = False
 
 
@@ -432,6 +433,11 @@ def run_qwen_trial(config: QwenTrialConfig) -> dict:
         seed=config.seed,
     )
     model = load_qwen3_model(config.root).to(device)
+    if config.activation_checkpointing:
+        enable_checkpointing = getattr(model, "gradient_checkpointing_enable", None)
+        if not callable(enable_checkpointing):
+            raise TypeError("Qwen activation checkpointing is unavailable on this model")
+        enable_checkpointing()
     optimizers = build_qwen_optimizers(
         model,
         config.optimizer,

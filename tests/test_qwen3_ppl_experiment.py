@@ -268,6 +268,47 @@ def test_trial_writes_a_checkpoint_bound_to_the_cache_manifest(tmp_path, monkeyp
     assert result["peak_memory_mib"] is None
 
 
+def test_opt_in_activation_checkpointing_is_enabled_before_optimizer_build(tmp_path, monkeypatch):
+    from qwen3_data import prepare_qwen_fineweb_cache
+    from qwen3_ppl_experiment import QwenTrialConfig, run_qwen_trial
+
+    prepare_qwen_fineweb_cache(
+        tmp_path,
+        train_tokens=17,
+        validation_tokens=9,
+        sequence_length=4,
+        eos_token_id=31,
+        source=[("train", "a", list(range(17))), ("validation", "b", list(range(9)))],
+    )
+
+    class CheckpointableTinyCausalLM(_TinyCausalLM):
+        def __init__(self):
+            super().__init__()
+            self.activation_checkpointing_enabled = False
+
+        def gradient_checkpointing_enable(self):
+            self.activation_checkpointing_enabled = True
+
+    model = CheckpointableTinyCausalLM()
+    monkeypatch.setattr("qwen3_ppl_experiment.load_qwen3_model", lambda _: model)
+    run_qwen_trial(
+        QwenTrialConfig(
+            root=tmp_path,
+            optimizer="adamw",
+            run_label="activation-checkpointing",
+            learning_rate=0.001,
+            micro_batch_size=1,
+            gradient_accumulation=1,
+            maximum_updates=1,
+            validation_batches=1,
+            device="cpu",
+            activation_checkpointing=True,
+        )
+    )
+
+    assert model.activation_checkpointing_enabled is True
+
+
 def test_full_checkpoint_evaluation_uses_every_validation_block(tmp_path, monkeypatch):
     from qwen3_data import prepare_qwen_fineweb_cache
     from qwen3_ppl_experiment import (

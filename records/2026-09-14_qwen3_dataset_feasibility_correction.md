@@ -348,3 +348,24 @@ settle the unimplemented fresh-diagnostic-anchor audit. Both metric/result
 JSON files and the metric-steps/time plots are retained locally. The remote
 map checkpoint can be released after this evidence is committed, because it
 is only needed for the completed full-validation pass already recorded here.
+
+## Deferred high-rate local screen
+
+After identifying that the candidate runs were screens rather than a proper
+learning-rate search, a `5e-3` proposal-notch stability screen was requested.
+Both ABA A100s were actively occupied by unrelated CryoET processes, so the
+identical packed model and cache were copied to the idle local RTX 5070 Ti.
+The proposed local configuration retained effective batch eight with
+micro-batch one and accumulation eight.  Without activation checkpointing it
+failed on the first backward call after allocating `13.98GiB` of the 15.47GiB
+device, needing a further `1.16GiB` allocation.
+
+An explicit opt-in activation-checkpointing runner mode was then added and
+tested; it leaves the normal matched protocol untouched.  The same local
+screen still left only about 15MiB free and retried an allocator request during
+the first backward pass without committing an update.  It was interrupted
+after repeated allocation failures.  No metric, checkpoint, or result JSON
+was produced, so this is a local-hardware feasibility failure, not evidence
+about the `5e-3` learning rate.  A valid high-rate screen requires an A100
+with sufficient free memory; it must retain the declared rate, cache manifest,
+and effective batch when that capacity becomes available.
