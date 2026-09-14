@@ -53,3 +53,31 @@ def test_qwen_head_replay_rejects_cross_sequence_routing_edges():
         assert "one sequence" in str(error)
     else:
         raise AssertionError("expected a single-sequence routing probe error")
+
+
+def test_qwen_route_filter_bypasses_exactly_at_zero_strength():
+    from qwen3_attention import qwen_route_head_corrections
+
+    torch.manual_seed(14)
+    x, query, key = torch.randn(3, 4), torch.randn(3, 2), torch.randn(3, 2)
+    query_learning = torch.randn(4, 4)
+    key_learning = torch.randn(2, 4)
+    query_correction, key_correction, diagnostics = qwen_route_head_corrections(
+        x,
+        query,
+        key,
+        torch.tensor([1, 2]),
+        query_learning,
+        key_learning,
+        query_head=1,
+        key_head=0,
+        head_dim=2,
+        edges_per_row=2,
+        mixture=0.05,
+        rho=0.0,
+        generator=torch.Generator().manual_seed(15),
+    )
+
+    assert torch.equal(query_correction, torch.zeros_like(query_learning))
+    assert torch.equal(key_correction, torch.zeros_like(key_learning))
+    assert diagnostics["update_norm_before"] > 0
