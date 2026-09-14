@@ -1,0 +1,10 @@
+{
+  "completed_epochs": 0,
+  "completed_updates": 9,
+  "data_manifest_sha256": "97a4ad1da6bbc128a2161a276c2d093821783133e50b27587fa20c9dd45f672c",
+  "elapsed_seconds": 25.95740443468094,
+  "final_perplexity": 14.572223297391794,
+  "optimizer": "feature_remap_cohort_v1",
+  "peak_memory_mib": 40188.15087890625,
+  "run_label": "feature_remap_map_lr1e4_s9b_mb4a2_20m"
+}

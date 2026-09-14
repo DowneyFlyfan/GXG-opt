@@ -115,3 +115,15 @@ def test_tied_path_owns_the_tied_embedding_once_and_leaves_other_auxiliaries_in_
     assert isinstance(optimizers["tied_path_curvature_v1"], QwenTiedPathOptimizer)
     assert id(model.model.embed_tokens.weight) not in auxiliary_ids
     assert optimizers["adamw_aux"].param_groups[0]["lr"] == 0.0003
+
+
+def test_feature_remap_uses_the_muon_matrix_and_adamw_auxiliary_split():
+    from qwen3_feature import QwenFeatureCohortOptimizer
+    from qwen3_model import build_qwen_optimizers
+
+    optimizers = build_qwen_optimizers(
+        _TinyQwen(), "feature_remap_cohort_v1", learning_rate=0.02, auxiliary_lr=0.0003, weight_decay=0.01
+    )
+
+    assert isinstance(optimizers["feature_remap_cohort_v1"], QwenFeatureCohortOptimizer)
+    assert optimizers["adamw_aux"].param_groups[0]["lr"] == 0.0003

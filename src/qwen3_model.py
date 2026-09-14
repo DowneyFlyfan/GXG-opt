@@ -9,6 +9,7 @@ from torch import nn
 
 from optimizers import Muon, Muown
 from qwen3_proposals import QwenProposalNotchOptimizer, QwenRoutingResistanceOptimizer
+from qwen3_feature import QwenFeatureCohortOptimizer
 from qwen3_tied import QwenTiedPathOptimizer
 
 
@@ -163,6 +164,15 @@ def build_qwen_optimizers(
             query_rows=routing_query_rows,
             edges_per_row=routing_edges_per_row,
             mixture=routing_mixture,
+        )
+    elif optimizer_name == "feature_remap_cohort_v1":
+        if learning_rate is None or learning_rate <= 0:
+            raise ValueError("feature_remap_cohort_v1 requires a positive learning_rate")
+        matrix_optimizer = QwenFeatureCohortOptimizer(
+            {name: named[name] for name in selected_names},
+            selected_names,
+            learning_rate=learning_rate,
+            weight_decay=weight_decay,
         )
     else:
         raise ValueError(f"unsupported Qwen optimizer: {optimizer_name}")

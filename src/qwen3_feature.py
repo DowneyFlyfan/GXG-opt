@@ -80,7 +80,7 @@ def qwen_cohort_momentum_step(
     next_historical = beta * historical.T
     next_fresh = beta * fresh.T + gradient.T
     if maps is not None:
-        next_historical = remap_gradient(next_historical, *maps)
+        next_historical = remap_gradient(next_historical.float(), *maps).to(next_historical.dtype)
     momentum = next_historical + next_fresh
     momentum, next_historical, next_fresh = momentum.T, next_historical.T, next_fresh.T
     if refresh:
@@ -174,6 +174,28 @@ class QwenFeatureCohortOptimizer:
         self.momentum = momentum
         self.cohorts: dict[str, dict[str, torch.Tensor]] = {}
         self.last_momentum: dict[str, torch.Tensor] = {}
+        self.model: torch.nn.Module | None = None
+        self.fit_ids: torch.Tensor | None = None
+        self.check_ids: torch.Tensor | None = None
+        self.module_names: list[str] = []
+        self.interval = 8
+        self.snapshots: dict[str, dict[str, tuple[torch.Tensor, torch.Tensor]]] = {}
+        self.steps = 0
+        self.last_diagnostics: dict[str, dict] = {}
+
+    def configure_anchors(
+        self,
+        model: torch.nn.Module,
+        fit_ids: torch.Tensor,
+        check_ids: torch.Tensor,
+        module_names: list[str],
+        *,
+        interval: int = 8,
+    ) -> None:
+        if interval <= 0 or not module_names or fit_ids.ndim != 2 or check_ids.ndim != 2:
+            raise ValueError("feature anchors require nonempty two-dimensional IDs and interval")
+        self.model, self.fit_ids, self.check_ids = model, fit_ids.detach().cpu(), check_ids.detach().cpu()
+        self.module_names, self.interval = list(module_names), interval
 
     def zero_grad(self, set_to_none: bool = True) -> None:
         for parameter in self.adapter.parameters.values():
@@ -204,3 +226,48 @@ class QwenFeatureCohortOptimizer:
         self.adapter.commit(proposals)
         self.cohorts = next_cohorts
         self.last_momentum = {name: value.detach().clone() for name, value in buffers.items()}
+
+    def step(self) -> None:
+        due = self.steps % self.interval == 0
+        maps = {name: None for name in self.adapter.matrix_names}
+        diagnostics: dict[str, dict] = {}
+        if due and self.model is not None and self.fit_ids is not None and self.check_ids is not None:
+            device = next(self.model.parameters()).device
+            modes = [(module, module.training) for module in self.model.modules()]
+            try:
+                self.model.eval()
+                fit = collect_qwen_dense_factors(self.model, self.fit_ids.to(device), self.module_names)
+                check = collect_qwen_dense_factors(self.model, self.check_ids.to(device), self.module_names)
+            finally:
+                for module, training in modes:
+                    module.training = training
+            old = self.snapshots
+            if old:
+                for module in self.module_names:
+                    accepted_maps, diagnostic = predictive_maps(
+                        old["fit"][module], fit[module], old["check"][module], check[module]
+                    )
+                    name = module + ".weight"
+                    maps[name] = accepted_maps if diagnostic["accepted"] else None
+                    diagnostics[name] = diagnostic
+            self.snapshots = {"fit": fit, "check": check}
+        self.step_with_maps(maps, refresh=due)
+        self.steps += 1
+        self.last_diagnostics = diagnostics
+
+    def state_dict(self) -> dict:
+        return {
+            "version": 1, "momentum": self.momentum, "learning_rates": self.learning_rates,
+            "weight_decays": self.weight_decays, "cohorts": self.cohorts,
+            "last_momentum": self.last_momentum, "snapshots": self.snapshots,
+            "steps": self.steps, "adapter_state": self.adapter.state,
+        }
+
+    def load_state_dict(self, saved: dict) -> None:
+        if (
+            saved.get("version") != 1 or saved.get("momentum") != self.momentum
+            or saved.get("learning_rates") != self.learning_rates or saved.get("weight_decays") != self.weight_decays
+        ):
+            raise ValueError("feature-cohort optimizer configuration changed")
+        self.cohorts, self.last_momentum = saved["cohorts"], saved["last_momentum"]
+        self.snapshots, self.steps, self.adapter.state = saved["snapshots"], int(saved["steps"]), saved["adapter_state"]
