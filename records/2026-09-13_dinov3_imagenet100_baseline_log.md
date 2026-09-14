@@ -51,3 +51,16 @@ The local screen completed successfully. It establishes a working AdamW referenc
 | One epoch | 1,792 | Muon | 77,468 MiB total in use | Out of memory; stopped before any metric/checkpoint |
 
 The active Muon screen therefore uses micro-batch 1,536 and no accumulation. It has enough headroom for the A100 80 GB device while using substantially more memory than the 1,280 fit point. Its configuration is learning rate 1e-3, auxiliary AdamW learning rate 1e-4, zero weight decay, and one epoch.
+
+## Completed screens
+
+| Optimizer | Host | Micro-batch / accumulation | Updates | Top-1 accuracy | Time | Peak memory |
+|---|---|---:|---:|---:|---:|---:|
+| AdamW | local RTX 5070 Ti | 64 / 4 | 495 | 94.80% | 271.95 s | 3,323.50 MiB |
+| Muon | ABA A100 80 GB | 1,536 / 1 | 83 | 94.14% | 206.44 s | 62,191.13 MiB |
+
+These are one-epoch parameter screens, not the final five-epoch comparison. They intentionally have optimizer-specific batch settings, so their accuracy values are screening evidence rather than a matched winner declaration.
+
+## Active screen
+
+Muown is running on ABA A100 GPU 1 with direction learning rate 1e-3, gain learning rate 1e-4, micro-batch 1,536, no accumulation, and zero weight decay. Its one-step memory admission matched the 62,023.2 MiB Muon probe.
