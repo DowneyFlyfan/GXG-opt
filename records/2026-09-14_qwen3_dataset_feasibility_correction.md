@@ -55,13 +55,17 @@ about 74.4GiB allocated.  Muown will use its separately tuned direction
 `5e-5`, gain `3e-6`, and auxiliary `3e-5` configuration when either device is
 released.
 
-## Measured lower bound after launch
+## Measured first interval after launch
 
-At 10 hours 03 minutes of uninterrupted execution, both formal processes were
-still live at full A100 utilization and had not reached their first 1,000-step
-evaluation/checkpoint boundary.  This proves a lower bound of 36 hours for a
-3,663-update, three-epoch run at the present implementation's throughput;
-actual duration also includes validation and checkpoint time.  The study is
-therefore an A100 multi-day benchmark, not a short screen.  The active runs
-remain valid and are intentionally continuing, but later result reporting must
-use this observed lower bound rather than the earlier optimistic estimate.
+The elapsed display from `ps` was initially misread: for an elapsed duration
+below one hour it uses `MM:SS`, not `HH:MM`.  The durable AdamW record at step
+1,000 establishes the correct measurement: 836.0116 seconds (13.93 minutes)
+for 16,384,000 exposed training tokens, validation perplexity
+`16.5583577720`, and peak PyTorch allocation 68,225.61MiB.  Its atomic
+checkpoint was written under `.cache/qwen3_0p6b/checkpoints/` and is
+3,576,770,295 bytes.
+
+Thus the 3,663-update, three-epoch run is expected to take on the order of 51
+minutes before evaluation/checkpoint overhead, rather than the previously
+misreported multi-day lower bound.  The corrected 20M/5M protocol is feasible
+for the three baselines and sequential proposal study on ABA A100 capacity.
