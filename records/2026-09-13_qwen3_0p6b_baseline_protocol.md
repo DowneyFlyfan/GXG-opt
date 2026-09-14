@@ -76,6 +76,16 @@ The matched zero-update measurement is **22.720 perplexity**.  It used the unmod
 
 The two result files reported all 50 completed updates and finite validation perplexity.  These are short tuning screens only; neither is a formal baseline.  Their remote checkpoints (3.58 GB AdamW and 2.76 GB Muon) and logs are temporary calibration artifacts and are removed after recording.
 
+## Third rate screen
+
+Muon with a tenfold lower matrix-direction rate completed all 50 updates under the same accepted batch-eight protocol.
+
+| Optimizer | Rate(s) | Validation perplexity after 50 updates | Time for 50 updates | Decision |
+| --- | --- | ---: | ---: | --- |
+| Muon | matrix learning rate `5e-5`, AdamW auxiliary `3e-5` | 17.689 | 50.078 s | improves 5.030 perplexity from initialization; retain provisionally and bracket near this rate |
+
+This corrects the earlier Muon conclusion: the failure was an over-large matrix direction rate, not evidence against the routed Muon baseline.  The corresponding 2.76-GB temporary checkpoint and log are removed after recording.
+
 ## Initial screen protocol
 
 1. Verify cache digests and remove temporary FineWeb download state after packing.
