@@ -387,3 +387,18 @@ magnitude worse than the formal AdamW held-out perplexity `16.0881141034`.
 It must not be extended to 1,000 updates or promoted to a formal baseline.
 The next rate is selected from a lower but still aggressive bracket, while
 Muon and Muown retain separate matrix/direction, gain, and auxiliary rates.
+
+## Muon `5e-3` / `3e-4` local high-rate screen
+
+Muon was then screened locally with a matrix learning rate `5e-3` and a
+separate auxiliary AdamW learning rate `3e-4`, still using micro-batch one,
+accumulation eight, activation checkpointing, seed 1337, and the formal cache
+manifest.  It completed all 50 updates, exposed 819,200 tokens, and used
+`8,119.10MiB` peak allocated memory.  Its 64-batch validation perplexity was
+`440.5633492583` after `156.3349` seconds.
+
+This is finite and locally feasible but rejects this aggressive Muon setting:
+the 50-update perplexity is catastrophically high, so it will not be extended
+or compared to the 1,000-update formal curves.  Importantly, this result does
+not support using a shared rate across Muown's subsystems; Muown needs an
+independent direction/gain/auxiliary screen.
