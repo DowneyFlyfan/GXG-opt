@@ -54,3 +54,26 @@ def test_qwen_notch_bypasses_the_first_unqualified_proposal_exactly():
     assert torch.equal(corrections["matrix"], torch.zeros_like(parameter))
     assert diagnostics["matrix"]["active"] is False
     assert state["filters"]["matrix"]["active"] is False
+
+
+def test_qwen_notch_optimizer_matches_muon_before_detection_is_eligible():
+    from optimizers import Muon
+    from qwen3_proposals import QwenProposalNotchOptimizer
+
+    torch.manual_seed(16)
+    reference = torch.nn.Parameter(torch.randn(5, 3))
+    candidate = torch.nn.Parameter(reference.detach().clone())
+    gradient = torch.randn_like(reference)
+    reference.grad = gradient.clone()
+    candidate.grad = gradient.clone()
+    direct = Muon([reference], lr=0.02, weight_decay=0.1)
+    proposal = QwenProposalNotchOptimizer(
+        {"matrix": candidate}, {"matrix"}, learning_rate=0.02, weight_decay=0.1, seed=17
+    )
+
+    direct.step()
+    proposal.step()
+
+    assert torch.allclose(candidate, reference, atol=2e-5, rtol=2e-5)
+    assert proposal.steps == 1
+    assert proposal.last_diagnostics["matrix"]["active"] is False

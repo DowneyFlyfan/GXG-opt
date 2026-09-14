@@ -20,6 +20,21 @@ The active idea set is limited to the four documents directly under `records/ide
 - ABA: `tests/test_qwen3_proposals.py`: 2 passed while both formal A100 jobs remained active.
 - Existing mathematical/integration coverage for the four source mechanisms: `tests/test_optimizer_v2_math.py` and `tests/test_optimizer_v2_integration.py`: 55 passed, 1 skipped.
 
+## Proposal-notch matrix wrapper
+
+`QwenProposalNotchOptimizer` now owns the selected Muon matrix route for
+`proposal_notch_v1`.  On each update it obtains exactly one non-mutating
+baseline proposal, applies `qwen_notch_corrections` to its post-polar
+direction, and commits the resulting parameter and momentum state exactly
+once.  It deliberately does not own auxiliary parameters: the eventual Qwen
+candidate will retain their independently tuned AdamW route.
+
+The first optimizer-step test compares this wrapper with direct custom Muon
+while the notch detector is still ineligible.  The parameters agree to the
+same `2e-5` compiled Newton--Schulz tolerance used for the proposal adapter;
+the diagnostic is explicitly inactive.  Local verification after adding the
+wrapper: `tests/test_qwen3_proposals.py`: 4 passed.
+
 ## Remaining before a Qwen proposal screen
 
 1. Add a Qwen attention replay/probe for the routing-resistance factors using separate Q/K projections and grouped-query heads.

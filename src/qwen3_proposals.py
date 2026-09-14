@@ -156,3 +156,83 @@ def qwen_notch_corrections(
         filters[name].setdefault("active", False)
         corrections[name] = -float(learning_rates[name]) * (output - direction)
     return corrections, {"filters": filters, "signs": signs}, diagnostics
+
+
+class QwenProposalNotchOptimizer:
+    """Muon with the active proposal-notch mechanism for selected matrices.
+
+    This class owns only the matrix route.  A full Qwen candidate combines it
+    with the unchanged AdamW auxiliary route, preserving the baseline split.
+    """
+
+    def __init__(
+        self,
+        parameters: dict[str, torch.nn.Parameter],
+        matrix_names: set[str],
+        *,
+        learning_rate: float,
+        weight_decay: float,
+        radius: float = 0.8,
+        seed: int = 0,
+    ) -> None:
+        if learning_rate <= 0 or weight_decay < 0 or not 0 < radius < 1:
+            raise ValueError("invalid proposal-notch hyperparameters")
+        self.adapter = QwenMuonProposalAdapter(parameters, matrix_names)
+        self.learning_rates = {name: learning_rate for name in matrix_names}
+        self.weight_decays = {name: weight_decay for name in matrix_names}
+        self.radius = radius
+        self.seed = seed
+        self.steps = 0
+        self.state: dict = {}
+        self.last_diagnostics: dict[str, dict] = {}
+
+    def zero_grad(self, set_to_none: bool = True) -> None:
+        for name in self.adapter.matrix_names:
+            parameter = self.adapter.parameters[name]
+            if parameter.grad is not None:
+                if set_to_none:
+                    parameter.grad = None
+                else:
+                    parameter.grad.zero_()
+
+    @torch.no_grad()
+    def step(self) -> None:
+        proposals = self.adapter.propose(self.learning_rates, self.weight_decays)
+        corrections, next_state, diagnostics = qwen_notch_corrections(
+            proposals,
+            self.adapter.parameters,
+            self.state,
+            step=self.steps + 1,
+            seed=self.seed,
+            learning_rates=self.learning_rates,
+            radius=self.radius,
+        )
+        self.adapter.commit(proposals, corrections)
+        self.steps += 1
+        self.state = next_state
+        self.last_diagnostics = diagnostics
+
+    def state_dict(self) -> dict:
+        return {
+            "version": 1,
+            "steps": self.steps,
+            "learning_rates": self.learning_rates,
+            "weight_decays": self.weight_decays,
+            "radius": self.radius,
+            "seed": self.seed,
+            "state": self.state,
+            "adapter_state": self.adapter.state,
+        }
+
+    def load_state_dict(self, saved: dict) -> None:
+        if (
+            saved.get("version") != 1
+            or saved.get("learning_rates") != self.learning_rates
+            or saved.get("weight_decays") != self.weight_decays
+            or saved.get("radius") != self.radius
+            or saved.get("seed") != self.seed
+        ):
+            raise ValueError("proposal-notch optimizer configuration changed")
+        self.steps = int(saved["steps"])
+        self.state = saved["state"]
+        self.adapter.state = saved["adapter_state"]
