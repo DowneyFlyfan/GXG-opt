@@ -572,3 +572,27 @@ to the formal `3e-5` and rejected `5e-5` points.  It improves on formal
 at `16.6631990511`.  Thus `4e-5` is the best AdamW point tested so far, but
 the three-point local quadratic bracket has its minimum near `3.54e-5`; the
 next one-seed refinement is `3.5e-5`, not a premature final-selection claim.
+
+## ABA Muon `6e-5` / `3.5e-5` bracket: metric persisted, checkpoint blocked
+
+The step-1,000 validation completed at perplexity `16.6142332383` after
+`934.9520` seconds and `67,445.61MiB` peak allocation.  This is
+`0.0830324949` worse than formal `5e-5` / `3e-5` Muon (`16.5312007434`) and
+also better than the rejected `7.5e-5` point, confirming the adverse trend
+above `5e-5`.  The metric JSON is preserved.  Its subsequent checkpoint write
+failed because the ABA filesystem reached zero available bytes; there is no
+final-result JSON or resumable checkpoint for this bracket.  The metric is
+valid evaluation evidence but not a durable model checkpoint.  After verifying
+that results were retained both remotely and locally, four completed rejected
+checkpoints and the failed partial file were removed from remote `.cache`,
+recovering 13GiB for live trials.
+
+## ABA AdamW `3.5e-5` matched refinement
+
+The refinement completed cleanly at step 1,000 with perplexity
+`16.5310959902`, `838.6483` training seconds (`860.8464` total elapsed), and
+`68,225.61MiB` peak allocation.  It improves on formal `3e-5` by
+`0.0272617818` and on `4e-5` by `0.0228250266`; `5e-5` was already rejected
+at `16.6631990511`.  Thus `3.5e-5` is the selected best tested AdamW rate for
+this matched one-seed protocol.  A still-finer quadratic vertex is not claimed
+from one-seed differences smaller than the demonstrated `3.5e-5` advantage.
