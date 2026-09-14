@@ -418,3 +418,13 @@ bracketing because it demonstrates a completed, reproducible high-rate
 failure while preserving the required separate Muown subsystems.  The next
 bracket remains aggressive but is reduced to `5e-4` rather than pretending
 that a 50-update exploding run is an optimizer comparison.
+
+## AdamW `5e-4` local bracket screen
+
+The first reduced-rate AdamW bracket used `5e-4`, still 16.7 times the formal
+AdamW rate, with the exact same local activation-checkpointed effective-batch
+eight protocol.  It completed 50 updates at `92.5351713742` 64-batch
+validation perplexity in `150.3659` seconds, exposing 819,200 tokens and
+using `8,899.10MiB` peak allocation.  It is substantially less unstable than
+`5e-3`, but still far outside a useful range and is rejected before any long
+run.  The next AdamW bracket is `1e-4` (3.33 times the formal rate).
