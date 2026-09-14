@@ -86,6 +86,16 @@ Muon with a tenfold lower matrix-direction rate completed all 50 updates under t
 
 This corrects the earlier Muon conclusion: the failure was an over-large matrix direction rate, not evidence against the routed Muon baseline.  The corresponding 2.76-GB temporary checkpoint and log are removed after recording.
 
+## Fourth rate screen
+
+The upper side of the retained Muon direction rate was checked with the same 50-update protocol.
+
+| Optimizer | Rate(s) | Validation perplexity after 50 updates | Time for 50 updates | Decision |
+| --- | --- | ---: | ---: | --- |
+| Muon | matrix learning rate `1e-4`, AdamW auxiliary `3e-5` | 17.924 | 50.183 s | improves from initialization but is 0.235 worse than `5e-5`; retain `5e-5` |
+
+The checkpoint, metric trace, result, and log for this bracket point are removed after the result is recorded.
+
 ## Initial screen protocol
 
 1. Verify cache digests and remove temporary FineWeb download state after packing.
