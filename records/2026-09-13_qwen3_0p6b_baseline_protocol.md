@@ -2,7 +2,12 @@
 
 ## Status
 
-The token cache and memory admission completed on ABA.  Baseline tuning and formal training have not started, so this record contains no optimizer-comparison result.
+The token cache, memory admission, and learning-rate selection completed on
+ABA.  The matched three-epoch AdamW and Muon formal baselines are active on
+separate A100 80GB devices.  Muown has not yet launched because both A100s are
+occupied; it will use the already selected independent direction, gain, and
+auxiliary rates when one device becomes free.  No formal baseline result is
+claimed until all three runs have completed their equal three-epoch protocol.
 
 ## Fixed workload
 
@@ -138,6 +143,37 @@ The selected gain rate remained `3e-6` and AdamW auxiliary rate remained `3e-5`;
 | Muown | `7e-5` | `3e-6` | 17.701 | 51.735 s | reject |
 
 The selected two-rate Muown setting is direction `5e-5`, gain `3e-6`, auxiliary `3e-5`.  It is finite and improves 5.033 perplexity from initialization.  Its checkpoint, metric trace, result, and log, and those of the rejected bracket points are temporary screening artifacts and are removed after recording.
+
+## Selected formal settings and live evidence
+
+The retained settings are AdamW learning rate `3e-5`; Muon matrix learning rate
+`5e-5` with auxiliary AdamW rate `3e-5`; and Muown direction rate `5e-5`, gain
+rate `3e-6`, and auxiliary AdamW rate `3e-5`.  The common formal command
+contract is three epochs, microbatch eight, gradient accumulation one, 64
+validation batches, evaluation every 1,000 completed updates, no data workers,
+and seed 1,337.  The runner's default weight decay is `0.1`, held equal across
+these formal baseline routes.
+
+The active commands are:
+
+```text
+python src/run_qwen3_ppl.py run --optimizer adamw --learning-rate 3e-5 ...
+python src/run_qwen3_ppl.py run --optimizer muon --learning-rate 5e-5 --auxiliary-lr 3e-5 ...
+```
+
+At the latest direct process inspection, both corresponding Python processes
+were live and each A100 reported 100% utilization.  The latest durable metric
+records were AdamW perplexity `15.5593` at step 13,000 and Muon perplexity
+`15.6546` at step 11,000, both using manifest digest
+`ced8d55d8e0849b22e5c6678194d0ca31fe42998b0760fea8c6d99ab00090649`.
+These unequal step counts are ordinary elapsed-runtime progress, not different
+training budgets.  The eventual Muown launch command must explicitly include
+all three separate rates:
+
+```text
+python src/run_qwen3_ppl.py run --optimizer muown --direction-lr 5e-5 \
+  --gain-lr 3e-6 --auxiliary-lr 3e-5 ...
+```
 
 ## Initial screen protocol
 
