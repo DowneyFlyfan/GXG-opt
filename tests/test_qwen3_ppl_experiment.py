@@ -71,6 +71,7 @@ def test_trial_writes_a_checkpoint_bound_to_the_cache_manifest(tmp_path, monkeyp
     checkpoint = torch.load(qwen_trial_paths(tmp_path, "adamw", "smoke").checkpoint, weights_only=False)
     assert result["completed_updates"] == 1
     assert checkpoint["data_manifest_sha256"] == result["data_manifest_sha256"]
+    assert result["peak_memory_mib"] is None
 
 
 def test_cli_parses_a_render_request_without_training_arguments():

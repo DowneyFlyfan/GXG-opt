@@ -169,6 +169,8 @@ def run_qwen_trial(config: QwenTrialConfig) -> dict:
     device = torch.device(config.device)
     if device.type == "cuda" and not torch.cuda.is_available():
         raise RuntimeError("CUDA was requested but is unavailable")
+    if device.type == "cuda":
+        torch.cuda.reset_peak_memory_stats(device)
     torch.manual_seed(config.seed)
     cache = load_qwen_token_cache(config.root)
     manifest_digest = _manifest_sha256(cache.manifest)
@@ -226,6 +228,9 @@ def run_qwen_trial(config: QwenTrialConfig) -> dict:
         completed_epochs = epoch
     elapsed_seconds = time.perf_counter() - started
     perplexity = _validation_perplexity(model, validation_loader, device, config.validation_batches)
+    peak_memory_mib = (
+        torch.cuda.max_memory_allocated(device) / 2**20 if device.type == "cuda" else None
+    )
     token_exposure = completed_updates * config.micro_batch_size * config.gradient_accumulation * cache.sequence_length
     record = {
         "epoch": completed_epochs,
@@ -234,6 +239,7 @@ def run_qwen_trial(config: QwenTrialConfig) -> dict:
         "token_exposure": token_exposure,
         "perplexity": perplexity,
         "data_manifest_sha256": manifest_digest,
+        "peak_memory_mib": peak_memory_mib,
     }
     paths.metric.write_text(json.dumps(record, sort_keys=True) + "\n")
     checkpoint = {
@@ -242,6 +248,7 @@ def run_qwen_trial(config: QwenTrialConfig) -> dict:
         "completed_epochs": completed_epochs,
         "completed_updates": completed_updates,
         "data_manifest_sha256": manifest_digest,
+        "peak_memory_mib": peak_memory_mib,
         "config": asdict(config),
     }
     paths.checkpoint.parent.mkdir(parents=True, exist_ok=True)
@@ -254,6 +261,7 @@ def run_qwen_trial(config: QwenTrialConfig) -> dict:
         "final_perplexity": perplexity,
         "elapsed_seconds": elapsed_seconds,
         "data_manifest_sha256": manifest_digest,
+        "peak_memory_mib": peak_memory_mib,
     }
     paths.result.parent.mkdir(parents=True, exist_ok=True)
     paths.result.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n")
