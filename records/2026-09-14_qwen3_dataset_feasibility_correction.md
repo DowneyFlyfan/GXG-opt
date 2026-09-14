@@ -161,3 +161,12 @@ Muown reached step 2,000 during epoch 2 on the formal manifest with
 is 0.0013833325 lower than Muon at the matched step but 18.25 seconds slower.
 This remains intermediate matched evidence; full held-out validation after all
 three final checkpoints is still required.
+
+## Muown third-interval evidence
+
+Muown reached step 3,000 during epoch 3 with 49,152,000 exposed tokens.  Its
+64-batch validation perplexity was `17.2021598009` at 2,898.9145 seconds and
+its peak allocation remained 68,228.04MiB.  This is 0.0087054477 lower than
+Muon at the matched step, while taking 8.41 seconds longer.  The Muown process
+was still finalizing its periodic atomic checkpoint when captured, so this is
+not its final result.
