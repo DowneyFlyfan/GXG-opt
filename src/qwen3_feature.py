@@ -5,7 +5,8 @@ from __future__ import annotations
 import torch
 import torch.nn.functional as functional
 
-from optimizer_v2.temporal import cohort_step, predictive_maps
+from optimizer_v2.temporal import predictive_maps, remap_gradient
+from qwen3_proposals import QwenMuonProposalAdapter
 
 
 def collect_qwen_dense_factors(
@@ -74,13 +75,13 @@ def qwen_cohort_momentum_step(
         raise ValueError("cohort tensors must be equally shaped matrices")
     if not 0 <= beta < 1:
         raise ValueError("beta must lie in [0, 1)")
-    momentum, next_historical, next_fresh = cohort_step(
-        historical.T,
-        fresh.T,
-        gradient.T,
-        beta,
-        maps,
-    )
+    # Muon's buffer is unnormalised: ``m <- beta*m + g``.  Preserve that
+    # coefficient exactly; the generic reference helper uses EMA convention.
+    next_historical = beta * historical.T
+    next_fresh = beta * fresh.T + gradient.T
+    if maps is not None:
+        next_historical = remap_gradient(next_historical, *maps)
+    momentum = next_historical + next_fresh
     momentum, next_historical, next_fresh = momentum.T, next_historical.T, next_fresh.T
     if refresh:
         return momentum, momentum, torch.zeros_like(momentum)
@@ -146,3 +147,60 @@ def qwen_feature_drift_preflight(
     finally:
         for module, training in modes:
             module.training = training
+
+
+class QwenFeatureCohortOptimizer:
+    """Muon proposal route with age-separated, externally checked momentum.
+
+    This small controller deliberately has no factor collection policy: the
+    training driver supplies accepted maps only after its fixed-anchor check.
+    That keeps a rejected or failed probe on the exact baseline route.
+    """
+
+    def __init__(
+        self,
+        parameters: dict[str, torch.nn.Parameter],
+        matrix_names: set[str],
+        *,
+        learning_rate: float,
+        weight_decay: float,
+        momentum: float = 0.95,
+    ) -> None:
+        if learning_rate <= 0 or weight_decay < 0 or not 0 <= momentum < 1:
+            raise ValueError("invalid feature-cohort optimizer configuration")
+        self.adapter = QwenMuonProposalAdapter(parameters, matrix_names, momentum=momentum)
+        self.learning_rates = {name: learning_rate for name in matrix_names}
+        self.weight_decays = {name: weight_decay for name in matrix_names}
+        self.momentum = momentum
+        self.cohorts: dict[str, dict[str, torch.Tensor]] = {}
+        self.last_momentum: dict[str, torch.Tensor] = {}
+
+    def zero_grad(self, set_to_none: bool = True) -> None:
+        for parameter in self.adapter.parameters.values():
+            if parameter.grad is not None:
+                parameter.grad = None if set_to_none else parameter.grad.zero_()
+
+    @torch.no_grad()
+    def step_with_maps(
+        self, maps: dict[str, tuple[list[torch.Tensor], list[torch.Tensor]] | None], *, refresh: bool
+    ) -> None:
+        if set(maps) != self.adapter.matrix_names:
+            raise ValueError("maps must cover exactly the selected matrices")
+        buffers: dict[str, torch.Tensor] = {}
+        next_cohorts: dict[str, dict[str, torch.Tensor]] = {}
+        for name in sorted(self.adapter.matrix_names):
+            gradient = self.adapter.parameters[name].grad
+            if gradient is None:
+                raise RuntimeError(f"missing gradient for {name}")
+            previous = self.cohorts.get(name, {})
+            historical = previous.get("historical", torch.zeros_like(gradient))
+            fresh = previous.get("fresh", torch.zeros_like(gradient))
+            value, next_historical, next_fresh = qwen_cohort_momentum_step(
+                historical, fresh, gradient, beta=self.momentum, maps=maps[name], refresh=refresh
+            )
+            buffers[name] = value
+            next_cohorts[name] = {"historical": next_historical, "fresh": next_fresh}
+        proposals = self.adapter.propose(self.learning_rates, self.weight_decays, buffers)
+        self.adapter.commit(proposals)
+        self.cohorts = next_cohorts
+        self.last_momentum = {name: value.detach().clone() for name, value in buffers.items()}

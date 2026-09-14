@@ -59,10 +59,13 @@ class QwenMuonProposalAdapter:
         self,
         learning_rates: dict[str, float],
         weight_decays: dict[str, float],
+        momentum_buffers: dict[str, torch.Tensor] | None = None,
     ) -> dict[str, QwenProposal]:
         """Return exact custom-Muon updates without changing values or state."""
         if set(learning_rates) != self.matrix_names or set(weight_decays) != self.matrix_names:
             raise ValueError("rates and decays must cover exactly the selected matrices")
+        if momentum_buffers is not None and set(momentum_buffers) != self.matrix_names:
+            raise ValueError("momentum overrides must cover exactly the selected matrices")
         proposals: dict[str, QwenProposal] = {}
         for name in sorted(self.matrix_names):
             parameter = self.parameters[name]
@@ -76,9 +79,12 @@ class QwenMuonProposalAdapter:
             if learning_rate <= 0 or weight_decay < 0:
                 raise ValueError("learning rates must be positive and decays non-negative")
             flattened = gradient.reshape(gradient.shape[0], -1)
-            old_buffer = self.state.get(name, {}).get("momentum_buffer")
-            buffer = torch.zeros_like(flattened) if old_buffer is None else old_buffer.clone()
-            buffer.mul_(self.momentum).add_(flattened)
+            if momentum_buffers is None:
+                old_buffer = self.state.get(name, {}).get("momentum_buffer")
+                buffer = torch.zeros_like(flattened) if old_buffer is None else old_buffer.clone()
+                buffer.mul_(self.momentum).add_(flattened)
+            else:
+                buffer = momentum_buffers[name].reshape_as(flattened).detach().clone()
             update = flattened.add(buffer, alpha=self.momentum) if self.nesterov else buffer
             direction = Muon.orthogonalize(update, self.ns_steps).reshape_as(parameter)
             scale = Muon.scaled_lr(learning_rate, flattened.shape[0], flattened.shape[1])

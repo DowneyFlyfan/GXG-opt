@@ -105,3 +105,26 @@ def test_qwen_snapshot_preflight_uses_fit_and_check_anchors_without_parameter_gr
     assert "model.layers.0.mlp.down_proj" in diagnostics
     assert before.model.layers[0].mlp.down_proj.weight.grad is None
     assert after.model.layers[0].mlp.down_proj.weight.grad is None
+
+
+def test_qwen_feature_cohort_optimizer_remaps_historical_momentum_only():
+    from qwen3_feature import QwenFeatureCohortOptimizer
+
+    parameter = torch.nn.Parameter(torch.ones(2, 2))
+    optimizer = QwenFeatureCohortOptimizer(
+        {"matrix.weight": parameter}, {"matrix.weight"}, learning_rate=0.1, weight_decay=0.0
+    )
+    optimizer.cohorts["matrix.weight"] = {
+        "historical": torch.ones(2, 2),
+        "fresh": torch.full((2, 2), 3.0),
+    }
+    parameter.grad = torch.zeros_like(parameter)
+    optimizer.step_with_maps(
+        {"matrix.weight": ([2 * torch.eye(2)], [torch.eye(2)])}, refresh=True
+    )
+
+    # beta=0.95: map the decayed historical cohort, but never the fresh cohort.
+    expected = torch.full((2, 2), 4.75)
+    assert torch.allclose(optimizer.last_momentum["matrix.weight"], expected)
+    assert torch.allclose(optimizer.cohorts["matrix.weight"]["historical"], expected)
+    assert torch.equal(optimizer.cohorts["matrix.weight"]["fresh"], torch.zeros_like(parameter))
