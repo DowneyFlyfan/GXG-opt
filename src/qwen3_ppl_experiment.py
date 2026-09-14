@@ -274,10 +274,12 @@ def _resume_checkpoint(
     saved_config = checkpoint.get("config")
     expected_config = asdict(config)
     expected_config.pop("resume")
+    expected_config.pop("maximum_updates")
     if not isinstance(saved_config, dict):
         raise RuntimeError("Qwen checkpoint lacks a resolved configuration")
     saved_config = dict(saved_config)
     saved_config.pop("resume", None)
+    saved_config.pop("maximum_updates", None)
     required = {
         "model",
         "optimizers",
@@ -416,7 +418,12 @@ def run_qwen_trial(config: QwenTrialConfig) -> dict:
     manifest_digest = _manifest_sha256(cache.manifest)
     paths = qwen_trial_paths(config.root, config.optimizer, config.run_label)
     if config.resume and paths.result.exists():
-        raise FileExistsError(f"refusing to resume completed Qwen trial {config.run_label}/{config.optimizer}")
+        completed_result = json.loads(paths.result.read_text())
+        completed_updates = int(completed_result.get("completed_updates", -1))
+        if config.maximum_updates is None or completed_updates >= config.maximum_updates:
+            raise FileExistsError(
+                f"refusing to resume completed Qwen trial {config.run_label}/{config.optimizer}"
+            )
     if not config.resume and any(path.exists() for path in (paths.metric, paths.result, paths.checkpoint)):
         raise FileExistsError(f"refusing to overwrite Qwen trial {config.run_label}/{config.optimizer}")
     if config.optimizer not in BASELINE_DISPLAY_NAMES:

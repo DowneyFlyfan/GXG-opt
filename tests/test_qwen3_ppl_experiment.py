@@ -491,6 +491,47 @@ def test_trial_resumes_from_periodic_checkpoint_without_duplicate_metric_steps(t
     assert result["final_perplexity"] == pytest.approx(control["final_perplexity"])
 
 
+def test_trial_extends_a_completed_update_limited_screen_without_duplicate_metric_steps(tmp_path, monkeypatch):
+    from qwen3_data import prepare_qwen_fineweb_cache
+    from qwen3_ppl_experiment import QwenTrialConfig, qwen_trial_paths, run_qwen_trial
+
+    prepare_qwen_fineweb_cache(
+        tmp_path,
+        train_tokens=33,
+        validation_tokens=9,
+        sequence_length=4,
+        eos_token_id=31,
+        source=[
+            ("train", "a", [value % 31 for value in range(33)]),
+            ("validation", "b", [value % 31 for value in range(9)]),
+        ],
+    )
+    monkeypatch.setattr("qwen3_ppl_experiment.load_qwen3_model", lambda _: _TinyCausalLM())
+    config = QwenTrialConfig(
+        root=tmp_path,
+        optimizer="adamw",
+        run_label="extend-completed",
+        learning_rate=0.001,
+        micro_batch_size=1,
+        maximum_updates=1,
+        validation_batches=1,
+        evaluation_interval_updates=1,
+        device="cpu",
+    )
+    run_qwen_trial(config)
+
+    result = run_qwen_trial(
+        QwenTrialConfig(**{**config.__dict__, "maximum_updates": 2, "resume": True})
+    )
+    records = [
+        json.loads(line)
+        for line in qwen_trial_paths(tmp_path, "adamw", "extend-completed").metric.read_text().splitlines()
+    ]
+
+    assert result["completed_updates"] == 2
+    assert [record["step"] for record in records] == [1, 2]
+
+
 def test_trial_passes_the_training_batch_to_an_optimizer_prepare_batch_hook(tmp_path, monkeypatch):
     from qwen3_data import prepare_qwen_fineweb_cache
     from qwen3_ppl_experiment import QwenTrialConfig, run_qwen_trial
