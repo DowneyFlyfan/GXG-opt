@@ -1,0 +1,10 @@
+{
+  "completed_epochs": 3,
+  "completed_updates": 3663,
+  "data_manifest_sha256": "97a4ad1da6bbc128a2161a276c2d093821783133e50b27587fa20c9dd45f672c",
+  "elapsed_seconds": 3537.42994184047,
+  "final_perplexity": 17.155716841763756,
+  "optimizer": "muon",
+  "peak_memory_mib": 67445.60595703125,
+  "run_label": "formal_3epoch_b8_v64_i1000_20m"
+}

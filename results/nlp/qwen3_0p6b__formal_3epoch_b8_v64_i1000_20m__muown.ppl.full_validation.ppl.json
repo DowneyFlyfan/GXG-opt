@@ -1,0 +1,10 @@
+{
+  "checkpoint": "/home/yufan/New_Optimizer/.cache/qwen3_0p6b/checkpoints/qwen3_0p6b__formal_3epoch_b8_v64_i1000_20m__muown.checkpoint.pt",
+  "data_manifest_sha256": "97a4ad1da6bbc128a2161a276c2d093821783133e50b27587fa20c9dd45f672c",
+  "full_validation": true,
+  "optimizer": "muown",
+  "perplexity": 16.731630385174828,
+  "run_label": "formal_3epoch_b8_v64_i1000_20m",
+  "validation_batches": 306,
+  "validation_tokens": 4999168
+}
