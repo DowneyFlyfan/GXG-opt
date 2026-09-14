@@ -8,6 +8,7 @@ import torch
 from torch import nn
 
 from optimizers import Muon, Muown
+from qwen3_proposals import QwenProposalNotchOptimizer
 
 
 QWEN3_MODEL_ID = "Qwen/Qwen3-0.6B"
@@ -71,8 +72,8 @@ def build_qwen_optimizers(
     gain_lr: float | None = None,
     auxiliary_lr: float,
     weight_decay: float,
-) -> dict[str, torch.optim.Optimizer]:
-    """Build matched AdamW, Muon, or two-rate Muown optimizer groups for Qwen."""
+) -> dict[str, object]:
+    """Build the pinned Qwen optimizer routes, including proposal-notch Muon."""
     if auxiliary_lr <= 0 or weight_decay < 0:
         raise ValueError("auxiliary_lr must be positive and weight_decay non-negative")
     if optimizer_name == "adamw":
@@ -101,6 +102,15 @@ def build_qwen_optimizers(
             matrices,
             direction_lr=direction_lr,
             gain_lr=gain_lr,
+            weight_decay=weight_decay,
+        )
+    elif optimizer_name == "proposal_notch_v1":
+        if learning_rate is None or learning_rate <= 0:
+            raise ValueError("proposal_notch_v1 requires a positive learning_rate")
+        matrix_optimizer = QwenProposalNotchOptimizer(
+            {name: named[name] for name in selected_names},
+            selected_names,
+            learning_rate=learning_rate,
             weight_decay=weight_decay,
         )
     else:

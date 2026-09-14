@@ -15,7 +15,7 @@ from qwen3_data import (
     stream_fineweb_edu_tokens,
 )
 from qwen3_model import qwen_checkpoint_path
-from qwen3_ppl_experiment import QwenTrialConfig, render_qwen_comparison, run_qwen_trial
+from qwen3_ppl_experiment import QwenTrialConfig, TRIAL_DISPLAY_NAMES, render_qwen_comparison, run_qwen_trial
 
 
 def parse_args(arguments: list[str] | None = None) -> argparse.Namespace:
@@ -28,7 +28,7 @@ def parse_args(arguments: list[str] | None = None) -> argparse.Namespace:
     prepare.add_argument("--sequence-length", type=int, default=DEFAULT_SEQUENCE_LENGTH)
     prepare.add_argument("--seed", type=int, default=1337)
     run = commands.add_parser("run", help="run one baseline screen or formal trial")
-    run.add_argument("--optimizer", choices=("adamw", "muon", "muown"), required=True)
+    run.add_argument("--optimizer", choices=tuple(TRIAL_DISPLAY_NAMES), required=True)
     run.add_argument("--run-label", required=True)
     run.add_argument("--learning-rate", type=float)
     run.add_argument("--direction-lr", type=float)

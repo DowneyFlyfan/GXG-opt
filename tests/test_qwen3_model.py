@@ -56,3 +56,19 @@ def test_muown_preserves_independent_direction_and_gain_rates_for_qwen():
     assert optimizers["muown"].param_groups[0]["direction_lr"] == 0.02
     assert optimizers["muown"].param_groups[0]["gain_lr"] == 0.001
     assert optimizers["adamw_aux"].param_groups[0]["lr"] == 0.0003
+
+
+def test_proposal_notch_uses_muon_matrix_route_and_unchanged_adamw_auxiliary_route():
+    from qwen3_model import build_qwen_optimizers
+    from qwen3_proposals import QwenProposalNotchOptimizer
+
+    optimizers = build_qwen_optimizers(
+        _TinyQwen(),
+        "proposal_notch_v1",
+        learning_rate=0.02,
+        auxiliary_lr=0.0003,
+        weight_decay=0.01,
+    )
+
+    assert isinstance(optimizers["proposal_notch_v1"], QwenProposalNotchOptimizer)
+    assert optimizers["adamw_aux"].param_groups[0]["lr"] == 0.0003

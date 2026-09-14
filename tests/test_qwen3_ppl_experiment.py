@@ -14,6 +14,19 @@ def test_qwen_paths_keep_checkpoints_under_project_cache(tmp_path):
     assert paths.checkpoint.parent == tmp_path / ".cache" / "qwen3_0p6b" / "checkpoints"
 
 
+def test_proposal_notch_is_a_valid_trial_but_not_a_baseline_render_requirement(tmp_path):
+    from qwen3_ppl_experiment import qwen_trial_paths
+    from run_qwen3_ppl import parse_args
+
+    paths = qwen_trial_paths(tmp_path, "proposal_notch_v1", "screen")
+    arguments = parse_args(
+        ["run", "--optimizer", "proposal_notch_v1", "--run-label", "screen", "--learning-rate", "5e-5"]
+    )
+
+    assert paths.checkpoint.parent == tmp_path / ".cache" / "qwen3_0p6b" / "checkpoints"
+    assert arguments.optimizer == "proposal_notch_v1"
+
+
 def test_renderer_uses_perplexity_and_completed_optimizer_steps(tmp_path):
     from qwen3_ppl_experiment import qwen_trial_paths, render_qwen_comparison
 

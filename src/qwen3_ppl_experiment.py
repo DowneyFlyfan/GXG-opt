@@ -18,7 +18,8 @@ from qwen3_data import load_qwen_token_cache, qwen_block_loaders
 from qwen3_model import build_qwen_optimizers, load_qwen3_model
 
 
-DISPLAY_NAMES = {"adamw": "AdamW", "muon": "Muon", "muown": "Muown"}
+BASELINE_DISPLAY_NAMES = {"adamw": "AdamW", "muon": "Muon", "muown": "Muown"}
+TRIAL_DISPLAY_NAMES = {**BASELINE_DISPLAY_NAMES, "proposal_notch_v1": "Proposal-notch Muon"}
 
 
 @dataclass(frozen=True)
@@ -51,8 +52,8 @@ class QwenTrialConfig:
 
 def qwen_trial_paths(root: Path, optimizer: str, run_label: str) -> QwenTrialPaths:
     """Keep durable checkpoints in project cache and lightweight evidence outside it."""
-    if optimizer not in DISPLAY_NAMES:
-        raise ValueError(f"unsupported Qwen baseline: {optimizer}")
+    if optimizer not in TRIAL_DISPLAY_NAMES:
+        raise ValueError(f"unsupported Qwen trial optimizer: {optimizer}")
     stem = f"qwen3_0p6b__{run_label}__{optimizer}"
     return QwenTrialPaths(
         metric=root / "metrics" / "nlp" / f"{stem}.ppl.jsonl",
@@ -76,8 +77,8 @@ def _metric_records(path: Path) -> list[dict]:
 def render_qwen_comparison(root: Path, *, run_label: str) -> tuple[Path, Path]:
     """Render the required baseline perplexity curves versus steps and time."""
     traces = {
-        DISPLAY_NAMES[optimizer]: _metric_records(qwen_trial_paths(root, optimizer, run_label).metric)
-        for optimizer in DISPLAY_NAMES
+        BASELINE_DISPLAY_NAMES[optimizer]: _metric_records(qwen_trial_paths(root, optimizer, run_label).metric)
+        for optimizer in BASELINE_DISPLAY_NAMES
     }
     output_root = root / "results" / "nlp"
     output_root.mkdir(parents=True, exist_ok=True)
@@ -159,8 +160,8 @@ def _validation_perplexity(
 
 def run_qwen_trial(config: QwenTrialConfig) -> dict:
     """Run one matched baseline and bind its checkpoint to the token manifest."""
-    if config.optimizer not in DISPLAY_NAMES:
-        raise ValueError(f"unsupported Qwen baseline: {config.optimizer}")
+    if config.optimizer not in TRIAL_DISPLAY_NAMES:
+        raise ValueError(f"unsupported Qwen trial optimizer: {config.optimizer}")
     if config.micro_batch_size <= 0 or config.gradient_accumulation <= 0:
         raise ValueError("batch and accumulation values must be positive")
     if (

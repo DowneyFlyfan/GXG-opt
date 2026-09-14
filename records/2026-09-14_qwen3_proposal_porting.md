@@ -35,6 +35,14 @@ same `2e-5` compiled Newton--Schulz tolerance used for the proposal adapter;
 the diagnostic is explicitly inactive.  Local verification after adding the
 wrapper: `tests/test_qwen3_proposals.py`: 4 passed.
 
+The Qwen optimizer factory now exposes the wrapper as `proposal_notch_v1` and
+keeps all non-matrix parameters in the selected baseline's independently
+tuned AdamW auxiliary group.  The command-line trial interface accepts that
+candidate, but `render_qwen_comparison` remains explicitly baseline-only
+(`AdamW`, `Muon`, and `Muown`).  This prevents a candidate trace from being
+silently treated as one of the required matched baselines.  The local factory,
+trial-path, command-line, and primitive suite passed: 13 tests.
+
 ## Remaining before a Qwen proposal screen
 
 1. Add a Qwen attention replay/probe for the routing-resistance factors using separate Q/K projections and grouped-query heads.
