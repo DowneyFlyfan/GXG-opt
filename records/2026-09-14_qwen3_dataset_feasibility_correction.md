@@ -530,6 +530,16 @@ AdamW.  It reached update 1,000 with `16.6631990511` perplexity after
 worse; `5e-5` is therefore not selected.  The remaining intermediate high
 rate `4e-5` is tested before concluding which AdamW curve is best.
 
+## Local Muown `1e-4` / `6e-6` / `5e-5` matched point
+
+The selected independent-rate Muown screen completed the directly comparable
+1,000-update point with `18.3614770010` perplexity after `3,000.5728`
+seconds and `8,901.53MiB` peak allocation.  It shares the formal manifest,
+seed, effective batch eight, and 64-batch validation convention.  The formal
+Muown step-1,000 value is `16.5301853239`; this high-rate configuration is
+therefore rejected.  The next independent Muown bracket reduces direction to
+`7.5e-5`, gain to `4.5e-6`, and auxiliary rate to `4e-5`.
+
 ## ABA Muon `1e-4` / `5e-5` matched point
 
 Muon's ABA screen used micro-batch four and accumulation two, retaining the
