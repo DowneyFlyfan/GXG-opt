@@ -1,0 +1,52 @@
+"""Training-only dense-factor probes for Qwen feature-drift remapping."""
+
+from __future__ import annotations
+
+import torch
+import torch.nn.functional as functional
+
+
+def collect_qwen_dense_factors(
+    model: torch.nn.Module,
+    input_ids: torch.Tensor,
+    module_names: list[str],
+) -> dict[str, tuple[torch.Tensor, torch.Tensor]]:
+    """Capture ``(X, E)`` factors without writing into any parameter gradient.
+
+    Qwen uses PyTorch linear weights in ``[out, in]`` order.  Consequently
+    ``X.T @ E`` is the mathematical `[in, out]` gradient used by the
+    feature-remapping specification and equals ``weight.grad.T``.
+    """
+    if input_ids.ndim != 2 or input_ids.shape[1] < 2 or not module_names:
+        raise ValueError("factor probes need nonempty modules and two-token input sequences")
+    modules = dict(model.named_modules())
+    missing = [name for name in module_names if name not in modules]
+    if missing:
+        raise ValueError(f"unknown Qwen probe modules: {missing}")
+    captured: dict[str, tuple[torch.Tensor, torch.Tensor]] = {}
+    handles = []
+    for name in module_names:
+        def hook(module, inputs, output, *, name=name):
+            if not isinstance(output, torch.Tensor):
+                raise TypeError(f"{name} did not produce a tensor")
+            captured[name] = (inputs[0], output)
+        handles.append(modules[name].register_forward_hook(hook))
+    try:
+        output = model(input_ids=input_ids, use_cache=False)
+        logits = getattr(output, "logits", output)
+        if not isinstance(logits, torch.Tensor):
+            raise TypeError("Qwen factor probe did not return logits")
+        loss = functional.cross_entropy(
+            logits[:, :-1].float().reshape(-1, logits.shape[-1]), input_ids[:, 1:].reshape(-1)
+        )
+        errors = torch.autograd.grad(loss, [captured[name][1] for name in module_names])
+        return {
+            name: (
+                captured[name][0].detach().reshape(-1, captured[name][0].shape[-1]).float(),
+                error.detach().reshape(-1, error.shape[-1]).float(),
+            )
+            for name, error in zip(module_names, errors)
+        }
+    finally:
+        for handle in handles:
+            handle.remove()
