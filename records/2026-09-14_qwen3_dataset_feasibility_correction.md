@@ -260,10 +260,13 @@ hyperparameter setting.
 
 The tied-embedding curvature candidate reached the same 1,000-update point
 with micro-batch 4 and accumulation 2: `17.8228654358` perplexity after
-`1,136.9987` seconds and `37,370.67MiB` peak allocated memory.  It is finite
+`1,151.8512` seconds and `37,370.67MiB` peak allocated memory.  It is finite
 and resource-valid but `1.2916646924` above the matched Muon value
 (`16.5312007434`), so this tested tied-path configuration is not competitive.
-Its full held-out evaluation is being run separately from this curve point.
+Its full held-out checkpoint evaluation was `16.9398539996` perplexity over
+all `4,999,168` validation tokens (611 micro-batch-4 passes),
+`0.8517398961` above formal AdamW.  This is a valid negative screening result
+for the tested configuration, not a conclusion about every tied-path design.
 
 ## Feature-remapping prediction gate
 
