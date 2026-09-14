@@ -148,6 +148,18 @@ The regression test runs a two-update CPU trial with validation every update
 and confirms the checkpoint writer is invoked exactly at updates 1 and 2.
 The complete focused Qwen suite after this change passed: 36 tests.
 
+The runner now supports `--resume` for checkpoints created by this version.
+Each periodic checkpoint includes the model and optimizer states, completed
+updates/epochs/batches, active-epoch sampler-generator state, accumulated
+elapsed time, last validation perplexity, CPU/CUDA random-number-generator
+states, and manifest-bound resolved configuration.  Resumption rejects a
+different configuration or cache digest, reconstructs the saved shuffled epoch,
+skips only already committed batches, and appends no duplicate metric point.
+The interruption regression deliberately raises after checkpointing step 1,
+then resumes to step 3 with exactly `[1, 2, 3]` in the metric trace.  The two
+currently active formal processes began before this format existed and are not
+restarted; future Muown and proposal trials receive this recovery capability.
+
 ## Formal-baseline admission gate
 
 The Qwen runner now enforces the baseline boundary rather than relying only on

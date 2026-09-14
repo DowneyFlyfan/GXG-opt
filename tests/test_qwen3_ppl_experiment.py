@@ -246,6 +246,60 @@ def test_trial_checkpoints_every_evaluation_interval(tmp_path, monkeypatch):
     assert calls == [1, 2]
 
 
+def test_trial_resumes_from_periodic_checkpoint_without_duplicate_metric_steps(tmp_path, monkeypatch):
+    import qwen3_ppl_experiment
+    from qwen3_data import prepare_qwen_fineweb_cache
+    from qwen3_ppl_experiment import QwenTrialConfig, qwen_trial_paths, run_qwen_trial
+
+    prepare_qwen_fineweb_cache(
+        tmp_path,
+        train_tokens=33,
+        validation_tokens=9,
+        sequence_length=4,
+        eos_token_id=31,
+        source=[
+            ("train", "a", [value % 31 for value in range(33)]),
+            ("validation", "b", [value % 31 for value in range(9)]),
+        ],
+    )
+    monkeypatch.setattr("qwen3_ppl_experiment.load_qwen3_model", lambda _: _TinyCausalLM())
+    real_write = qwen3_ppl_experiment._write_qwen_checkpoint
+
+    def interrupt_after_first_checkpoint(**payload):
+        real_write(**payload)
+        if payload["completed_updates"] == 1:
+            raise RuntimeError("simulated interruption")
+
+    monkeypatch.setattr(
+        "qwen3_ppl_experiment._write_qwen_checkpoint", interrupt_after_first_checkpoint
+    )
+    config = QwenTrialConfig(
+        root=tmp_path,
+        optimizer="adamw",
+        run_label="resume",
+        learning_rate=0.001,
+        micro_batch_size=1,
+        maximum_updates=3,
+        validation_batches=1,
+        evaluation_interval_updates=1,
+        device="cpu",
+    )
+    with pytest.raises(RuntimeError, match="simulated interruption"):
+        run_qwen_trial(config)
+
+    monkeypatch.setattr("qwen3_ppl_experiment._write_qwen_checkpoint", real_write)
+    result = run_qwen_trial(
+        QwenTrialConfig(**{**config.__dict__, "resume": True})
+    )
+    records = [
+        json.loads(line)
+        for line in qwen_trial_paths(tmp_path, "adamw", "resume").metric.read_text().splitlines()
+    ]
+
+    assert [record["step"] for record in records] == [1, 2, 3]
+    assert result["completed_updates"] == 3
+
+
 def test_trial_passes_the_training_batch_to_an_optimizer_prepare_batch_hook(tmp_path, monkeypatch):
     from qwen3_data import prepare_qwen_fineweb_cache
     from qwen3_ppl_experiment import QwenTrialConfig, run_qwen_trial
