@@ -144,3 +144,11 @@ allocation.  Relative to the completed AdamW run, this final intermediate
 validation value is 0.6677122577 higher and its elapsed time is 367.67 seconds
 longer.  Full held-out validation for all three formal baselines remains
 pending until Muown completes; these values do not yet select a winner.
+
+## Muown first-interval evidence
+
+Muown reached step 1,000 in epoch 1 on the formal manifest, exposing
+16,384,000 tokens.  Its 64-batch validation perplexity was `16.5301853239` at
+955.7704 seconds, with 68,228.04MiB peak allocation.  This is 0.0010154195
+lower than Muon at the same step but takes 10.33 seconds longer; it is still
+an early matched point rather than a conclusion about the final baseline.
