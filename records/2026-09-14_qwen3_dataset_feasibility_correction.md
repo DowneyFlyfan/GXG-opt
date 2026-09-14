@@ -428,3 +428,15 @@ validation perplexity in `150.3659` seconds, exposing 819,200 tokens and
 using `8,899.10MiB` peak allocation.  It is substantially less unstable than
 `5e-3`, but still far outside a useful range and is rejected before any long
 run.  The next AdamW bracket is `1e-4` (3.33 times the formal rate).
+
+## AdamW `1e-4` local bracket screen
+
+At `1e-4` (3.33 times the formal AdamW rate), the 50-update screen completed
+with finite `19.9008978517` 64-batch validation perplexity in `150.1721`
+seconds, `819,200` exposed tokens, and `8,899.10MiB` peak allocated memory.
+This is neither a formal comparison nor a selected learning rate: the formal
+baselines do not have a matched 50-update metric.  Unlike the two higher
+rates, however, it is not an immediate exploding trajectory.  The exact saved
+checkpoint will therefore be resumed to 200 updates under the same label and
+all other controls before deciding whether a 1,000-update comparison is
+justified.
