@@ -61,8 +61,29 @@ The active Muon screen therefore uses micro-batch 1,536 and no accumulation. It 
 
 These are one-epoch parameter screens, not the final five-epoch comparison. They intentionally have optimizer-specific batch settings, so their accuracy values are screening evidence rather than a matched winner declaration.
 
-## Active screen
+## Completed ABA screens
 
-Muown is running on ABA A100 GPU 1 with direction learning rate 1e-3, gain learning rate 1e-4, micro-batch 1,536, no accumulation, and zero weight decay. Its one-step memory admission matched the 62,023.2 MiB Muon probe.
+| Optimizer | Learning rates | Micro-batch / accumulation | Updates | Top-1 accuracy | Time | Peak memory |
+|---|---|---:|---:|---:|---:|---:|
+| AdamW | 3e-4 | 1,536 / 1 | 83 | 95.02% | 199.03 s | 62,269 MiB |
+| Muon | matrix 1e-3; auxiliary AdamW 1e-4 | 1,536 / 1 | 83 | 94.14% | 206.44 s | 62,191 MiB |
+| Muown | direction 1e-3; gain 1e-4 | 1,536 / 1 | 83 | 94.08% | 209.99 s | 62,269 MiB |
+
+All three screens use the same full validation set and batch configuration. They are one-epoch learning-rate evidence only, not final comparisons.
 
 The first Muown invocation stopped before its first batch because the two-rate optimizer did not expose a scheduler-compatible `lr` field. The fix maps that field to the scheduled direction rate while retaining the independent gain rate; it is covered by a regression test. No metric or checkpoint was produced by the failed invocation.
+
+## Completed matched five-epoch candidates
+
+AdamW and Muon used the exact same five epochs, micro-batch 1,536, no accumulation, full validation, dataset cache, model, and zero weight decay.
+
+| Optimizer | Learning rates | Final top-1 accuracy | Time | Peak allocated memory |
+|---|---|---:|---:|---:|
+| AdamW | 3e-4 | 95.98% | 969.79 s | 62,272.13 MiB |
+| Muon | matrix 1e-3; auxiliary AdamW 1e-4 | 95.88% | 998.06 s | 62,191.13 MiB |
+
+At the four completed checkpoints, AdamW was `95.02%, 95.04%, 95.22%, 95.74%, 95.98%`; Muon was `94.14%, 94.56%, 95.42%, 95.40%, 95.88%`. AdamW wins this first matched pair by 0.10 percentage points, but the learning-rate search remains in progress.
+
+## Active matched Muown and aggressive screens
+
+The same matched five-epoch Muown candidate is now training on GPU 0 with direction learning rate 1e-3 and gain learning rate 1e-4. The GPU 1 AdamW screen at 1e-3 is also active. After it completes, the queued GPU 1 Muon screen tests a matrix learning rate of 3e-3 with auxiliary AdamW learning rate 1e-4. After matched Muown completes, GPU 0 tests direction 3e-3 and gain 3e-4. All screens use micro-batch 1,536, no accumulation, full validation, and one epoch; their labels are distinct from the final five-epoch comparison label.

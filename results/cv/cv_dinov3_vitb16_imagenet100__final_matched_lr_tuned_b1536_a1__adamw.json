@@ -1,0 +1,18 @@
+{
+  "auxiliary_learning_rate": 0.0001,
+  "domain": "cv",
+  "epochs": 5,
+  "gradient_accumulation": 1,
+  "learning_rate": 0.0003,
+  "micro_batch_size": 1536,
+  "model": "dinov3_vitb16_imagenet100",
+  "muown_direction_lr": null,
+  "muown_gain_lr": null,
+  "optimizer": "adamw",
+  "parameters": 85737316,
+  "peak_memory_mb": 62272.12890625,
+  "seconds": 969.7913026753813,
+  "status": "completed",
+  "task": "cv_dinov3_vitb16_imagenet100",
+  "weight_decay": 0.0
+}
