@@ -1,0 +1,10 @@
+{
+  "completed_epochs": 0,
+  "completed_updates": 1000,
+  "data_manifest_sha256": "97a4ad1da6bbc128a2161a276c2d093821783133e50b27587fa20c9dd45f672c",
+  "elapsed_seconds": 1649.2295032702386,
+  "final_perplexity": 17.819863755764974,
+  "optimizer": "feature_scalar_cohort_v1",
+  "peak_memory_mib": 40187.65087890625,
+  "run_label": "feature_scalar_lr1e4_s1000_mb4a2_20m"
+}

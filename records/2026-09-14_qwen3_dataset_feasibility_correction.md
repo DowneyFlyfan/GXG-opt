@@ -286,3 +286,44 @@ prediction signal but is presently dominated by a simpler control.  The next
 eligible feature experiment must compare the cohort map against that scalar
 control, retain distinct fit/check anchors, and add the specified fresh
 training-only diagnostic anchor before any performance claim.
+
+## Feature-cohort anchor screens
+
+The feature-cohort implementation was exercised first with the candidate
+matrix learning rate `1e-4`, auxiliary AdamW learning rate `3e-5`, and the
+same effective batch eight (micro-batch four, accumulation two).  At nine
+updates, where the first history remapping has actually occurred, the
+feature-map arm recorded `14.5722232974` 64-batch perplexity in `25.9574`
+seconds; the scalar control recorded `14.5604467453` in `26.2933` seconds.
+Both used about `40,188MiB` peak allocated memory.  The scalar control is
+therefore lower by `0.0117775520` at this deliberately tiny diagnostic
+screen.  It is not a formal comparison and does not establish an advantage
+over any baseline.
+
+The implementation maps only the decayed historical cohort contribution and
+then adds the fresh gradient cohort unchanged, consistent with Muon's
+unnormalized momentum convention `m <- beta*m + g`.  It also converts the
+learned floating-point map to the momentum tensor's dtype before applying it;
+this fixes the active BF16 mixed-dtype path.  The current anchor pair is fixed
+and distinct for fit versus check, but the fresh training-only diagnostic
+anchor required by the design has not yet been persisted.  Consequently the
+following run is evidence for the scalar-control implementation and not a
+completed validation of the map mechanism.
+
+## Feature-scalar cohort matched 1,000-update result
+
+The scalar-control cohort run completed exactly 1,000 updates on the formal
+cache manifest, again with micro-batch four and accumulation two.  Its
+64-batch curve metric was `17.8198637558` after `1,649.2295` seconds with
+`40,187.65MiB` peak allocated memory.  This is materially slower than the
+ordinary Muon-family baseline because it executes fixed fit/check anchor
+forwards for all 26 target MLP down-projections every eight updates.
+
+Its saved checkpoint was evaluated over all `4,999,168` held-out tokens
+(`611` micro-batch-four validation passes), producing perplexity
+`16.9340264165`.  That is `0.8459123131` above the formal AdamW incumbent
+(`16.0881141034`), so the tested scalar-control configuration is a valid
+negative result.  The metric, full-validation JSON, and matched step/time
+plots are retained locally before releasing its 6.96GB remote checkpoint for
+the map-control comparison; no checkpoint is needed to reproduce this
+reported evaluation artifact.
