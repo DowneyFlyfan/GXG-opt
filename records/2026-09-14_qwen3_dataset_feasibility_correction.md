@@ -402,3 +402,19 @@ the 50-update perplexity is catastrophically high, so it will not be extended
 or compared to the 1,000-update formal curves.  Importantly, this result does
 not support using a shared rate across Muown's subsystems; Muown needs an
 independent direction/gain/auxiliary screen.
+
+## Muown independent-rate `5e-3` local high-rate screen
+
+Muown was screened with deliberately distinct rates: matrix direction `5e-3`,
+gain `3e-5`, and auxiliary AdamW `3e-4`.  The other settings were unchanged:
+local RTX 5070 Ti, activation checkpointing, micro-batch one, accumulation
+eight, seed 1337, the formal cache manifest, and 50 updates.  It completed
+with `443.4509109184` 64-batch validation perplexity after `157.6255`
+seconds, 819,200 exposed tokens, and `8,901.53MiB` peak allocation.
+
+The distinct gain rate does not rescue this extreme direction rate: this
+configuration is rejected and will not be extended.  The result is useful for
+bracketing because it demonstrates a completed, reproducible high-rate
+failure while preserving the required separate Muown subsystems.  The next
+bracket remains aggressive but is reduced to `5e-4` rather than pretending
+that a 50-update exploding run is an optimizer comparison.
