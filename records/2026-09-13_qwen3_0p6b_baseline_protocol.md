@@ -106,6 +106,16 @@ The upper side of the retained AdamW rate was checked under the same 50-update p
 
 The checkpoint, metric trace, result, and log for this AdamW bracket point are removed after the result is recorded.
 
+## First Muown two-rate screen
+
+Muown was screened with independent tangent-direction and row-gain learning rates; it does not reuse a single scalar rate.
+
+| Optimizer | Rate(s) | Validation perplexity after 50 updates | Time for 50 updates | Decision |
+| --- | --- | ---: | ---: | --- |
+| Muown | direction `5e-5`, gain `1e-5`, AdamW auxiliary `3e-5` | 17.689 | 52.106 s | improves 5.030 perplexity from initialization; retain direction and bracket gain |
+
+This initial pair is within 0.00005 perplexity of the retained Muon screen, so gain-rate tuning is warranted.  The checkpoint, metric trace, result, and log are removed after recording.
+
 ## Initial screen protocol
 
 1. Verify cache digests and remove temporary FineWeb download state after packing.
