@@ -163,8 +163,8 @@ python src/run_qwen3_ppl.py run --optimizer muon --learning-rate 5e-5 --auxiliar
 
 At the latest direct process inspection, both corresponding Python processes
 were live and each A100 reported 100% utilization.  The latest durable metric
-records were AdamW perplexity `15.5593` at step 13,000 and Muon perplexity
-`15.6546` at step 11,000, both using manifest digest
+records were AdamW perplexity `15.52004` at step 14,000 and Muon perplexity
+`15.57692` at step 13,000, both using manifest digest
 `ced8d55d8e0849b22e5c6678194d0ca31fe42998b0760fea8c6d99ab00090649`.
 These unequal step counts are ordinary elapsed-runtime progress, not different
 training budgets.  The eventual Muown launch command must explicitly include
