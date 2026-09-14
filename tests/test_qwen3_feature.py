@@ -61,3 +61,23 @@ def test_qwen_cohort_update_remaps_only_the_historical_pytorch_weight_buffer():
     assert torch.equal(momentum, torch.ones_like(momentum))
     assert torch.equal(next_historical, momentum)
     assert torch.equal(next_fresh, torch.zeros_like(fresh))
+
+
+def test_qwen_feature_prediction_diagnostic_accepts_an_exact_held_out_drift_map():
+    from qwen3_feature import qwen_feature_prediction_diagnostics
+
+    torch.manual_seed(30)
+    old_fit = (torch.randn(12, 4, dtype=torch.float64), torch.randn(12, 4, dtype=torch.float64))
+    old_check = (torch.randn(9, 4, dtype=torch.float64), torch.randn(9, 4, dtype=torch.float64))
+    left = torch.diag(torch.tensor([1.05, 0.97, 1.02, 0.98], dtype=torch.float64))
+    right = torch.diag(torch.tensor([0.96, 1.03, 0.99, 1.04], dtype=torch.float64))
+    result = qwen_feature_prediction_diagnostics(
+        {"module": old_fit},
+        {"module": (old_fit[0] @ left, old_fit[1] @ right)},
+        {"module": old_check},
+        {"module": (old_check[0] @ left, old_check[1] @ right)},
+        block_size=4,
+    )
+
+    assert result["module"]["accepted"] is True
+    assert result["module"]["map_error"] < result["module"]["raw_error"]

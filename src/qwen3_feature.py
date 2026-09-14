@@ -5,7 +5,7 @@ from __future__ import annotations
 import torch
 import torch.nn.functional as functional
 
-from optimizer_v2.temporal import cohort_step
+from optimizer_v2.temporal import cohort_step, predictive_maps
 
 
 def collect_qwen_dense_factors(
@@ -85,3 +85,28 @@ def qwen_cohort_momentum_step(
     if refresh:
         return momentum, momentum, torch.zeros_like(momentum)
     return momentum, next_historical, next_fresh
+
+
+def qwen_feature_prediction_diagnostics(
+    old_fit: dict[str, tuple[torch.Tensor, torch.Tensor]],
+    new_fit: dict[str, tuple[torch.Tensor, torch.Tensor]],
+    old_check: dict[str, tuple[torch.Tensor, torch.Tensor]],
+    new_check: dict[str, tuple[torch.Tensor, torch.Tensor]],
+    *,
+    block_size: int = 32,
+) -> dict[str, dict]:
+    """Evaluate the held-out gradient-prediction gate before any remapping.
+
+    This reports the combined feature/error map's held-out error for each
+    target.  It intentionally does not mutate momentum or return an optimizer
+    correction, keeping the feature-remap preflight separate from training.
+    """
+    names = set(old_fit)
+    if not names or names != set(new_fit) or names != set(old_check) or names != set(new_check):
+        raise ValueError("feature prediction requires matching nonempty target dictionaries")
+    diagnostics: dict[str, dict] = {}
+    for name in sorted(names):
+        _, diagnostics[name] = predictive_maps(
+            old_fit[name], new_fit[name], old_check[name], new_check[name], block_size=block_size
+        )
+    return diagnostics

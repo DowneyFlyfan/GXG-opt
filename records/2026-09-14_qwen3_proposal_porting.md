@@ -100,6 +100,18 @@ is permitted if the probe peak exceeds the standard microbatch's headroom.
 Local verification including runner handoff passed: 29 tests.  No tied-path
 GPU screen has started before the matched-baseline gate.
 
+## Feature-remap preflight
+
+`qwen_feature_prediction_diagnostics` now evaluates the defining held-out
+criterion before a Qwen momentum-remap controller can be enabled.  It accepts
+only matched dictionaries of fit/check dense factors and calls the existing
+block-ridge, near-identity `predictive_maps` implementation.  The output is
+diagnostics only: it cannot change model parameters, momentum, or optimizer
+state.  Its FP64 synthetic exact-drift test verifies that the accepted map has
+lower held-out gradient error than the unremapped historical gradient.  This
+is the required prediction-first gate; an actual Qwen anchor trajectory will
+be collected after the formal matched baselines are complete.
+
 ## Remaining before a Qwen proposal screen
 
 1. Add a Qwen attention replay/probe for the routing-resistance factors using separate Q/K projections and grouped-query heads.
