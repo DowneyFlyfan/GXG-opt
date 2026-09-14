@@ -7,6 +7,73 @@ import torch
 from optimizer_v2.attention import edge_factors, filter_routing_increment
 
 
+class QwenAttentionReplayCapture:
+    """Retain one sequence's Qwen attention inputs from an ordinary forward.
+
+    Routing-resistance probes operate within a single causal sequence.  The
+    capture therefore slices at the forward hook instead of retaining an
+    entire training microbatch or adding an auxiliary model forward.
+    """
+
+    def __init__(self, attention: torch.nn.Module, *, sequence_index: int = 0) -> None:
+        if sequence_index < 0:
+            raise ValueError("sequence_index must be non-negative")
+        self.attention = attention
+        self.sequence_index = sequence_index
+        self.hidden_states: torch.Tensor | None = None
+        self.position_embeddings: tuple[torch.Tensor, torch.Tensor] | None = None
+        self._handle = None
+
+    def __enter__(self) -> "QwenAttentionReplayCapture":
+        if self._handle is not None:
+            raise RuntimeError("attention capture is already active")
+        self._handle = self.attention.register_forward_pre_hook(self._capture, with_kwargs=True)
+        return self
+
+    def __exit__(self, exception_type, exception, traceback) -> None:
+        del exception_type, exception, traceback
+        if self._handle is not None:
+            self._handle.remove()
+            self._handle = None
+
+    def _capture(self, module: torch.nn.Module, arguments: tuple, keywords: dict) -> None:
+        del module
+        hidden_states = keywords.get("hidden_states", arguments[0] if arguments else None)
+        position_embeddings = keywords.get(
+            "position_embeddings", arguments[1] if len(arguments) > 1 else None
+        )
+        if not isinstance(hidden_states, torch.Tensor) or not isinstance(position_embeddings, tuple):
+            raise TypeError("Qwen attention hook did not receive hidden states and rotary embeddings")
+        if len(position_embeddings) != 2 or not all(
+            isinstance(value, torch.Tensor) for value in position_embeddings
+        ):
+            raise TypeError("Qwen rotary embeddings must be a tensor pair")
+        if hidden_states.ndim != 3 or self.sequence_index >= hidden_states.shape[0]:
+            raise ValueError("sequence_index is outside the Qwen attention batch")
+        batch_size = hidden_states.shape[0]
+
+        def one_sequence(value: torch.Tensor) -> torch.Tensor:
+            if value.ndim == 2:
+                return value.detach().unsqueeze(0)
+            if value.ndim >= 3 and value.shape[0] == batch_size:
+                return value[self.sequence_index : self.sequence_index + 1].detach()
+            if value.ndim >= 3 and value.shape[0] == 1:
+                return value.detach()
+            raise ValueError("rotary embeddings have an incompatible batch dimension")
+
+        self.hidden_states = hidden_states[self.sequence_index : self.sequence_index + 1].detach()
+        self.position_embeddings = tuple(one_sequence(value) for value in position_embeddings)  # type: ignore[assignment]
+
+    @torch.no_grad()
+    def replay(self, *, head: int) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Replay the captured sequence's Q/K head after its ordinary forward."""
+        if self.hidden_states is None or self.position_embeddings is None:
+            raise RuntimeError("attention capture has no recorded forward")
+        return replay_qwen_qk_head(
+            self.attention, self.hidden_states, self.position_embeddings, head=head
+        )
+
+
 def _rotate_half(values: torch.Tensor) -> torch.Tensor:
     """Match the Qwen rotary embedding half rotation."""
     first, second = values.chunk(2, dim=-1)

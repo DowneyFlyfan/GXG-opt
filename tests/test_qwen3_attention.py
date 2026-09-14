@@ -20,6 +20,10 @@ class _TinyGroupedAttention(torch.nn.Module):
         self.q_norm = _Identity()
         self.k_norm = _Identity()
 
+    def forward(self, hidden_states, position_embeddings):
+        del position_embeddings
+        return hidden_states
+
 
 def test_qwen_head_replay_uses_the_grouped_key_head_and_rotary_inputs():
     from qwen3_attention import replay_qwen_qk_head
@@ -81,3 +85,20 @@ def test_qwen_route_filter_bypasses_exactly_at_zero_strength():
     assert torch.equal(query_correction, torch.zeros_like(query_learning))
     assert torch.equal(key_correction, torch.zeros_like(key_learning))
     assert diagnostics["update_norm_before"] > 0
+
+
+def test_attention_capture_replays_one_sequence_without_storing_the_full_batch():
+    from qwen3_attention import QwenAttentionReplayCapture, replay_qwen_qk_head
+
+    torch.manual_seed(18)
+    attention = _TinyGroupedAttention()
+    hidden = torch.randn(3, 4, 4)
+    cosine = torch.ones(3, 4, 2)
+    sine = torch.zeros(3, 4, 2)
+    with QwenAttentionReplayCapture(attention, sequence_index=1) as capture:
+        attention(hidden, (cosine, sine))
+        replay = capture.replay(head=2)
+    expected = replay_qwen_qk_head(attention, hidden[1:2], (cosine[1:2], sine[1:2]), head=2)
+
+    assert all(torch.equal(actual, target) for actual, target in zip(replay, expected))
+    assert capture.hidden_states.shape[0] == 1

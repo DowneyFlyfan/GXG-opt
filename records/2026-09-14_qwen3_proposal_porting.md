@@ -43,6 +43,15 @@ candidate, but `render_qwen_comparison` remains explicitly baseline-only
 silently treated as one of the required matched baselines.  The local factory,
 trial-path, command-line, and primitive suite passed: 13 tests.
 
+For `routing_resistance_v1`, `QwenAttentionReplayCapture` registers a
+temporary Qwen attention forward-pre-hook and stores only one selected causal
+sequence's detached hidden states and rotary-embedding pair.  Its replay
+therefore uses the ordinary training forward rather than retaining activations
+for all 26 selected layers or adding a full-model forward.  It is strictly a
+data-access adapter: no parameter or optimizer state is changed.  Local
+attention tests, including a three-sequence capture that confirms the stored
+batch dimension is one, passed: 4 tests.
+
 ## Remaining before a Qwen proposal screen
 
 1. Add a Qwen attention replay/probe for the routing-resistance factors using separate Q/K projections and grouped-query heads.
