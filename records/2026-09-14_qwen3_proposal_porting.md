@@ -112,6 +112,16 @@ lower held-out gradient error than the unremapped historical gradient.  This
 is the required prediction-first gate; an actual Qwen anchor trajectory will
 be collected after the formal matched baselines are complete.
 
+## Candidate comparison artifacts
+
+`render_qwen_candidate_comparison` and the `render-candidate` command render
+one proposal trace together with the fixed AdamW, Muon, and Muown formal
+traces.  Each call writes a PNG for completed optimizer steps and a PNG for
+elapsed wall-clock time, both with validation perplexity as the vertical
+metric.  This is deliberately separate from baseline-only rendering so a
+candidate is never mislabeled as a baseline.  Unit coverage writes synthetic
+traces for all four curves and verifies both candidate output files.
+
 ## Remaining before a Qwen proposal screen
 
 1. Add a Qwen attention replay/probe for the routing-resistance factors using separate Q/K projections and grouped-query heads.

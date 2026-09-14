@@ -71,6 +71,30 @@ def test_renderer_uses_perplexity_and_completed_optimizer_steps(tmp_path):
     assert time_png.is_file()
 
 
+def test_candidate_renderer_includes_the_three_matched_baselines(tmp_path):
+    from qwen3_ppl_experiment import qwen_trial_paths, render_qwen_candidate_comparison
+
+    for optimizer, perplexity in (
+        ("adamw", 3.0),
+        ("muon", 2.5),
+        ("muown", 2.0),
+        ("routing_resistance_v1", 1.9),
+    ):
+        paths = qwen_trial_paths(tmp_path, optimizer, "formal")
+        paths.metric.parent.mkdir(parents=True, exist_ok=True)
+        paths.metric.write_text(
+            json.dumps({"step": 7, "elapsed_seconds": 2.0, "perplexity": perplexity}) + "\n"
+        )
+
+    step_png, time_png = render_qwen_candidate_comparison(
+        tmp_path, run_label="formal", candidate="routing_resistance_v1"
+    )
+
+    assert step_png.is_file()
+    assert time_png.is_file()
+    assert "routing_resistance_v1" in step_png.name
+
+
 class _TinyCausalLM(nn.Module):
     def __init__(self) -> None:
         super().__init__()
@@ -209,3 +233,14 @@ def test_cli_parses_a_render_request_without_training_arguments():
 
     assert arguments.command == "render"
     assert arguments.run_label == "formal"
+
+
+def test_cli_parses_a_candidate_render_request():
+    from run_qwen3_ppl import parse_args
+
+    arguments = parse_args(
+        ["render-candidate", "--run-label", "formal", "--candidate", "routing_resistance_v1"]
+    )
+
+    assert arguments.command == "render-candidate"
+    assert arguments.candidate == "routing_resistance_v1"

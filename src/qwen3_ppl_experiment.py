@@ -125,6 +125,48 @@ def render_qwen_comparison(root: Path, *, run_label: str) -> tuple[Path, Path]:
     return outputs
 
 
+def render_qwen_candidate_comparison(
+    root: Path, *, run_label: str, candidate: str
+) -> tuple[Path, Path]:
+    """Render one proposal against the three required matched baselines."""
+    if candidate not in TRIAL_DISPLAY_NAMES or candidate in BASELINE_DISPLAY_NAMES:
+        raise ValueError("candidate renderer requires a non-baseline Qwen trial optimizer")
+    traces = {
+        BASELINE_DISPLAY_NAMES[optimizer]: _metric_records(qwen_trial_paths(root, optimizer, run_label).metric)
+        for optimizer in BASELINE_DISPLAY_NAMES
+    }
+    traces[TRIAL_DISPLAY_NAMES[candidate]] = _metric_records(qwen_trial_paths(root, candidate, run_label).metric)
+    output_root = root / "results" / "nlp"
+    output_root.mkdir(parents=True, exist_ok=True)
+    outputs = (
+        output_root / f"qwen3_0p6b_{run_label}_{candidate}_metric_steps.png",
+        output_root / f"qwen3_0p6b_{run_label}_{candidate}_metric_time.png",
+    )
+    for output, x_key, x_label, scale in (
+        (outputs[0], "step", "Completed optimizer step", 1.0),
+        (outputs[1], "elapsed_seconds", "Wall-clock time (hours)", 3600.0),
+    ):
+        figure, axis = plot.subplots(figsize=(9, 5))
+        for label, records in traces.items():
+            axis.plot(
+                [float(record[x_key]) / scale for record in records],
+                [float(record["perplexity"]) for record in records],
+                marker="o",
+                label=label,
+            )
+        axis.set(
+            xlabel=x_label,
+            ylabel="Validation perplexity (lower is better)",
+            title=f"Qwen3-0.6B {TRIAL_DISPLAY_NAMES[candidate]} versus matched baselines",
+        )
+        axis.grid(alpha=0.2)
+        axis.legend()
+        figure.tight_layout()
+        figure.savefig(output, dpi=160)
+        plot.close(figure)
+    return outputs
+
+
 def _logits(output: object) -> torch.Tensor:
     logits = getattr(output, "logits", output)
     if not isinstance(logits, torch.Tensor):

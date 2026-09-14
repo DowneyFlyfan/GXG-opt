@@ -15,7 +15,14 @@ from qwen3_data import (
     stream_fineweb_edu_tokens,
 )
 from qwen3_model import qwen_checkpoint_path
-from qwen3_ppl_experiment import QwenTrialConfig, TRIAL_DISPLAY_NAMES, render_qwen_comparison, run_qwen_trial
+from qwen3_ppl_experiment import (
+    BASELINE_DISPLAY_NAMES,
+    QwenTrialConfig,
+    TRIAL_DISPLAY_NAMES,
+    render_qwen_candidate_comparison,
+    render_qwen_comparison,
+    run_qwen_trial,
+)
 
 
 def parse_args(arguments: list[str] | None = None) -> argparse.Namespace:
@@ -55,6 +62,11 @@ def parse_args(arguments: list[str] | None = None) -> argparse.Namespace:
     run.add_argument("--device", default="cuda")
     render = commands.add_parser("render", help="render the three baseline comparison curves")
     render.add_argument("--run-label", required=True)
+    candidate_render = commands.add_parser("render-candidate", help="render one proposal against matched baselines")
+    candidate_render.add_argument("--run-label", required=True)
+    candidate_render.add_argument(
+        "--candidate", choices=tuple(name for name in TRIAL_DISPLAY_NAMES if name not in BASELINE_DISPLAY_NAMES), required=True
+    )
     return parser.parse_args(arguments)
 
 
@@ -117,8 +129,17 @@ def main(arguments: list[str] | None = None) -> None:
                 device=parsed.device,
             )
         )
-    else:
+    elif parsed.command == "render":
         result = {"outputs": [str(path) for path in render_qwen_comparison(root, run_label=parsed.run_label)]}
+    else:
+        result = {
+            "outputs": [
+                str(path)
+                for path in render_qwen_candidate_comparison(
+                    root, run_label=parsed.run_label, candidate=parsed.candidate
+                )
+            ]
+        }
     print(json.dumps(result, sort_keys=True))
 
 
