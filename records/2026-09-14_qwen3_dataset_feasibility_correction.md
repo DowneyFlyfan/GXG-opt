@@ -561,3 +561,14 @@ It is `0.3256069401` worse than formal Muon at matrix `5e-5` / auxiliary
 immediately reused for the remaining intermediate `6e-5` / `3.5e-5` bracket;
 only that point can determine whether the formal Muon rate remains the best
 tested curve.
+
+## ABA AdamW `4e-5` matched point
+
+The last initial AdamW bracket completed with perplexity `16.5539210167` at
+step 1,000, after `839.4452` training seconds (`861.4821` total elapsed) and
+with `68,225.61MiB` peak allocation.  Its deterministic protocol is identical
+to the formal `3e-5` and rejected `5e-5` points.  It improves on formal
+`3e-5` (`16.5583577720`) by `0.0044367553`, while `5e-5` was materially worse
+at `16.6631990511`.  Thus `4e-5` is the best AdamW point tested so far, but
+the three-point local quadratic bracket has its minimum near `3.54e-5`; the
+next one-seed refinement is `3.5e-5`, not a premature final-selection claim.
