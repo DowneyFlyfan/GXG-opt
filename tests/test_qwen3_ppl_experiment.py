@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 
+import pytest
 import torch
 from torch import nn
 
@@ -93,6 +94,41 @@ def test_candidate_renderer_includes_the_three_matched_baselines(tmp_path):
     assert step_png.is_file()
     assert time_png.is_file()
     assert "routing_resistance_v1" in step_png.name
+
+
+def test_proposal_admission_requires_completed_manifest_matched_formal_baselines(tmp_path):
+    from qwen3_ppl_experiment import _require_completed_qwen_baselines, qwen_trial_paths
+
+    with pytest.raises(RuntimeError, match="missing completed formal baseline"):
+        _require_completed_qwen_baselines(
+            tmp_path,
+            run_label="formal",
+            manifest_digest="manifest-a",
+            expected_epochs=3,
+        )
+
+    for optimizer in ("adamw", "muon", "muown"):
+        paths = qwen_trial_paths(tmp_path, optimizer, "formal")
+        paths.result.parent.mkdir(parents=True, exist_ok=True)
+        paths.result.write_text(
+            json.dumps(
+                {
+                    "optimizer": optimizer,
+                    "run_label": "formal",
+                    "completed_epochs": 3,
+                    "completed_updates": 9,
+                    "final_perplexity": 2.0,
+                    "data_manifest_sha256": "manifest-a",
+                }
+            )
+        )
+
+    _require_completed_qwen_baselines(
+        tmp_path,
+        run_label="formal",
+        manifest_digest="manifest-a",
+        expected_epochs=3,
+    )
 
 
 class _TinyCausalLM(nn.Module):

@@ -88,6 +88,33 @@ def _metric_records(path: Path) -> list[dict]:
     return records
 
 
+def _require_completed_qwen_baselines(
+    root: Path,
+    *,
+    run_label: str,
+    manifest_digest: str,
+    expected_epochs: int,
+) -> None:
+    """Reject a proposal until the three matching formal baselines are final."""
+    for optimizer in BASELINE_DISPLAY_NAMES:
+        path = qwen_trial_paths(root, optimizer, run_label).result
+        if not path.is_file():
+            raise RuntimeError(f"missing completed formal baseline: {optimizer}/{run_label}")
+        try:
+            result = json.loads(path.read_text())
+        except json.JSONDecodeError as error:
+            raise RuntimeError(f"invalid formal baseline result: {path}") from error
+        if (
+            result.get("optimizer") != optimizer
+            or result.get("run_label") != run_label
+            or result.get("data_manifest_sha256") != manifest_digest
+            or result.get("completed_epochs") != expected_epochs
+            or int(result.get("completed_updates", 0)) <= 0
+            or not math.isfinite(float(result.get("final_perplexity", math.nan)))
+        ):
+            raise RuntimeError(f"formal baseline is not matched and complete: {optimizer}/{run_label}")
+
+
 def render_qwen_comparison(root: Path, *, run_label: str) -> tuple[Path, Path]:
     """Render the required baseline perplexity curves versus steps and time."""
     traces = {
@@ -268,6 +295,13 @@ def run_qwen_trial(config: QwenTrialConfig) -> dict:
     paths = qwen_trial_paths(config.root, config.optimizer, config.run_label)
     if any(path.exists() for path in (paths.metric, paths.result, paths.checkpoint)):
         raise FileExistsError(f"refusing to overwrite Qwen trial {config.run_label}/{config.optimizer}")
+    if config.optimizer not in BASELINE_DISPLAY_NAMES:
+        _require_completed_qwen_baselines(
+            config.root,
+            run_label=config.run_label,
+            manifest_digest=manifest_digest,
+            expected_epochs=config.maximum_epochs,
+        )
     train_loader, validation_loader = qwen_block_loaders(
         cache,
         micro_batch_size=config.micro_batch_size,

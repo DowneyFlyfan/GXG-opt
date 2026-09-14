@@ -148,6 +148,19 @@ The regression test runs a two-update CPU trial with validation every update
 and confirms the checkpoint writer is invoked exactly at updates 1 and 2.
 The complete focused Qwen suite after this change passed: 36 tests.
 
+## Formal-baseline admission gate
+
+The Qwen runner now enforces the baseline boundary rather than relying only on
+the external monitor.  Any non-baseline proposal (`proposal_notch_v1`,
+`routing_resistance_v1`, or `tied_path_curvature_v1`) is rejected before model
+loading unless all three results named by its run label exist and each records
+its own optimizer name, that label, a positive update count, finite final
+perplexity, exactly the requested epoch count, and the candidate cache's
+manifest digest.  This prevents a partial, differently-tokenized, or
+incomplete baseline from authorizing a proposal screen.  The unit test first
+observed the missing gate, then creates three matching completed synthetic
+results and verifies admission.
+
 ## Remaining before a Qwen proposal screen
 
 1. Let the active formal AdamW and Muon runs complete, then launch the exact
