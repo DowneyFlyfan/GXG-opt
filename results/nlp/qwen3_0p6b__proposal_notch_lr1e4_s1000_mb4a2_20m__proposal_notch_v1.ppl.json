@@ -1,0 +1,10 @@
+{
+  "completed_epochs": 0,
+  "completed_updates": 1000,
+  "data_manifest_sha256": "97a4ad1da6bbc128a2161a276c2d093821783133e50b27587fa20c9dd45f672c",
+  "elapsed_seconds": 1097.025174062699,
+  "final_perplexity": 17.8235363734414,
+  "optimizer": "proposal_notch_v1",
+  "peak_memory_mib": 39304.09521484375,
+  "run_label": "proposal_notch_lr1e4_s1000_mb4a2_20m"
+}

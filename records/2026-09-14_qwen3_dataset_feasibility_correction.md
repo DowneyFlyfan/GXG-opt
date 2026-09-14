@@ -230,3 +230,13 @@ completed at `18.3678238040` perplexity, 819,200 exposed tokens, 77.9904
 seconds, and 37,370.67MiB peak allocation.  It is resource-valid but early
 screening evidence only; the separate active-notch step-1,000 job remains the
 first directly comparable candidate curve.
+
+## Proposal-notch matched point
+
+With the memory-safe micro-batch-4/accumulation-2 configuration, the
+proposal-notch run reached the directly comparable 1,000-update point:
+`17.8235363734` perplexity at 16,384,000 exposed tokens in 1,080.9697
+seconds, with 39,304.10MiB peak allocation.  This is finite and resource-valid
+but 1.2923356300 higher than the matched Muon value (`16.5312007434`), so the
+tested notch configuration is not competitive.  Its standalone 50-update
+screen is retained as stability evidence; no advantage is inferred from it.
