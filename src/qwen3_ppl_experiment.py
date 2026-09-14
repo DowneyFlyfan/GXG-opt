@@ -43,6 +43,7 @@ class QwenTrialConfig:
     maximum_epochs: int = 3
     maximum_updates: int | None = None
     validation_batches: int = 1
+    evaluation_interval_updates: int = 1_000
     workers: int = 0
     seed: int = 1337
     device: str = "cuda"
@@ -162,8 +163,12 @@ def run_qwen_trial(config: QwenTrialConfig) -> dict:
         raise ValueError(f"unsupported Qwen baseline: {config.optimizer}")
     if config.micro_batch_size <= 0 or config.gradient_accumulation <= 0:
         raise ValueError("batch and accumulation values must be positive")
-    if config.maximum_epochs <= 0 or config.validation_batches <= 0:
-        raise ValueError("epoch and validation values must be positive")
+    if (
+        config.maximum_epochs <= 0
+        or config.validation_batches <= 0
+        or config.evaluation_interval_updates <= 0
+    ):
+        raise ValueError("epoch, validation, and evaluation interval values must be positive")
     if config.maximum_updates is not None and config.maximum_updates <= 0:
         raise ValueError("maximum_updates must be positive when provided")
     device = torch.device(config.device)
@@ -198,6 +203,7 @@ def run_qwen_trial(config: QwenTrialConfig) -> dict:
     completed_updates = 0
     completed_epochs = 0
     stopped_early = False
+    final_perplexity: float | None = None
     autocast = (
         torch.autocast(device_type="cuda", dtype=torch.bfloat16)
         if device.type == "cuda"
@@ -220,6 +226,33 @@ def run_qwen_trial(config: QwenTrialConfig) -> dict:
             for optimizer in optimizers.values():
                 optimizer.step()
             completed_updates += 1
+            if completed_updates % config.evaluation_interval_updates == 0:
+                elapsed_seconds = time.perf_counter() - started
+                final_perplexity = _validation_perplexity(
+                    model, validation_loader, device, config.validation_batches
+                )
+                peak_memory_mib = (
+                    torch.cuda.max_memory_allocated(device) / 2**20
+                    if device.type == "cuda"
+                    else None
+                )
+                record = {
+                    "epoch": epoch,
+                    "step": completed_updates,
+                    "elapsed_seconds": elapsed_seconds,
+                    "token_exposure": (
+                        completed_updates
+                        * config.micro_batch_size
+                        * config.gradient_accumulation
+                        * cache.sequence_length
+                    ),
+                    "perplexity": final_perplexity,
+                    "data_manifest_sha256": manifest_digest,
+                    "peak_memory_mib": peak_memory_mib,
+                }
+                with paths.metric.open("a") as handle:
+                    handle.write(json.dumps(record, sort_keys=True) + "\n")
+                model.train()
             if config.maximum_updates is not None and completed_updates >= config.maximum_updates:
                 stopped_early = True
                 break
@@ -227,21 +260,32 @@ def run_qwen_trial(config: QwenTrialConfig) -> dict:
             break
         completed_epochs = epoch
     elapsed_seconds = time.perf_counter() - started
-    perplexity = _validation_perplexity(model, validation_loader, device, config.validation_batches)
+    if final_perplexity is None or completed_updates % config.evaluation_interval_updates:
+        final_perplexity = _validation_perplexity(
+            model, validation_loader, device, config.validation_batches
+        )
+        record = {
+            "epoch": completed_epochs,
+            "step": completed_updates,
+            "elapsed_seconds": time.perf_counter() - started,
+            "token_exposure": (
+                completed_updates
+                * config.micro_batch_size
+                * config.gradient_accumulation
+                * cache.sequence_length
+            ),
+            "perplexity": final_perplexity,
+            "data_manifest_sha256": manifest_digest,
+            "peak_memory_mib": (
+                torch.cuda.max_memory_allocated(device) / 2**20 if device.type == "cuda" else None
+            ),
+        }
+        with paths.metric.open("a") as handle:
+            handle.write(json.dumps(record, sort_keys=True) + "\n")
     peak_memory_mib = (
         torch.cuda.max_memory_allocated(device) / 2**20 if device.type == "cuda" else None
     )
     token_exposure = completed_updates * config.micro_batch_size * config.gradient_accumulation * cache.sequence_length
-    record = {
-        "epoch": completed_epochs,
-        "step": completed_updates,
-        "elapsed_seconds": elapsed_seconds,
-        "token_exposure": token_exposure,
-        "perplexity": perplexity,
-        "data_manifest_sha256": manifest_digest,
-        "peak_memory_mib": peak_memory_mib,
-    }
-    paths.metric.write_text(json.dumps(record, sort_keys=True) + "\n")
     checkpoint = {
         "model": model.state_dict(),
         "optimizers": {name: optimizer.state_dict() for name, optimizer in optimizers.items()},
@@ -258,7 +302,7 @@ def run_qwen_trial(config: QwenTrialConfig) -> dict:
         "run_label": config.run_label,
         "completed_epochs": completed_epochs,
         "completed_updates": completed_updates,
-        "final_perplexity": perplexity,
+        "final_perplexity": final_perplexity,
         "elapsed_seconds": elapsed_seconds,
         "data_manifest_sha256": manifest_digest,
         "peak_memory_mib": peak_memory_mib,

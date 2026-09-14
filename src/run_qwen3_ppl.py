@@ -40,6 +40,7 @@ def parse_args(arguments: list[str] | None = None) -> argparse.Namespace:
     run.add_argument("--maximum-epochs", type=int, default=3)
     run.add_argument("--maximum-updates", type=int)
     run.add_argument("--validation-batches", type=int, default=1)
+    run.add_argument("--evaluation-interval-updates", type=int, default=1_000)
     run.add_argument("--workers", type=int, default=0)
     run.add_argument("--seed", type=int, default=1337)
     run.add_argument("--device", default="cuda")
@@ -92,6 +93,7 @@ def main(arguments: list[str] | None = None) -> None:
                 maximum_epochs=parsed.maximum_epochs,
                 maximum_updates=parsed.maximum_updates,
                 validation_batches=parsed.validation_batches,
+                evaluation_interval_updates=parsed.evaluation_interval_updates,
                 workers=parsed.workers,
                 seed=parsed.seed,
                 device=parsed.device,

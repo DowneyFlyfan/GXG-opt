@@ -74,6 +74,44 @@ def test_trial_writes_a_checkpoint_bound_to_the_cache_manifest(tmp_path, monkeyp
     assert result["peak_memory_mib"] is None
 
 
+def test_trial_records_periodic_perplexity_at_completed_steps(tmp_path, monkeypatch):
+    from qwen3_data import prepare_qwen_fineweb_cache
+    from qwen3_ppl_experiment import QwenTrialConfig, qwen_trial_paths, run_qwen_trial
+
+    prepare_qwen_fineweb_cache(
+        tmp_path,
+        train_tokens=33,
+        validation_tokens=9,
+        sequence_length=4,
+        eos_token_id=31,
+        source=[
+            ("train", "a", [value % 31 for value in range(33)]),
+            ("validation", "b", [value % 31 for value in range(9)]),
+        ],
+    )
+    monkeypatch.setattr("qwen3_ppl_experiment.load_qwen3_model", lambda _: _TinyCausalLM())
+
+    run_qwen_trial(
+        QwenTrialConfig(
+            root=tmp_path,
+            optimizer="adamw",
+            run_label="periodic",
+            learning_rate=0.001,
+            micro_batch_size=1,
+            maximum_updates=3,
+            validation_batches=1,
+            evaluation_interval_updates=1,
+            device="cpu",
+        )
+    )
+
+    records = [
+        json.loads(line)
+        for line in qwen_trial_paths(tmp_path, "adamw", "periodic").metric.read_text().splitlines()
+    ]
+    assert [record["step"] for record in records] == [1, 2, 3]
+
+
 def test_cli_parses_a_render_request_without_training_arguments():
     from run_qwen3_ppl import parse_args
 
