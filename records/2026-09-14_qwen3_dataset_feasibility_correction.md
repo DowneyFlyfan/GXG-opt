@@ -101,3 +101,12 @@ That is 0.0870277867 above its own step-1,000 value and 0.1885794582 above
 AdamW at the matched step, while taking 215.06 seconds longer.  These are
 intermediate matched measurements only; final full-validation evidence is
 required before selecting a baseline or judging either optimizer.
+
+## AdamW third-interval evidence
+
+AdamW reached step 3,000 during epoch 3 on the same manifest with 49,152,000
+exposed training tokens.  Its 64-batch validation perplexity was
+`16.5418971957` at 2,552.1347 seconds, again with a 68,225.61MiB peak
+allocation.  This is 0.1122481237 above the AdamW step-2,000 minimum.  The
+remaining 663 updates and final result are required to interpret this
+non-monotone interval rather than treating it as a completed comparison.
