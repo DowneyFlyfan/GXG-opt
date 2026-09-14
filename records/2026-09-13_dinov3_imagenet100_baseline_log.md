@@ -40,3 +40,14 @@ The local screen completed successfully. It establishes a working AdamW referenc
 
 - The processed cache was synchronized and validated offline on ABA: 126,689 training and 5,000 validation examples.
 - ABA uses Transformers 5.16.1, whose DINOv3 encoder exposes `backbone.model.layer` instead of the local Transformers 4.57.6 layout `backbone.layer`. The training adapter and matrix-parameter routing now support both layouts, with a regression test. This preserves the boundary-layer AdamW policy on both hosts.
+
+## ABA batch-size admission
+
+| Probe | Micro-batch | Optimizer | Peak allocated memory | Outcome |
+|---|---:|---|---:|---|
+| One update | 1,024 | AdamW | 41,501.3 MiB | Fits |
+| One update | 1,280 | Muon | 51,753.2 MiB | Fits |
+| One update | 1,536 | Muon | 62,023.2 MiB | Fits |
+| One epoch | 1,792 | Muon | 77,468 MiB total in use | Out of memory; stopped before any metric/checkpoint |
+
+The active Muon screen therefore uses micro-batch 1,536 and no accumulation. It has enough headroom for the A100 80 GB device while using substantially more memory than the 1,280 fit point. Its configuration is learning rate 1e-3, auxiliary AdamW learning rate 1e-4, zero weight decay, and one epoch.
