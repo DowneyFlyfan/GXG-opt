@@ -467,6 +467,17 @@ accumulation eight.  It completed 50 updates with `18.8077592748`
 selection, but cannot be compared to the formal curves until a matched longer
 point is available.
 
+## Muon `1e-4` 200-update local continuation
+
+Muon was resumed from its saved 50-update checkpoint without duplicate metric
+steps.  Its 64-batch perplexity sequence at updates 50/100/150/200 is
+`18.8077592748`, `18.6448649635`, `18.6871418920`, and `18.6490005416`.
+The best value occurs at step 100 and the curve is effectively flat through
+step 200; peak allocation was `9,256.06MiB` and total elapsed time was
+`615.7707` seconds.  This is a completed high-rate bracket, not yet a formal
+winner: it must be weighed against Muown at the same interval and then, if
+selected, against the formal step-1,000 baseline evidence.
+
 ## Muown independent-rate `1e-4` local screen
 
 The corresponding Muown screen used direction `1e-4`, gain `6e-6`, and

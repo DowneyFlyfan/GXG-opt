@@ -1,10 +1,10 @@
 {
   "completed_epochs": 0,
-  "completed_updates": 50,
+  "completed_updates": 200,
   "data_manifest_sha256": "97a4ad1da6bbc128a2161a276c2d093821783133e50b27587fa20c9dd45f672c",
-  "elapsed_seconds": 158.03775385505287,
-  "final_perplexity": 18.807759274834638,
+  "elapsed_seconds": 623.5038704370381,
+  "final_perplexity": 18.649000541643456,
   "optimizer": "muon",
-  "peak_memory_mib": 8119.095703125,
+  "peak_memory_mib": 9256.05712890625,
   "run_label": "muon_lr1e4_aux5e5_s50_local5070ti_ckpt_mb1a8_20m"
 }
