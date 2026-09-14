@@ -96,6 +96,16 @@ The upper side of the retained Muon direction rate was checked with the same 50-
 
 The checkpoint, metric trace, result, and log for this bracket point are removed after the result is recorded.
 
+## Fifth rate screen
+
+The upper side of the retained AdamW rate was checked under the same 50-update protocol.
+
+| Optimizer | Rate(s) | Validation perplexity after 50 updates | Time for 50 updates | Decision |
+| --- | --- | ---: | ---: | --- |
+| AdamW | learning rate `5e-5` | 17.671 | 43.383 s | improves from initialization but is 0.042 worse than `3e-5`; retain `3e-5` |
+
+The checkpoint, metric trace, result, and log for this AdamW bracket point are removed after the result is recorded.
+
 ## Initial screen protocol
 
 1. Verify cache digests and remove temporary FineWeb download state after packing.
