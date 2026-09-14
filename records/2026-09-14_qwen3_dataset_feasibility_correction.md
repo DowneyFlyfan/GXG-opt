@@ -54,3 +54,14 @@ AdamW `3e-5`.  Both were confirmed live, each at 100% GPU utilization with
 about 74.4GiB allocated.  Muown will use its separately tuned direction
 `5e-5`, gain `3e-6`, and auxiliary `3e-5` configuration when either device is
 released.
+
+## Measured lower bound after launch
+
+At 10 hours 03 minutes of uninterrupted execution, both formal processes were
+still live at full A100 utilization and had not reached their first 1,000-step
+evaluation/checkpoint boundary.  This proves a lower bound of 36 hours for a
+3,663-update, three-epoch run at the present implementation's throughput;
+actual duration also includes validation and checkpoint time.  The study is
+therefore an A100 multi-day benchmark, not a short screen.  The active runs
+remain valid and are intentionally continuing, but later result reporting must
+use this observed lower bound rather than the earlier optimistic estimate.
