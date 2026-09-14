@@ -183,3 +183,14 @@ intermediate validation estimate but 30.14 seconds slower.  The three
 training runs are now complete; the next required evidence is the separate
 full-held-out evaluation of every saved checkpoint before selecting a
 baseline or screening a proposed optimizer.
+
+## Full-held-out baseline validation and incumbent
+
+Each completed checkpoint was then evaluated once over all 2,441 packed
+held-out blocks (`4,999,168` tokens, delivered as 306 batch-8 validation
+passes).  The results share the formal cache manifest and are: AdamW
+`16.0881141034`, Muown `16.7316303852`, and Muon `16.7366716663` perplexity.
+Thus AdamW is the formal incumbent for this Qwen3-0.6B/FineWeb-Edu protocol;
+Muown is 0.0050412811 lower than Muon but both are materially above AdamW.
+These checkpoint evaluations, rather than the 64-batch curve points, are the
+baseline selection evidence for proposal trials.
