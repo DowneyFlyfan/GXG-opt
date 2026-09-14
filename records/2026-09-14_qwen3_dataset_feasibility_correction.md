@@ -170,3 +170,16 @@ its peak allocation remained 68,228.04MiB.  This is 0.0087054477 lower than
 Muon at the matched step, while taking 8.41 seconds longer.  The Muown process
 was still finalizing its periodic atomic checkpoint when captured, so this is
 not its final result.
+
+## Completed Muown baseline
+
+Muown completed the matched three-epoch protocol without resuming or
+duplicating a prior trainer.  Its final 64-batch validation perplexity is
+`17.1508224156` after 3,663 updates and 3,567.5726 seconds, with the same
+`60,014,592` exposed tokens, manifest digest
+`97a4ad1da6bbc128a2161a276c2d093821783133e50b27587fa20c9dd45f672c`, and
+68,228.04MiB peak allocation.  It is 0.0048944262 lower than Muon on this
+intermediate validation estimate but 30.14 seconds slower.  The three
+training runs are now complete; the next required evidence is the separate
+full-held-out evaluation of every saved checkpoint before selecting a
+baseline or screening a proposed optimizer.
