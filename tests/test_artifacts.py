@@ -57,6 +57,27 @@ def test_metric_time_plot_writes_png(tmp_path: Path):
     assert output.read_bytes().startswith(b"\x89PNG\r\n\x1a\n")
 
 
+def test_three_way_plots_identify_the_coordinate_and_all_runtime_values(tmp_path: Path, monkeypatch):
+    adamw = tmp_path / "adamw.jsonl"
+    muon = tmp_path / "muon.jsonl"
+    muown = tmp_path / "muown.jsonl"
+    for path, metric in ((adamw, 0.3), (muon, 0.4), (muown, 0.5)):
+        write_metric(path, {"epoch": 1, "step": 2, "elapsed_seconds": 30.0, "metric": metric})
+    titles = []
+    monkeypatch.setattr(artifacts.plot, "close", lambda figure: titles.append(figure.axes[0].get_title()))
+    runtimes = {"AdamW": 120.0, "Muon": 130.0, "Muown": 140.0}
+
+    write_metric_plot(adamw, muon, tmp_path / "steps.png", "validation accuracy", runtimes, muown)
+    write_metric_time_plot(adamw, muon, tmp_path / "time.png", "validation accuracy", runtimes, muown)
+
+    assert titles == [
+        "validation accuracy vs completed optimizer step\nWall-clock time\n"
+        "AdamW: 2m 00s | Muon: 2m 10s | Muown: 2m 20s",
+        "validation accuracy vs wall-clock time\n"
+        "AdamW: 2m 00s | Muon: 2m 10s | Muown: 2m 20s",
+    ]
+
+
 def test_trial_checkpoint_restores_epoch_elapsed_time_and_optimizer_state(tmp_path: Path):
     model = nn.Linear(2, 1, bias=False)
     optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3)

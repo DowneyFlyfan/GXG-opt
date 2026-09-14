@@ -1,0 +1,5 @@
+{"elapsed_seconds": 201.96282945759594, "epoch": 1, "metric": 0.9502, "step": 83}
+{"elapsed_seconds": 393.8189021386206, "epoch": 2, "metric": 0.9504, "step": 166}
+{"elapsed_seconds": 588.3234319929034, "epoch": 3, "metric": 0.9522, "step": 249}
+{"elapsed_seconds": 780.9247404690832, "epoch": 4, "metric": 0.9574, "step": 332}
+{"elapsed_seconds": 973.1442267782986, "epoch": 5, "metric": 0.9598, "step": 415}

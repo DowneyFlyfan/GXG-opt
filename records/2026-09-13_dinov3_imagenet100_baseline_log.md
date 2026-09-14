@@ -85,8 +85,35 @@ AdamW, Muon, and Muown used the exact same five epochs, micro-batch 1,536, no ac
 
 At the completed checkpoints, AdamW was `95.02%, 95.04%, 95.22%, 95.74%, 95.98%`; Muon was `94.14%, 94.56%, 95.42%, 95.40%, 95.88%`; and Muown was `94.08%, 94.48%, 95.48%, 95.50%, 95.80%`. AdamW is the first-pass winner by 0.10 percentage points over Muon and 0.18 points over Muown, but the learning-rate search remains in progress. The corresponding three-way metric-step and metric-time graphs were rendered under `results/cv/`.
 
-## Active refinement screens
+## Completed learning-rate selection
 
 AdamW screens at 1e-3 and 5e-4 scored 94.76% and 95.00%, respectively, versus 95.02% at 3e-4; 3e-4 remains selected. Muon screens at 3e-3 and 5e-4 scored 93.62% and 93.72%, respectively, versus 94.14% at 1e-3; 1e-3 remains selected.
 
-Muown's gain-only screen (direction 1e-3, gain 3e-4) is active on GPU 1. GPU 0 runs the high-both screen (direction 3e-3, gain 3e-4) and then the direction-only screen (direction 3e-3, gain 1e-4). All refinement screens use micro-batch 1,536, no accumulation, full validation, and one epoch; their labels are distinct from the final five-epoch comparison label.
+Muown screens at `direction=1e-3` were: gain 1e-4, 94.08%; gain 3e-4, 94.14%; and gain 5e-4, 94.12%. Raising direction to 3e-3 produced 93.72% with gain 1e-4 and 93.74% with gain 3e-4. The selected Muown pair is therefore direction 1e-3 and gain 3e-4. All screen outcomes use micro-batch 1,536, no accumulation, full validation, and one epoch.
+
+## Completed final tuned comparison
+
+The final `final_tuned_lr_b1536_a1` comparison uses exactly five epochs, micro-batch 1,536, no accumulation, full validation, zero weight decay, and a shared model/cache/seed contract for all three selected baselines:
+
+| Optimizer | Selected learning rates |
+|---|---|
+| AdamW | 3e-4 |
+| Muon | matrix 1e-3; auxiliary AdamW 1e-4 |
+| Muown | direction 1e-3; gain 3e-4 |
+
+The three runs completed under the same contract: 5 epochs, 1,536 micro-batch, no gradient accumulation, full validation, zero weight decay, the same cached dataset/model, and seed.  Each trace contains the exact epoch-end optimizer steps `83, 166, 249, 332, 415`.
+
+| Optimizer | Final top-1 accuracy | Wall-clock time | Peak allocated memory |
+|---|---:|---:|---:|
+| AdamW | 95.98% | 973.14 s (16m 13s) | 62,272.13 MiB |
+| Muon | 95.88% | 991.07 s (16m 31s) | 62,191.13 MiB |
+| Muown | 95.80% | 968.97 s (16m 09s) | 62,272.45 MiB |
+
+The epoch-end curves are AdamW `95.02%, 95.04%, 95.22%, 95.74%, 95.98%`; Muon `94.14%, 94.56%, 95.42%, 95.40%, 95.88%`; and Muown `94.14%, 94.50%, 95.46%, 95.50%, 95.80%`. AdamW wins this matched tuned comparison by 0.10 percentage points over Muon and 0.18 points over Muown. Muown is the fastest by 4.17 seconds relative to AdamW, but that difference is small compared with the accuracy gap.
+
+The audited three-way deliverables are:
+
+- `results/cv/cv_dinov3_vitb16_imagenet100_baselines_metric_steps.png`
+- `results/cv/cv_dinov3_vitb16_imagenet100_baselines_metric_time.png`
+- `metrics/cv/cv_dinov3_vitb16_imagenet100__final_tuned_lr_b1536_a1__{adamw,muon,muown}.jsonl`
+- `results/cv/cv_dinov3_vitb16_imagenet100__final_tuned_lr_b1536_a1__{adamw,muon,muown}.json`

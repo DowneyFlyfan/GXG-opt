@@ -46,10 +46,15 @@ def write_metric_plot(
         axis.plot([item[coordinate] for item in muown], [item["metric"] for item in muown], label="Muown")
     axis.set(xlabel="Completed optimizer step" if coordinate == "step" else "Epoch", ylabel=ylabel)
     if runtimes is not None:
-        axis.set_title(
-            f"Wall-clock time\nAdamW: {_format_runtime(runtimes['AdamW'])} | "
+        runtime_caption = (
+            f"AdamW: {_format_runtime(runtimes['AdamW'])} | "
             f"Muon: {_format_runtime(runtimes['Muon'])}"
         )
+        if muown and "Muown" in runtimes:
+            runtime_caption += f" | Muown: {_format_runtime(runtimes['Muown'])}"
+            axis.set_title(f"{ylabel} vs completed optimizer step\nWall-clock time\n{runtime_caption}")
+        else:
+            axis.set_title(f"Wall-clock time\n{runtime_caption}")
     axis.legend()
     figure.tight_layout()
     figure.savefig(output, dpi=160)
@@ -85,11 +90,13 @@ def write_metric_time_plot(
     axis.plot(metric_times(muon, runtimes["Muon"]), [item["metric"] for item in muon], label="Muon")
     if muown:
         axis.plot(metric_times(muown, runtimes["Muown"]), [item["metric"] for item in muown], label="Muown")
-    axis.set(
-        xlabel="Wall-clock time (minutes)",
-        ylabel=ylabel,
-        title=f"AdamW: {_format_runtime(runtimes['AdamW'])} | Muon: {_format_runtime(runtimes['Muon'])}",
-    )
+    runtime_caption = f"AdamW: {_format_runtime(runtimes['AdamW'])} | Muon: {_format_runtime(runtimes['Muon'])}"
+    if muown and "Muown" in runtimes:
+        runtime_caption += f" | Muown: {_format_runtime(runtimes['Muown'])}"
+        title = f"{ylabel} vs wall-clock time\n{runtime_caption}"
+    else:
+        title = runtime_caption
+    axis.set(xlabel="Wall-clock time (minutes)", ylabel=ylabel, title=title)
     axis.legend()
     figure.tight_layout()
     figure.savefig(output, dpi=160)
