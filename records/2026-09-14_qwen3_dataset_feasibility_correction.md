@@ -218,3 +218,15 @@ cache and seed: 64-batch validation perplexity `17.9234457190` at 819,200
 exposed tokens, 72.4473 seconds, and 67,445.61MiB peak allocation.  As with
 the notch 50-update screen, this establishes execution feasibility but is not
 yet a valid performance comparison with the step-1,000 baseline curve.
+
+## Active-mechanism memory correction and tied-path screen
+
+The initial batch-8 active-notch and tied-path attempts exhausted the
+79.25GiB A100 when an active mechanism required an additional 9.27GiB.  They
+produced no checkpoint, metric, or result artifact.  The retry preserves the
+required effective batch of 8 by using micro-batch 4 with accumulation 2 and
+enables expandable allocator segments.  The tied-path 50-update screen then
+completed at `18.3678238040` perplexity, 819,200 exposed tokens, 77.9904
+seconds, and 37,370.67MiB peak allocation.  It is resource-valid but early
+screening evidence only; the separate active-notch step-1,000 job remains the
+first directly comparable candidate curve.
