@@ -97,7 +97,10 @@ class DINOv3CIFAR100Classifier(nn.Module):
         checkpoint = Path(__file__).resolve().parents[1] / ".cache" / "huggingface" / "models" / "DINOv3-ViT-B"
         self.backbone = AutoModel.from_pretrained(checkpoint, local_files_only=True)
         self.backbone.embeddings.requires_grad_(False)
-        for layer in self.backbone.layer[:8]:
+        layers = getattr(self.backbone, "layer", None)
+        if layers is None:
+            layers = self.backbone.model.layer
+        for layer in layers[:8]:
             layer.requires_grad_(False)
         self.classifier = nn.Linear(self.backbone.config.hidden_size, 100)
 

@@ -189,6 +189,10 @@ class Muown(torch.optim.Optimizer):
 def muon_parameter_names(model: nn.Module) -> set[str]:
     backbone = getattr(model, "backbone", None)
     dino_layers = getattr(backbone, "layer", None)
+    dino_prefix = "backbone.layer"
+    if dino_layers is None:
+        dino_layers = getattr(getattr(backbone, "model", None), "layer", None)
+        dino_prefix = "backbone.model.layer"
     if dino_layers is not None and hasattr(backbone, "embeddings"):
         last_layer = len(dino_layers) - 1
         return {
@@ -196,7 +200,7 @@ def muon_parameter_names(model: nn.Module) -> set[str]:
             for name, parameter in model.named_parameters()
             if parameter.requires_grad
             and parameter.ndim >= 2
-            and any(name.startswith(f"backbone.layer.{index}.") for index in range(8, last_layer))
+            and any(name.startswith(f"{dino_prefix}.{index}.") for index in range(8, last_layer))
         }
     convolution_types = (nn.Conv1d, nn.Conv2d, nn.Conv3d)
     first_convolution = next((module for module in model.modules() if isinstance(module, convolution_types)), None)

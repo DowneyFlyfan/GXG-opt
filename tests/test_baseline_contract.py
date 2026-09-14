@@ -101,6 +101,37 @@ def test_dinov3_freezes_the_patch_embedder_and_first_eight_transformer_blocks():
     assert all(parameter.requires_grad for parameter in model.classifier.parameters())
 
 
+def test_dinov3_supports_the_modern_transformers_encoder_layout(monkeypatch):
+    import transformers
+    from models import DINOv3CIFAR100Classifier
+
+    class ModernDINOv3Backbone(nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.embeddings = nn.Linear(4, 4)
+            self.model = nn.Module()
+            self.model.layer = nn.ModuleList(nn.Linear(4, 4) for _ in range(12))
+            self.config = type("Config", (), {"hidden_size": 4})()
+
+    monkeypatch.setattr(
+        transformers.AutoModel,
+        "from_pretrained",
+        lambda *args, **kwargs: ModernDINOv3Backbone(),
+    )
+
+    model = DINOv3CIFAR100Classifier()
+    names = muon_parameter_names(model)
+
+    assert not any(
+        parameter.requires_grad
+        for layer in model.backbone.model.layer[:8]
+        for parameter in layer.parameters()
+    )
+    assert "backbone.model.layer.8.weight" in names
+    assert "backbone.model.layer.10.weight" in names
+    assert "backbone.model.layer.11.weight" not in names
+
+
 def test_dinov3_formal_task_uses_the_qualified_batch_and_learning_rates():
     task = next(item for item in FORMAL_TASKS if item.identifier == "cv_dinov3_vitb16")
 
