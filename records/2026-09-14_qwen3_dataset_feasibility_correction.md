@@ -207,3 +207,14 @@ baselines have no 50-update validation point, so a ranking against their
 1,000-update values would be an invalid comparison.  The next notch run must
 reach at least step 128 to exercise the specified resonance detector, and
 step 1,000 to obtain a directly matched curve point.
+
+## Routing-resistance stability screen
+
+The first routing launch failed before committing an update because a CPU
+sampler received a CUDA generator.  A targeted CUDA/CPU generator regression
+test exposed the same mismatch; sampling is now performed on the probability
+tensor's device.  The clean retry completed 50 updates on the same formal
+cache and seed: 64-batch validation perplexity `17.9234457190` at 819,200
+exposed tokens, 72.4473 seconds, and 67,445.61MiB peak allocation.  As with
+the notch 50-update screen, this establishes execution feasibility but is not
+yet a valid performance comparison with the step-1,000 baseline curve.
