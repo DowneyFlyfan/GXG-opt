@@ -179,16 +179,18 @@ git commit -m "feat: route DINO boundary layers through AdamW"
 
 **Files:**
 - Modify: `src/config.py`
+- Modify: `src/models.py`
 - Modify: `src/training.py`
 - Modify: `src/artifacts.py`
 - Modify: `tests/test_artifacts.py`
 - Modify: `tests/test_baseline_contract.py`
 
 **Interfaces:**
-- New formal task identifier: `cv_dinov3_vitb16_imagenet100`, model `dinov3_vitb16_imagenet100`, five epochs, full validation.
+- New exported task constant: `DINOV3_IMAGENET100_TASK`, identifier `cv_dinov3_vitb16_imagenet100`, model `dinov3_vitb16_imagenet100`, five epochs, full validation. Keep it outside `FORMAL_TASKS` so the historical default runner retains its three legacy tasks.
+- `create_cv_model("dinov3_vitb16_imagenet100")` reuses the existing DINOv3 ViT-B classifier constructor.
 - `write_metric_plot` reads `record["step"]` when present and labels the x-axis `Completed optimizer step`.
 - `write_metric_time_plot` reads `record["elapsed_seconds"]` when present and labels the x-axis `Wall-clock time (minutes)`.
-- `run_trial` writes `{"epoch", "step", "elapsed_seconds", "metric"}` at every completed epoch.
+- `run_trial` accepts `auxiliary_learning_rate: float | None`, `muown_direction_lr: float | None`, and `muown_gain_lr: float | None`, forwards them to `build_optimizers`, and writes `{"epoch", "step", "elapsed_seconds", "metric"}` at every completed epoch.
 
 - [ ] **Step 1: Write failing metric tests**
 
@@ -225,7 +227,7 @@ Expected: FAIL after asserting the new axis/record behavior because the current 
 
 - [ ] **Step 3: Implement metric and task changes**
 
-Add `evaluation_batches: int | None = 64` to `FormalTask`; set it to `None` for the new ImageNet-100 task and use it in `_evaluate`. Route `dinov3_vitb16_imagenet100` to the new loader. Track `completed_steps`, incrementing only when all accumulated gradients are stepped, and append elapsed time from a single run origin. Preserve fallback epoch/interpolated behavior in artifact writers for historical JSONL files that lack the new keys.
+Add `evaluation_batches: int | None = 64` to `FormalTask`; set it to `None` for `DINOV3_IMAGENET100_TASK` and use it in `_evaluate`. Route `dinov3_vitb16_imagenet100` to the new loader and model constructor. Track `completed_steps`, incrementing only when all accumulated gradients are stepped, and append elapsed time from a single run origin. Forward optional auxiliary/Muown rates into `build_optimizers`. Preserve fallback epoch/interpolated behavior in artifact writers for historical JSONL files that lack the new keys.
 
 - [ ] **Step 4: Run regression tests**
 
@@ -236,7 +238,7 @@ Expected: PASS; the legacy CIFAR task continues to load and historical plots rem
 - [ ] **Step 5: Commit only the metric/task slice**
 
 ```bash
-git add src/config.py src/training.py src/artifacts.py tests/test_artifacts.py tests/test_baseline_contract.py
+git add src/config.py src/models.py src/training.py src/artifacts.py tests/test_artifacts.py tests/test_baseline_contract.py
 git commit -m "feat: record DINO optimizer steps and timestamps"
 ```
 
