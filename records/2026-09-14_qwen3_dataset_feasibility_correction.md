@@ -510,3 +510,13 @@ first training forward, metric, checkpoint, or result JSON.  This is neither
 a memory measurement nor learning-rate evidence, and the active user-owned
 processes were not interrupted.  The selected high-rate Muown configuration
 therefore proceeds locally to its directly comparable step-1,000 point.
+
+## ABA AdamW `1e-4` matched point
+
+The direct ABA AdamW screen used micro-batch eight and no accumulation, so its
+effective batch, manifest, seed, and 64-batch validation convention exactly
+match the formal AdamW curve.  At update 1,000 it produced perplexity
+`18.3283349999` after `858.4137` seconds, with `68,225.61MiB` peak allocation.
+The formal AdamW result at the same step is `16.5583577720`; therefore
+`1e-4` is rejected for AdamW, despite being finite and resource-valid.  The
+next narrower but still higher-rate bracket is `5e-5` on the released A100.

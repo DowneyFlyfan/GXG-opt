@@ -1,0 +1,10 @@
+{
+  "completed_epochs": 0,
+  "completed_updates": 1000,
+  "data_manifest_sha256": "97a4ad1da6bbc128a2161a276c2d093821783133e50b27587fa20c9dd45f672c",
+  "elapsed_seconds": 858.4137032143772,
+  "final_perplexity": 18.328334999925435,
+  "optimizer": "adamw",
+  "peak_memory_mib": 68225.60595703125,
+  "run_label": "adamw_lr1e4_s1000_aba_a100_b8_20m"
+}
