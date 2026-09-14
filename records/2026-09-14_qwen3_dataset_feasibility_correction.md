@@ -82,3 +82,12 @@ observation, not a final comparison.
 The AdamW and Muon atomic checkpoints are respectively 3,576,770,295 bytes
 and 2,758,759,049 bytes, both below `.cache/qwen3_0p6b/checkpoints/` and bound
 to manifest `97a4ad1da6bbc128a2161a276c2d093821783133e50b27587fa20c9dd45f672c`.
+
+## AdamW second-interval evidence
+
+AdamW reached step 2,000 during epoch 2 on the same manifest and with
+32,768,000 exposed training tokens.  Its 64-batch validation perplexity was
+`16.4296490720` at 1,692.9553 seconds, with the same 68,225.61MiB peak PyTorch
+allocation.  This is a 0.1287087000 perplexity reduction from its matched
+step-1,000 point.  Muon was still training when this evidence was captured, so
+this is a within-AdamW trajectory observation, not a cross-optimizer result.
