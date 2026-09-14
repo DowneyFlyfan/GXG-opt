@@ -75,15 +75,18 @@ The first Muown invocation stopped before its first batch because the two-rate o
 
 ## Completed matched five-epoch candidates
 
-AdamW and Muon used the exact same five epochs, micro-batch 1,536, no accumulation, full validation, dataset cache, model, and zero weight decay.
+AdamW, Muon, and Muown used the exact same five epochs, micro-batch 1,536, no accumulation, full validation, dataset cache, model, and zero weight decay.
 
 | Optimizer | Learning rates | Final top-1 accuracy | Time | Peak allocated memory |
 |---|---|---:|---:|---:|
 | AdamW | 3e-4 | 95.98% | 969.79 s | 62,272.13 MiB |
 | Muon | matrix 1e-3; auxiliary AdamW 1e-4 | 95.88% | 998.06 s | 62,191.13 MiB |
+| Muown | direction 1e-3; gain 1e-4 | 95.80% | 987.25 s | 62,272.45 MiB |
 
-At the four completed checkpoints, AdamW was `95.02%, 95.04%, 95.22%, 95.74%, 95.98%`; Muon was `94.14%, 94.56%, 95.42%, 95.40%, 95.88%`. AdamW wins this first matched pair by 0.10 percentage points, but the learning-rate search remains in progress.
+At the completed checkpoints, AdamW was `95.02%, 95.04%, 95.22%, 95.74%, 95.98%`; Muon was `94.14%, 94.56%, 95.42%, 95.40%, 95.88%`; and Muown was `94.08%, 94.48%, 95.48%, 95.50%, 95.80%`. AdamW is the first-pass winner by 0.10 percentage points over Muon and 0.18 points over Muown, but the learning-rate search remains in progress. The corresponding three-way metric-step and metric-time graphs were rendered under `results/cv/`.
 
-## Active matched Muown and aggressive screens
+## Active refinement screens
 
-The same matched five-epoch Muown candidate is now training on GPU 0 with direction learning rate 1e-3 and gain learning rate 1e-4. The GPU 1 AdamW screen at 1e-3 is also active. After it completes, the queued GPU 1 Muon screen tests a matrix learning rate of 3e-3 with auxiliary AdamW learning rate 1e-4. After matched Muown completes, GPU 0 tests direction 3e-3 and gain 3e-4. All screens use micro-batch 1,536, no accumulation, full validation, and one epoch; their labels are distinct from the final five-epoch comparison label.
+AdamW screens at 1e-3 and 5e-4 scored 94.76% and 95.00%, respectively, versus 95.02% at 3e-4; 3e-4 remains selected. Muon screens at 3e-3 and 5e-4 scored 93.62% and 93.72%, respectively, versus 94.14% at 1e-3; 1e-3 remains selected.
+
+Muown's gain-only screen (direction 1e-3, gain 3e-4) is active on GPU 1. GPU 0 runs the high-both screen (direction 3e-3, gain 3e-4) and then the direction-only screen (direction 3e-3, gain 1e-4). All refinement screens use micro-batch 1,536, no accumulation, full validation, and one epoch; their labels are distinct from the final five-epoch comparison label.
