@@ -64,3 +64,5 @@ These are one-epoch parameter screens, not the final five-epoch comparison. They
 ## Active screen
 
 Muown is running on ABA A100 GPU 1 with direction learning rate 1e-3, gain learning rate 1e-4, micro-batch 1,536, no accumulation, and zero weight decay. Its one-step memory admission matched the 62,023.2 MiB Muon probe.
+
+The first Muown invocation stopped before its first batch because the two-rate optimizer did not expose a scheduler-compatible `lr` field. The fix maps that field to the scheduled direction rate while retaining the independent gain rate; it is covered by a regression test. No metric or checkpoint was produced by the failed invocation.

@@ -122,6 +122,7 @@ class Muown(torch.optim.Optimizer):
         super().__init__(
             params,
             dict(
+                lr=direction_lr,
                 direction_lr=direction_lr,
                 gain_lr=gain_lr,
                 weight_decay=weight_decay,
@@ -163,7 +164,7 @@ class Muown(torch.optim.Optimizer):
                 rows, columns = direction.shape
                 direction.add_(
                     directional_update,
-                    alpha=-Muon.scaled_lr(group["direction_lr"], rows, columns),
+                    alpha=-Muon.scaled_lr(group["lr"], rows, columns),
                 )
 
                 gain.mul_(1 - group["gain_lr"] * group["weight_decay"])

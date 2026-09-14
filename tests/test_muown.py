@@ -32,6 +32,20 @@ def test_muown_uses_two_rates_for_direction_and_gain_updates():
     assert optimizer.param_groups[0]["gain_lr"] == 0.01
 
 
+def test_muown_exposes_its_direction_rate_to_the_cosine_scheduler():
+    from optimizers import Muown
+
+    parameter = nn.Parameter(torch.eye(2))
+    optimizer = Muown([parameter], direction_lr=0.2, gain_lr=0.01, weight_decay=0.0, ns_steps=1)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=5)
+
+    assert optimizer.param_groups[0]["lr"] == 0.2
+    parameter.grad = torch.ones_like(parameter)
+    optimizer.step()
+    scheduler.step()
+    assert optimizer.param_groups[0]["lr"] < 0.2
+
+
 def test_build_optimizers_exposes_muown_and_keeps_auxiliary_parameters_in_adamw():
     from optimizers import Muown, build_optimizers
 
