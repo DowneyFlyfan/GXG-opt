@@ -1,0 +1,10 @@
+{
+  "completed_epochs": 0,
+  "completed_updates": 1000,
+  "data_manifest_sha256": "97a4ad1da6bbc128a2161a276c2d093821783133e50b27587fa20c9dd45f672c",
+  "elapsed_seconds": 987.0772507283837,
+  "final_perplexity": 16.61216156643276,
+  "optimizer": "muown",
+  "peak_memory_mib": 68228.04345703125,
+  "run_label": "muown_dir6e5_gain3p6em6_aux3p5e5_s1000_aba_a100_b8_20m"
+}

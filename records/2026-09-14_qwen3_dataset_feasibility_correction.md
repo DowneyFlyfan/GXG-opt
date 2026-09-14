@@ -596,3 +596,15 @@ The refinement completed cleanly at step 1,000 with perplexity
 at `16.6631990511`.  Thus `3.5e-5` is the selected best tested AdamW rate for
 this matched one-seed protocol.  A still-finer quadratic vertex is not claimed
 from one-seed differences smaller than the demonstrated `3.5e-5` advantage.
+
+## ABA Muown independent-rate `6e-5` / `3.6e-6` / `3.5e-5` matched point
+
+With distinct direction, gain, and auxiliary rates, this ABA batch-eight
+bracket reached step 1,000 at perplexity `16.6121615664`, after `965.3384`
+training seconds (`987.0773` total elapsed), using `68,228.04MiB` peak
+allocation.  It is `0.0819762425` worse than the formal independent-rate
+Muown setting (direction `5e-5`, gain `3e-6`, auxiliary `3e-5`) at
+`16.5301853239`.  Together with the already-pending local `7.5e-5` branch,
+this rules out increasing Muown's direction rate above the formal setting;
+the formal rate remains the best tested Muown configuration unless that live
+confirmation supplies contrary evidence.
