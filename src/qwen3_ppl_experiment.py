@@ -19,7 +19,11 @@ from qwen3_model import build_qwen_optimizers, load_qwen3_model
 
 
 BASELINE_DISPLAY_NAMES = {"adamw": "AdamW", "muon": "Muon", "muown": "Muown"}
-TRIAL_DISPLAY_NAMES = {**BASELINE_DISPLAY_NAMES, "proposal_notch_v1": "Proposal-notch Muon"}
+TRIAL_DISPLAY_NAMES = {
+    **BASELINE_DISPLAY_NAMES,
+    "proposal_notch_v1": "Proposal-notch Muon",
+    "routing_resistance_v1": "Routing-resistance Muon",
+}
 
 
 @dataclass(frozen=True)
@@ -39,6 +43,11 @@ class QwenTrialConfig:
     gain_lr: float | None = None
     auxiliary_lr: float = 3.0e-4
     weight_decay: float = 0.1
+    routing_rho: float = 1.0
+    routing_interval: int = 8
+    routing_query_rows: int = 4
+    routing_edges_per_row: int = 4
+    routing_mixture: float = 0.05
     micro_batch_size: int = 1
     gradient_accumulation: int = 1
     maximum_epochs: int = 3
@@ -198,6 +207,11 @@ def run_qwen_trial(config: QwenTrialConfig) -> dict:
         gain_lr=config.gain_lr,
         auxiliary_lr=config.auxiliary_lr,
         weight_decay=config.weight_decay,
+        routing_rho=config.routing_rho,
+        routing_interval=config.routing_interval,
+        routing_query_rows=config.routing_query_rows,
+        routing_edges_per_row=config.routing_edges_per_row,
+        routing_mixture=config.routing_mixture,
     )
     paths.metric.parent.mkdir(parents=True, exist_ok=True)
     started = time.perf_counter()
@@ -216,6 +230,10 @@ def run_qwen_trial(config: QwenTrialConfig) -> dict:
             if batch_index % config.gradient_accumulation == 0:
                 for optimizer in optimizers.values():
                     optimizer.zero_grad(set_to_none=True)
+            for optimizer in optimizers.values():
+                prepare_forward = getattr(optimizer, "prepare_forward", None)
+                if prepare_forward is not None:
+                    prepare_forward()
             with autocast:
                 logits = _logits(model(input_ids=input_ids.to(device), use_cache=False))
                 loss = functional.cross_entropy(

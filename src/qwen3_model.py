@@ -8,7 +8,7 @@ import torch
 from torch import nn
 
 from optimizers import Muon, Muown
-from qwen3_proposals import QwenProposalNotchOptimizer
+from qwen3_proposals import QwenProposalNotchOptimizer, QwenRoutingResistanceOptimizer
 
 
 QWEN3_MODEL_ID = "Qwen/Qwen3-0.6B"
@@ -72,6 +72,11 @@ def build_qwen_optimizers(
     gain_lr: float | None = None,
     auxiliary_lr: float,
     weight_decay: float,
+    routing_rho: float = 1.0,
+    routing_interval: int = 8,
+    routing_query_rows: int = 4,
+    routing_edges_per_row: int = 4,
+    routing_mixture: float = 0.05,
 ) -> dict[str, object]:
     """Build the pinned Qwen optimizer routes, including proposal-notch Muon."""
     if auxiliary_lr <= 0 or weight_decay < 0:
@@ -112,6 +117,21 @@ def build_qwen_optimizers(
             selected_names,
             learning_rate=learning_rate,
             weight_decay=weight_decay,
+        )
+    elif optimizer_name == "routing_resistance_v1":
+        if learning_rate is None or learning_rate <= 0:
+            raise ValueError("routing_resistance_v1 requires a positive learning_rate")
+        matrix_optimizer = QwenRoutingResistanceOptimizer(
+            model,
+            {name: named[name] for name in selected_names},
+            selected_names,
+            learning_rate=learning_rate,
+            weight_decay=weight_decay,
+            rho=routing_rho,
+            interval=routing_interval,
+            query_rows=routing_query_rows,
+            edges_per_row=routing_edges_per_row,
+            mixture=routing_mixture,
         )
     else:
         raise ValueError(f"unsupported Qwen optimizer: {optimizer_name}")

@@ -72,3 +72,27 @@ def test_proposal_notch_uses_muon_matrix_route_and_unchanged_adamw_auxiliary_rou
 
     assert isinstance(optimizers["proposal_notch_v1"], QwenProposalNotchOptimizer)
     assert optimizers["adamw_aux"].param_groups[0]["lr"] == 0.0003
+
+
+def test_routing_resistance_uses_the_same_muon_matrix_and_adamw_auxiliary_split():
+    from qwen3_model import build_qwen_optimizers
+    from qwen3_proposals import QwenRoutingResistanceOptimizer
+
+    optimizers = build_qwen_optimizers(
+        _TinyQwen(),
+        "routing_resistance_v1",
+        learning_rate=0.02,
+        auxiliary_lr=0.0003,
+        weight_decay=0.01,
+        routing_rho=0.5,
+        routing_interval=3,
+        routing_query_rows=2,
+        routing_edges_per_row=3,
+    )
+
+    assert isinstance(optimizers["routing_resistance_v1"], QwenRoutingResistanceOptimizer)
+    assert optimizers["routing_resistance_v1"].rho == 0.5
+    assert optimizers["routing_resistance_v1"].interval == 3
+    assert optimizers["routing_resistance_v1"].query_rows == 2
+    assert optimizers["routing_resistance_v1"].edges_per_row == 3
+    assert optimizers["adamw_aux"].param_groups[0]["lr"] == 0.0003

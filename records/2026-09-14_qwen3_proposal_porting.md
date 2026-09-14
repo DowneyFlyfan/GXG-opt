@@ -55,6 +55,27 @@ the cached real Qwen3-0.6B attention layer also passed for a three-token,
 two-sequence input: the selected replay shapes were `X=(3,1024)`,
 `Q=(3,128)`, and `K=(3,128)`.
 
+## Routing-resistance controller
+
+`QwenRoutingResistanceOptimizer` implements `routing_resistance_v1` as a
+non-mutating Muon-proposal filter.  On an event it installs the one-sequence
+capture before the ordinary forward, replays a rotating interior Q/K head,
+selects causal rows from `1..T-1`, and passes only the Q/K learning increments
+to `qwen_route_head_corrections`.  That helper supplies the resistance-mixture
+edge factors and the joint Q/K Woodbury proximal correction; decay remains in
+the unmodified baseline proposal.  The adapter then commits all matrix
+parameters and their Muon momentum buffers exactly once.
+
+The initial scalable schedule is one head every 8 committed updates, four
+sampled query rows and four sampled edges per row, with `rho=1` and mixture
+0.05.  These are exposed through the Qwen trial command as declared tuning
+arguments rather than hidden constants.  `rho=0` is a direct no-hook Muon
+bypass.  The active-path test covers one captured four-token sequence and
+verifies 12 sampled edges (three causal rows times four), selected-layer
+diagnostics, and hook removal; the disabled-path test numerically matches
+direct Muon.  The local Qwen-specific suite passed: 20 tests.  No GPU screen
+has been launched; the formal baseline gate remains in force.
+
 ## Remaining before a Qwen proposal screen
 
 1. Add a Qwen attention replay/probe for the routing-resistance factors using separate Q/K projections and grouped-query heads.

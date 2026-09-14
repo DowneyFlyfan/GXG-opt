@@ -12,6 +12,7 @@ from dataclasses import dataclass
 import torch
 
 from optimizers import Muon
+from qwen3_attention import QwenAttentionReplayCapture, qwen_route_head_corrections
 from optimizer_v2.temporal import fixed_sketch, guarded_filter_step
 
 
@@ -235,4 +236,180 @@ class QwenProposalNotchOptimizer:
             raise ValueError("proposal-notch optimizer configuration changed")
         self.steps = int(saved["steps"])
         self.state = saved["state"]
+        self.adapter.state = saved["adapter_state"]
+
+
+class QwenRoutingResistanceOptimizer:
+    """Muon proposal filter for one rotating Qwen query/key attention head.
+
+    ``prepare_forward`` installs a short-lived hook only on scheduled active
+    steps.  It captures one sequence from the normal training forward; ``step``
+    then commits exactly one filtered or baseline proposal and removes the
+    hook.  A zero strength is a direct Muon bypass with no hook allocation.
+    """
+
+    def __init__(
+        self,
+        model: torch.nn.Module,
+        parameters: dict[str, torch.nn.Parameter],
+        matrix_names: set[str],
+        *,
+        learning_rate: float,
+        weight_decay: float,
+        rho: float = 1.0,
+        interval: int = 8,
+        query_rows: int = 4,
+        edges_per_row: int = 4,
+        mixture: float = 0.05,
+        seed: int = 0,
+    ) -> None:
+        if (
+            learning_rate <= 0
+            or weight_decay < 0
+            or rho < 0
+            or interval <= 0
+            or query_rows <= 0
+            or edges_per_row <= 0
+            or not 0 <= mixture <= 1
+        ):
+            raise ValueError("invalid routing-resistance hyperparameters")
+        layers = getattr(getattr(model, "model", None), "layers", None)
+        if layers is None or len(layers) < 3:
+            raise ValueError("routing resistance requires interior Qwen layers")
+        eligible = []
+        for layer_index in range(1, len(layers) - 1):
+            prefix = f"model.layers.{layer_index}.self_attn."
+            if prefix + "q_proj.weight" in matrix_names and prefix + "k_proj.weight" in matrix_names:
+                eligible.append(layer_index)
+        if not eligible:
+            raise ValueError("routing resistance requires a selected Q/K projection pair")
+        self.model = model
+        self.adapter = QwenMuonProposalAdapter(parameters, matrix_names)
+        self.learning_rates = {name: learning_rate for name in matrix_names}
+        self.weight_decays = {name: weight_decay for name in matrix_names}
+        self.rho = rho
+        self.interval = interval
+        self.query_rows = query_rows
+        self.edges_per_row = edges_per_row
+        self.mixture = mixture
+        self.seed = seed
+        self.layer_indices = tuple(eligible)
+        self.steps = 0
+        self.last_diagnostics: dict = {}
+        self._capture: QwenAttentionReplayCapture | None = None
+        self._target: tuple[int, int] | None = None
+
+    def zero_grad(self, set_to_none: bool = True) -> None:
+        for name in self.adapter.matrix_names:
+            parameter = self.adapter.parameters[name]
+            if parameter.grad is not None:
+                if set_to_none:
+                    parameter.grad = None
+                else:
+                    parameter.grad.zero_()
+
+    def _clear_capture(self) -> None:
+        if self._capture is not None:
+            self._capture.__exit__(None, None, None)
+            self._capture = None
+        self._target = None
+
+    def prepare_forward(self) -> None:
+        """Capture the next scheduled active step from its normal forward."""
+        self._clear_capture()
+        if self.rho == 0 or self.steps % self.interval:
+            return
+        event = self.steps // self.interval
+        layer_index = self.layer_indices[event % len(self.layer_indices)]
+        attention = self.model.model.layers[layer_index].self_attn
+        query_head = (event // len(self.layer_indices)) % int(attention.config.num_attention_heads)
+        self._capture = QwenAttentionReplayCapture(attention)
+        self._capture.__enter__()
+        self._target = (layer_index, query_head)
+
+    def _generator(self, device: torch.device) -> torch.Generator:
+        return torch.Generator(device=device).manual_seed(self.seed + 104_729 * (self.steps + 1))
+
+    @torch.no_grad()
+    def step(self) -> None:
+        proposals = self.adapter.propose(self.learning_rates, self.weight_decays)
+        diagnostics: dict = {"step": self.steps + 1, "disabled": self.rho == 0}
+        corrections: dict[str, torch.Tensor] = {}
+        try:
+            if self.rho != 0 and self._capture is not None and self._target is not None:
+                layer_index, query_head = self._target
+                x, query, key = self._capture.replay(head=query_head)
+                if x.shape[0] < 2:
+                    diagnostics["capture_bypass"] = "sequence_too_short"
+                else:
+                    generator = self._generator(x.device)
+                    valid_rows = torch.arange(1, x.shape[0], device=x.device)
+                    row_count = min(self.query_rows, valid_rows.numel())
+                    rows = valid_rows[
+                        torch.randperm(valid_rows.numel(), device=x.device, generator=generator)[:row_count]
+                    ].sort().values
+                    attention = self.model.model.layers[layer_index].self_attn
+                    ratio = int(attention.config.num_attention_heads) // int(attention.config.num_key_value_heads)
+                    key_head = query_head // ratio
+                    prefix = f"model.layers.{layer_index}.self_attn."
+                    query_name, key_name = prefix + "q_proj.weight", prefix + "k_proj.weight"
+                    query_correction, key_correction, route_diagnostic = qwen_route_head_corrections(
+                        x,
+                        query,
+                        key,
+                        rows,
+                        proposals[query_name].learning,
+                        proposals[key_name].learning,
+                        query_head=query_head,
+                        key_head=key_head,
+                        head_dim=int(attention.head_dim),
+                        edges_per_row=self.edges_per_row,
+                        mixture=self.mixture,
+                        rho=self.rho,
+                        generator=generator,
+                    )
+                    corrections = {query_name: query_correction, key_name: key_correction}
+                    diagnostics.update(layer=layer_index)
+                    diagnostics.update(route_diagnostic)
+            elif self.rho != 0:
+                diagnostics["capture_bypass"] = "no_scheduled_forward_capture"
+            self.adapter.commit(proposals, corrections)
+            self.steps += 1
+            self.last_diagnostics = diagnostics
+        finally:
+            self._clear_capture()
+
+    def state_dict(self) -> dict:
+        return {
+            "version": 1,
+            "steps": self.steps,
+            "learning_rates": self.learning_rates,
+            "weight_decays": self.weight_decays,
+            "rho": self.rho,
+            "interval": self.interval,
+            "query_rows": self.query_rows,
+            "edges_per_row": self.edges_per_row,
+            "mixture": self.mixture,
+            "seed": self.seed,
+            "layer_indices": self.layer_indices,
+            "adapter_state": self.adapter.state,
+        }
+
+    def load_state_dict(self, saved: dict) -> None:
+        expected = self.state_dict()
+        for key in (
+            "version",
+            "learning_rates",
+            "weight_decays",
+            "rho",
+            "interval",
+            "query_rows",
+            "edges_per_row",
+            "mixture",
+            "seed",
+            "layer_indices",
+        ):
+            if saved.get(key) != expected[key]:
+                raise ValueError("routing-resistance optimizer configuration changed")
+        self.steps = int(saved["steps"])
         self.adapter.state = saved["adapter_state"]

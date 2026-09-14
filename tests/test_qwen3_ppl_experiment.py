@@ -26,6 +26,27 @@ def test_proposal_notch_is_a_valid_trial_but_not_a_baseline_render_requirement(t
     assert paths.checkpoint.parent == tmp_path / ".cache" / "qwen3_0p6b" / "checkpoints"
     assert arguments.optimizer == "proposal_notch_v1"
 
+    routing_paths = qwen_trial_paths(tmp_path, "routing_resistance_v1", "screen")
+    routing_arguments = parse_args(
+        [
+            "run",
+            "--optimizer",
+            "routing_resistance_v1",
+            "--run-label",
+            "screen",
+            "--learning-rate",
+            "5e-5",
+            "--routing-rho",
+            "0.5",
+            "--routing-interval",
+            "3",
+        ]
+    )
+    assert routing_paths.checkpoint.parent == tmp_path / ".cache" / "qwen3_0p6b" / "checkpoints"
+    assert routing_arguments.optimizer == "routing_resistance_v1"
+    assert routing_arguments.routing_rho == 0.5
+    assert routing_arguments.routing_interval == 3
+
 
 def test_renderer_uses_perplexity_and_completed_optimizer_steps(tmp_path):
     from qwen3_ppl_experiment import qwen_trial_paths, render_qwen_comparison

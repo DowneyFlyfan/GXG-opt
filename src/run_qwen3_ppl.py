@@ -35,6 +35,11 @@ def parse_args(arguments: list[str] | None = None) -> argparse.Namespace:
     run.add_argument("--gain-lr", type=float)
     run.add_argument("--auxiliary-lr", type=float, default=3.0e-4)
     run.add_argument("--weight-decay", type=float, default=0.1)
+    run.add_argument("--routing-rho", type=float, default=1.0)
+    run.add_argument("--routing-interval", type=int, default=8)
+    run.add_argument("--routing-query-rows", type=int, default=4)
+    run.add_argument("--routing-edges-per-row", type=int, default=4)
+    run.add_argument("--routing-mixture", type=float, default=0.05)
     run.add_argument("--micro-batch-size", type=int, default=1)
     run.add_argument("--gradient-accumulation", type=int, default=1)
     run.add_argument("--maximum-epochs", type=int, default=3)
@@ -88,6 +93,11 @@ def main(arguments: list[str] | None = None) -> None:
                 gain_lr=parsed.gain_lr,
                 auxiliary_lr=parsed.auxiliary_lr,
                 weight_decay=parsed.weight_decay,
+                routing_rho=parsed.routing_rho,
+                routing_interval=parsed.routing_interval,
+                routing_query_rows=parsed.routing_query_rows,
+                routing_edges_per_row=parsed.routing_edges_per_row,
+                routing_mixture=parsed.routing_mixture,
                 micro_batch_size=parsed.micro_batch_size,
                 gradient_accumulation=parsed.gradient_accumulation,
                 maximum_epochs=parsed.maximum_epochs,
