@@ -110,3 +110,12 @@ exposed training tokens.  Its 64-batch validation perplexity was
 allocation.  This is 0.1122481237 above the AdamW step-2,000 minimum.  The
 remaining 663 updates and final result are required to interpret this
 non-monotone interval rather than treating it as a completed comparison.
+
+## Muon third-interval evidence
+
+Muon reached step 3,000 during epoch 3 on the same manifest and 49,152,000
+exposed tokens.  Its 64-batch validation perplexity was `17.2108652486` at
+2,890.5055 seconds with a 67,445.61MiB peak allocation.  This is
+0.5926367185 above its Muon step-2,000 value and 0.6689680530 above AdamW at
+the matched step.  The run remains live; these are intermediate measurements,
+not a final baseline judgment.
