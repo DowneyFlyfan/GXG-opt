@@ -608,3 +608,14 @@ Muown setting (direction `5e-5`, gain `3e-6`, auxiliary `3e-5`) at
 this rules out increasing Muown's direction rate above the formal setting;
 the formal rate remains the best tested Muown configuration unless that live
 confirmation supplies contrary evidence.
+
+## Local Muown independent-rate `7.5e-5` / `4.5e-6` / `4e-5` matched point
+
+The local gradient-accumulated trial used micro-batch one and accumulation
+eight, preserving the same effective batch eight as ABA. It completed at
+perplexity `17.7389944052` after `3,000.0122` seconds with `8,901.53MiB` peak
+allocation. This is `1.2088090813` worse than formal Muown (`16.5301853239`)
+and `1.1268328388` worse than the ABA `6e-5` independent-rate screen.
+Accordingly, both tested higher independent-rate points are rejected and the
+formal direction `5e-5`, gain `3e-6`, and auxiliary `3e-5` setting is the
+best tested Muown curve.
