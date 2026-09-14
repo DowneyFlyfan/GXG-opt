@@ -119,3 +119,18 @@ exposed tokens.  Its 64-batch validation perplexity was `17.2108652486` at
 0.5926367185 above its Muon step-2,000 value and 0.6689680530 above AdamW at
 the matched step.  The run remains live; these are intermediate measurements,
 not a final baseline judgment.
+
+## Completed AdamW baseline and Muown handoff
+
+AdamW completed all three epochs and 3,663 updates on the formal manifest.
+Its final 64-batch validation perplexity is `16.4880045840` after 3,169.7594
+seconds, with 60,014,592 exposed tokens and a 68,225.61MiB peak allocation.
+The final JSON confirms the manifest digest, completed epoch/update counts, and
+checkpoint-backed result under the formal label.
+
+After confirming AdamW had exited and GPU 0 held only 4MiB, one fresh formal
+Muown trainer was launched on that device as PID 3881012.  It uses the matched
+three-epoch, batch-8, 64-batch-validation protocol and its separately tuned
+direction/gain/auxiliary rates `5e-5` / `3e-6` / `3e-5`.  It reached 100% GPU
+utilization during model loading/training setup.  No prior Muown metric,
+checkpoint, result, or trainer existed, so this did not duplicate a run.
