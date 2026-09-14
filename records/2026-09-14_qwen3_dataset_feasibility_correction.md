@@ -39,3 +39,18 @@ The cache identity is recorded by its generated manifest and SHA-256 digests;
 every baseline and proposal must use the same manifest.  The formal label is
 `formal_3epoch_b8_v64_i1000_20m` so it cannot be confused with the abandoned
 2B-token attempt.
+
+## Verified replacement launch
+
+The replacement manifest has SHA-256
+`97a4ad1da6bbc128a2161a276c2d093821783133e50b27587fa20c9dd45f672c` and records
+19,267 training documents and 4,722 validation documents.  The packed files
+are exactly 80,000,000 and 20,000,000 bytes respectively (uint32 token IDs).
+
+At 2026-09-14 12:13 UTC, the formal AdamW run (PID 3853368, A100 0) and formal
+Muon run (PID 3853369, A100 1) were launched with the tuned learning rates
+from the baseline protocol: AdamW `3e-5`; Muon matrix `5e-5` and auxiliary
+AdamW `3e-5`.  Both were confirmed live, each at 100% GPU utilization with
+about 74.4GiB allocated.  Muown will use its separately tuned direction
+`5e-5`, gain `3e-6`, and auxiliary `3e-5` configuration when either device is
+released.
