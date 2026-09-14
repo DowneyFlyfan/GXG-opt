@@ -175,6 +175,50 @@ def test_trial_writes_a_checkpoint_bound_to_the_cache_manifest(tmp_path, monkeyp
     assert result["peak_memory_mib"] is None
 
 
+def test_full_checkpoint_evaluation_uses_every_validation_block(tmp_path, monkeypatch):
+    from qwen3_data import prepare_qwen_fineweb_cache
+    from qwen3_ppl_experiment import (
+        QwenTrialConfig,
+        evaluate_qwen_checkpoint,
+        qwen_full_evaluation_path,
+        run_qwen_trial,
+    )
+
+    prepare_qwen_fineweb_cache(
+        tmp_path,
+        train_tokens=17,
+        validation_tokens=13,
+        sequence_length=4,
+        eos_token_id=31,
+        source=[
+            ("train", "a", list(range(17))),
+            ("validation", "b", [value % 31 for value in range(13)]),
+        ],
+    )
+    monkeypatch.setattr("qwen3_ppl_experiment.load_qwen3_model", lambda _: _TinyCausalLM())
+    run_qwen_trial(
+        QwenTrialConfig(
+            root=tmp_path,
+            optimizer="adamw",
+            run_label="full-evaluation",
+            learning_rate=0.001,
+            micro_batch_size=2,
+            maximum_updates=1,
+            validation_batches=1,
+            device="cpu",
+        )
+    )
+
+    result = evaluate_qwen_checkpoint(
+        tmp_path, optimizer="adamw", run_label="full-evaluation", device="cpu"
+    )
+
+    assert result["validation_batches"] == 2
+    assert result["validation_tokens"] == 12
+    assert result["full_validation"] is True
+    assert qwen_full_evaluation_path(tmp_path, "adamw", "full-evaluation").is_file()
+
+
 def test_trial_records_periodic_perplexity_at_completed_steps(tmp_path, monkeypatch):
     from qwen3_data import prepare_qwen_fineweb_cache
     from qwen3_ppl_experiment import QwenTrialConfig, qwen_trial_paths, run_qwen_trial
@@ -380,3 +424,15 @@ def test_cli_parses_a_candidate_render_request():
 
     assert arguments.command == "render-candidate"
     assert arguments.candidate == "routing_resistance_v1"
+
+
+def test_cli_parses_a_full_checkpoint_evaluation_request():
+    from run_qwen3_ppl import parse_args
+
+    arguments = parse_args(
+        ["evaluate-checkpoint", "--optimizer", "muon", "--run-label", "formal", "--device", "cpu"]
+    )
+
+    assert arguments.command == "evaluate-checkpoint"
+    assert arguments.optimizer == "muon"
+    assert arguments.device == "cpu"

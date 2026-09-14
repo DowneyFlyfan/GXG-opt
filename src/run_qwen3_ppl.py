@@ -19,6 +19,7 @@ from qwen3_ppl_experiment import (
     BASELINE_DISPLAY_NAMES,
     QwenTrialConfig,
     TRIAL_DISPLAY_NAMES,
+    evaluate_qwen_checkpoint,
     render_qwen_candidate_comparison,
     render_qwen_comparison,
     run_qwen_trial,
@@ -68,6 +69,12 @@ def parse_args(arguments: list[str] | None = None) -> argparse.Namespace:
     candidate_render.add_argument(
         "--candidate", choices=tuple(name for name in TRIAL_DISPLAY_NAMES if name not in BASELINE_DISPLAY_NAMES), required=True
     )
+    evaluate = commands.add_parser(
+        "evaluate-checkpoint", help="evaluate every held-out block from a completed checkpoint"
+    )
+    evaluate.add_argument("--optimizer", choices=tuple(TRIAL_DISPLAY_NAMES), required=True)
+    evaluate.add_argument("--run-label", required=True)
+    evaluate.add_argument("--device", default="cuda")
     return parser.parse_args(arguments)
 
 
@@ -133,7 +140,7 @@ def main(arguments: list[str] | None = None) -> None:
         )
     elif parsed.command == "render":
         result = {"outputs": [str(path) for path in render_qwen_comparison(root, run_label=parsed.run_label)]}
-    else:
+    elif parsed.command == "render-candidate":
         result = {
             "outputs": [
                 str(path)
@@ -142,6 +149,13 @@ def main(arguments: list[str] | None = None) -> None:
                 )
             ]
         }
+    else:
+        result = evaluate_qwen_checkpoint(
+            root,
+            optimizer=parsed.optimizer,
+            run_label=parsed.run_label,
+            device=parsed.device,
+        )
     print(json.dumps(result, sort_keys=True))
 
 

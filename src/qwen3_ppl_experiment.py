@@ -77,6 +77,12 @@ def qwen_trial_paths(root: Path, optimizer: str, run_label: str) -> QwenTrialPat
     )
 
 
+def qwen_full_evaluation_path(root: Path, optimizer: str, run_label: str) -> Path:
+    """Keep a post-training full-validation result separate from the curve trace."""
+    paths = qwen_trial_paths(root, optimizer, run_label)
+    return paths.result.with_name(paths.result.stem + ".full_validation.ppl.json")
+
+
 def _metric_records(path: Path) -> list[dict]:
     if not path.is_file():
         raise FileNotFoundError(f"missing metric trace: {path}")
@@ -327,6 +333,58 @@ def _validation_perplexity(
     if total_tokens == 0:
         raise RuntimeError("validation loader emitted no tokens")
     return math.exp(total_loss / total_tokens)
+
+
+def evaluate_qwen_checkpoint(
+    root: Path,
+    *,
+    optimizer: str,
+    run_label: str,
+    device: str = "cuda",
+) -> dict:
+    """Evaluate every held-out token block from a completed trial checkpoint."""
+    selected_device = torch.device(device)
+    if selected_device.type == "cuda" and not torch.cuda.is_available():
+        raise RuntimeError("CUDA was requested but is unavailable")
+    paths = qwen_trial_paths(root, optimizer, run_label)
+    output = qwen_full_evaluation_path(root, optimizer, run_label)
+    if output.exists():
+        raise FileExistsError(f"refusing to overwrite Qwen full validation: {output}")
+    if not paths.checkpoint.is_file():
+        raise FileNotFoundError(f"missing Qwen checkpoint: {paths.checkpoint}")
+    cache = load_qwen_token_cache(root)
+    manifest_digest = _manifest_sha256(cache.manifest)
+    checkpoint = torch.load(paths.checkpoint, map_location=selected_device, weights_only=False)
+    if checkpoint.get("data_manifest_sha256") != manifest_digest:
+        raise RuntimeError("Qwen checkpoint is bound to a different token-cache manifest")
+    checkpoint_config = checkpoint.get("config")
+    if not isinstance(checkpoint_config, dict):
+        raise RuntimeError("Qwen checkpoint lacks its resolved trial configuration")
+    micro_batch_size = int(checkpoint_config["micro_batch_size"])
+    seed = int(checkpoint_config["seed"])
+    _, validation_loader = qwen_block_loaders(
+        cache,
+        micro_batch_size=micro_batch_size,
+        workers=0,
+        seed=seed,
+    )
+    model = load_qwen3_model(root).to(selected_device)
+    model.load_state_dict(checkpoint["model"])
+    validation_batches = len(validation_loader)
+    perplexity = _validation_perplexity(model, validation_loader, selected_device, validation_batches)
+    result = {
+        "optimizer": optimizer,
+        "run_label": run_label,
+        "full_validation": True,
+        "validation_batches": validation_batches,
+        "validation_tokens": len(validation_loader.dataset) * cache.sequence_length,
+        "perplexity": perplexity,
+        "data_manifest_sha256": manifest_digest,
+        "checkpoint": str(paths.checkpoint),
+    }
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n")
+    return result
 
 
 def run_qwen_trial(config: QwenTrialConfig) -> dict:

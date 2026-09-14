@@ -175,6 +175,28 @@ python src/run_qwen3_ppl.py run --optimizer muown --direction-lr 5e-5 \
   --gain-lr 3e-6 --auxiliary-lr 3e-5 ...
 ```
 
+## Final full-validation evidence
+
+The periodic curves deliberately use a fixed 64-batch validation slice
+(1,048,576 token predictions at microbatch eight) so that every 1,000-update
+record has practical wall-clock cost.  This slice is not substituted for the
+entire held-out cache in the final baseline decision.  The
+`evaluate-checkpoint` command loads a completed checkpoint, verifies its
+manifest digest, and evaluates every packed validation block, writing a
+separate immutable JSON result beside the normal compact result:
+
+```text
+python src/run_qwen3_ppl.py evaluate-checkpoint --optimizer adamw \
+  --run-label formal_3epoch_b8_v64_i1000 --device cuda
+```
+
+For this cache, full validation covers 48,828 complete 2,048-token blocks,
+99,999,744 token predictions, and 6,104 loader batches at formal microbatch
+eight (the final batch is smaller).  The evaluator counts packed blocks rather
+than multiplying nominal batch count by microbatch size, so its reported token
+count is exact.  It is intended to run separately for completed AdamW, Muon,
+Muown, and any completed proposal checkpoint after the formal comparisons.
+
 ## Initial screen protocol
 
 1. Verify cache digests and remove temporary FineWeb download state after packing.
