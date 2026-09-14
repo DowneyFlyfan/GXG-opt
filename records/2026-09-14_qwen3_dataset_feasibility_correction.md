@@ -255,3 +255,31 @@ micro-batch-4 passes), `0.8524277512` above the formal AdamW incumbent
 (`16.0881141034`).  It therefore supplies a valid negative screening result,
 not evidence of a general failure of routing-aware curvature or of every
 hyperparameter setting.
+
+## Tied-path curvature matched point
+
+The tied-embedding curvature candidate reached the same 1,000-update point
+with micro-batch 4 and accumulation 2: `17.8228654358` perplexity after
+`1,136.9987` seconds and `37,370.67MiB` peak allocated memory.  It is finite
+and resource-valid but `1.2916646924` above the matched Muon value
+(`16.5312007434`), so this tested tied-path configuration is not competitive.
+Its full held-out evaluation is being run separately from this curve point.
+
+## Feature-remapping prediction gate
+
+Before implementing or training the feature-remapping optimizer, a separate
+eight-update AdamW trajectory was produced with the formal AdamW learning rate
+`3e-5`, effective batch 8 (micro-batch 4, accumulation 2), seed 1337, and the
+same manifest.  The pretrained model and the post-step-8 checkpoint were
+probed using one fixed training block for fitting and a distinct fixed training
+block for checking.  All 26 interior MLP down-projection maps passed the
+defined held-out `e_map <= 0.95 e_raw` gate.  The median map/raw error ratio
+was `0.8018571734` (best `0.7513718373`, worst `0.9015710494`).
+
+This does **not** yet establish that map remapping is the useful intervention:
+the required scalar-rescaling control achieved a much lower median error ratio
+of `0.2129675001` on the same checks.  The measured map therefore has a real
+prediction signal but is presently dominated by a simpler control.  The next
+eligible feature experiment must compare the cohort map against that scalar
+control, retain distinct fit/check anchors, and add the specified fresh
+training-only diagnostic anchor before any performance claim.
