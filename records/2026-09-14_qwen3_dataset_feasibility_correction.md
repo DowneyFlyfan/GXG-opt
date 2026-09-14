@@ -500,3 +500,13 @@ Its best 200-update value is only `0.0060422984` below Muon's corresponding
 the selected Muown high-rate configuration to ABA with micro-batch four and
 accumulation two, preserving effective batch eight while fitting beside the
 unrelated 20GiB-per-GPU workload.
+
+## ABA micro-batch availability check
+
+The ABA Muown micro-batch-four/accumulation-two attempt was launched only
+after confirming the nominal memory headroom, but the CryoET workload holds
+GPU 1 in an exclusive/busy state.  CUDA rejected model placement before the
+first training forward, metric, checkpoint, or result JSON.  This is neither
+a memory measurement nor learning-rate evidence, and the active user-owned
+processes were not interrupted.  The selected high-rate Muown configuration
+therefore proceeds locally to its directly comparable step-1,000 point.
