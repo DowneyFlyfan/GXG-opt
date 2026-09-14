@@ -127,6 +127,18 @@ The Muown direction rate remained `5e-5` and the AdamW auxiliary rate remained `
 
 Both values improve from the 22.720 initialization reference.  The gain effect is small at this horizon, but the evidence supports `3e-6` for the next independent direction bracket.  The two checkpoints, metric traces, results, and logs are removed after recording.
 
+## Muown direction-rate bracket
+
+The selected gain rate remained `3e-6` and AdamW auxiliary rate remained `3e-5`; the direction rate was bracketed concurrently.
+
+| Optimizer | Direction rate | Gain rate | Validation perplexity after 50 updates | Time for 50 updates | Decision |
+| --- | ---: | ---: | ---: | ---: | --- |
+| Muown | `3e-5` | `3e-6` | 17.867 | 51.628 s | reject |
+| Muown | `5e-5` | `3e-6` | 17.687 | 50.922 s | retain |
+| Muown | `7e-5` | `3e-6` | 17.701 | 51.735 s | reject |
+
+The selected two-rate Muown setting is direction `5e-5`, gain `3e-6`, auxiliary `3e-5`.  It is finite and improves 5.033 perplexity from initialization.  Its checkpoint, metric trace, result, and log, and those of the rejected bracket points are temporary screening artifacts and are removed after recording.
+
 ## Initial screen protocol
 
 1. Verify cache digests and remove temporary FineWeb download state after packing.
