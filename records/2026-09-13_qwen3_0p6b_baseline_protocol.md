@@ -48,7 +48,18 @@ All admission runs used the verified cache, sequence length 2,048, one optimizer
 | Muon | 9 | 74,048 MiB | 10.442 s | completed |
 | Muown | 9 | 74,048 MiB | 10.722 s | completed |
 
-The accepted common microbatch is **9**.  It satisfies the same-effective-batch constraint and approaches A100 capacity without the AdamW batch-16 failure.  Formal runs start with gradient accumulation one (effective batch nine sequences, 18,432 tokens/update); if a tuned schedule needs a larger effective batch, every optimizer uses the same accumulation multiplier.
+The one-step batch-9 result was not stable: both a 20-step AdamW and a 20-step Muon run failed in backward with CUDA out-of-memory, requesting 10.43 GiB while roughly 78 GiB was already occupied.  The accepted common microbatch is therefore **8**, using `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True`.  It gives a stable 20-step peak of 68,226 MiB (AdamW) and 67,446 MiB (Muon), roughly 84% of usable device memory.  Formal runs start with gradient accumulation one (effective batch eight sequences, 16,384 tokens/update); any larger effective batch uses the same accumulation multiplier for every optimizer.
+
+## First rate screen
+
+Both 20-update screens used microbatch eight, the same cache manifest, one deterministic seed, and 64 fixed validation batches.  These are elimination measurements, not final baseline curves.
+
+| Optimizer | Rate(s) | Validation perplexity after 20 updates | Time for 20 updates | Decision |
+| --- | --- | ---: | ---: | --- |
+| AdamW | learning rate `1e-4` | 19.759 | 17.551 s | lower-rate screen required |
+| Muon | learning rate `2.5e-3`, AdamW auxiliary `3e-4` | 135.540 | 22.514 s | reject this rate; screen one order lower |
+
+The cache's one-update diagnostic perplexity was approximately 13–17 depending on its initial deterministic batch.  Both displayed rates worsen the fixed held-out measurement, so they cannot be promoted to formal baselines.
 
 The admission checkpoints, JSON traces, and logs were removed after this table was recorded; they were calibration artifacts, not trained model checkpoints.
 
