@@ -152,3 +152,12 @@ Muown reached step 1,000 in epoch 1 on the formal manifest, exposing
 955.7704 seconds, with 68,228.04MiB peak allocation.  This is 0.0010154195
 lower than Muon at the same step but takes 10.33 seconds longer; it is still
 an early matched point rather than a conclusion about the final baseline.
+
+## Muown second-interval evidence
+
+Muown reached step 2,000 during epoch 2 on the formal manifest with
+32,768,000 exposed tokens.  Its 64-batch validation perplexity was
+`16.6168451977` at 1,926.2696 seconds with 68,228.04MiB peak allocation.  It
+is 0.0013833325 lower than Muon at the matched step but 18.25 seconds slower.
+This remains intermediate matched evidence; full held-out validation after all
+three final checkpoints is still required.
