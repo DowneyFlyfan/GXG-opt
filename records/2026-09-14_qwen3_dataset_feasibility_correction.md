@@ -632,3 +632,21 @@ formal AdamW `3e-5` result (`16.4880045840`) under the same manifest, seed,
 batch, validation, and three-epoch schedule. Consequently the screen result
 does not justify a final-rate change: formal AdamW `3e-5` remains the best
 tested full curve. The tested larger-rate branch is rejected at full horizon.
+
+## Final matched baseline selection after higher-rate retuning
+
+Every retained selection uses the same 20-million-token manifest, seed 1337,
+effective batch eight, 64-batch perplexity evaluation, and three-epoch
+schedule. The final full-horizon perplexities are:
+
+| Baseline | Selected rates | Final perplexity |
+| --- | --- | ---: |
+| AdamW | `3e-5` | `16.4880045840` |
+| Muon | matrix `5e-5`, auxiliary `3e-5` | `17.1557168418` |
+| Muown | direction `5e-5`, gain `3e-6`, auxiliary `3e-5` | `17.1508224156` |
+
+Higher-rate AdamW appeared promising at step 1,000 but lost at full horizon;
+higher Muon and Muown brackets were already worse at their matched
+one-thousand-step screens. Therefore none of the larger-rate trials replaces
+the formal matched baseline curve, and AdamW `3e-5` remains the strongest
+baseline in this experiment.
