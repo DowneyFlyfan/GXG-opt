@@ -50,7 +50,10 @@ therefore uses the ordinary training forward rather than retaining activations
 for all 26 selected layers or adding a full-model forward.  It is strictly a
 data-access adapter: no parameter or optimizer state is changed.  Local
 attention tests, including a three-sequence capture that confirms the stored
-batch dimension is one, passed: 4 tests.
+batch dimension is one, passed: 4 tests.  ABA CPU-only verification against
+the cached real Qwen3-0.6B attention layer also passed for a three-token,
+two-sequence input: the selected replay shapes were `X=(3,1024)`,
+`Q=(3,128)`, and `K=(3,128)`.
 
 ## Remaining before a Qwen proposal screen
 
