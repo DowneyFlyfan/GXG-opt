@@ -1,0 +1,10 @@
+{
+  "checkpoint": "/home/yufan/New_Optimizer/.cache/qwen3_0p6b/checkpoints/qwen3_0p6b__feature_remap_map_lr1e4_s1000_mb4a2_20m__feature_remap_cohort_v1.checkpoint.pt",
+  "data_manifest_sha256": "97a4ad1da6bbc128a2161a276c2d093821783133e50b27587fa20c9dd45f672c",
+  "full_validation": true,
+  "optimizer": "feature_remap_cohort_v1",
+  "perplexity": 16.938784628007372,
+  "run_label": "feature_remap_map_lr1e4_s1000_mb4a2_20m",
+  "validation_batches": 611,
+  "validation_tokens": 4999168
+}

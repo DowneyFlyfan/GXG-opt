@@ -327,3 +327,24 @@ negative result.  The metric, full-validation JSON, and matched step/time
 plots are retained locally before releasing its 6.96GB remote checkpoint for
 the map-control comparison; no checkpoint is needed to reproduce this
 reported evaluation artifact.
+
+## Feature-map cohort matched 1,000-update result
+
+The accepted-map cohort arm then completed the same matched 1,000-update
+configuration. Its 64-batch curve value was `17.8215783421` after
+`1,625.2345` seconds with `40,187.65MiB` peak allocated memory. This is
+`0.0017145863` higher perplexity than the scalar control's corresponding
+point, although it was `23.9950` seconds faster in this one run.
+
+The complete held-out evaluation over `4,999,168` validation tokens (`611`
+micro-batch-four passes) yielded `16.9387846280` perplexity. It is
+`0.0047582115` higher than the scalar control and `0.8506705246` higher than
+the AdamW incumbent. Thus the fitted feature-map intervention is not
+competitive in this matched screen, despite passing the earlier two-anchor
+prediction gate. Together, the scalar and map controls are valid negative
+screens for this feature-cohort proposal at the tested rates and schedule;
+they do not establish a general failure of gradient-feature prediction or
+settle the unimplemented fresh-diagnostic-anchor audit. Both metric/result
+JSON files and the metric-steps/time plots are retained locally. The remote
+map checkpoint can be released after this evidence is committed, because it
+is only needed for the completed full-validation pass already recorded here.
