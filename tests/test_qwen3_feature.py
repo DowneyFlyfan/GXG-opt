@@ -43,3 +43,21 @@ def test_qwen_factor_probe_matches_the_dense_weight_gradient_without_populating_
     model.zero_grad(set_to_none=True)
     collect_qwen_dense_factors(model, ids, ["model.layers.0.mlp.down_proj"])
     assert model.model.layers[0].mlp.down_proj.weight.grad is None
+
+
+def test_qwen_cohort_update_remaps_only_the_historical_pytorch_weight_buffer():
+    from qwen3_feature import qwen_cohort_momentum_step
+
+    historical = torch.ones(2, 2)  # PyTorch [out, in]
+    fresh = torch.zeros_like(historical)
+    gradient = torch.zeros_like(historical)
+    left = [2 * torch.eye(2)]
+    right = [torch.eye(2)]
+
+    momentum, next_historical, next_fresh = qwen_cohort_momentum_step(
+        historical, fresh, gradient, beta=0.5, maps=(left, right), refresh=True
+    )
+
+    assert torch.equal(momentum, torch.ones_like(momentum))
+    assert torch.equal(next_historical, momentum)
+    assert torch.equal(next_fresh, torch.zeros_like(fresh))

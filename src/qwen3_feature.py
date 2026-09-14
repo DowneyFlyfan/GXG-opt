@@ -5,6 +5,8 @@ from __future__ import annotations
 import torch
 import torch.nn.functional as functional
 
+from optimizer_v2.temporal import cohort_step
+
 
 def collect_qwen_dense_factors(
     model: torch.nn.Module,
@@ -50,3 +52,36 @@ def collect_qwen_dense_factors(
     finally:
         for handle in handles:
             handle.remove()
+
+
+@torch.no_grad()
+def qwen_cohort_momentum_step(
+    historical: torch.Tensor,
+    fresh: torch.Tensor,
+    gradient: torch.Tensor,
+    *,
+    beta: float,
+    maps: tuple[list[torch.Tensor], list[torch.Tensor]] | None,
+    refresh: bool,
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    """Advance Qwen's age-separated momentum in the documented orientation.
+
+    The feature-map equations use matrices `[in, out]`; PyTorch Qwen linear
+    weights and their momentum buffers use `[out, in]`.  Transposition around
+    ``cohort_step`` makes the map act on the correct historical cohort only.
+    """
+    if historical.shape != fresh.shape or historical.shape != gradient.shape or historical.ndim != 2:
+        raise ValueError("cohort tensors must be equally shaped matrices")
+    if not 0 <= beta < 1:
+        raise ValueError("beta must lie in [0, 1)")
+    momentum, next_historical, next_fresh = cohort_step(
+        historical.T,
+        fresh.T,
+        gradient.T,
+        beta,
+        maps,
+    )
+    momentum, next_historical, next_fresh = momentum.T, next_historical.T, next_fresh.T
+    if refresh:
+        return momentum, momentum, torch.zeros_like(momentum)
+    return momentum, next_historical, next_fresh
