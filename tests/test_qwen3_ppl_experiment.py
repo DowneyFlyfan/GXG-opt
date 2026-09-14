@@ -177,6 +177,39 @@ def test_trial_records_periodic_perplexity_at_completed_steps(tmp_path, monkeypa
     assert [record["step"] for record in records] == [1, 2, 3]
 
 
+def test_trial_checkpoints_every_evaluation_interval(tmp_path, monkeypatch):
+    from qwen3_data import prepare_qwen_fineweb_cache
+    from qwen3_ppl_experiment import QwenTrialConfig, run_qwen_trial
+
+    prepare_qwen_fineweb_cache(
+        tmp_path,
+        train_tokens=17,
+        validation_tokens=9,
+        sequence_length=4,
+        eos_token_id=31,
+        source=[("train", "a", list(range(17))), ("validation", "b", list(range(9)))],
+    )
+    calls: list[int] = []
+    monkeypatch.setattr("qwen3_ppl_experiment.load_qwen3_model", lambda _: _TinyCausalLM())
+    monkeypatch.setattr("qwen3_ppl_experiment._write_qwen_checkpoint", lambda **payload: calls.append(payload["completed_updates"]))
+
+    run_qwen_trial(
+        QwenTrialConfig(
+            root=tmp_path,
+            optimizer="adamw",
+            run_label="periodic-checkpoint",
+            learning_rate=0.001,
+            micro_batch_size=1,
+            maximum_updates=2,
+            validation_batches=1,
+            evaluation_interval_updates=1,
+            device="cpu",
+        )
+    )
+
+    assert calls == [1, 2]
+
+
 def test_trial_passes_the_training_batch_to_an_optimizer_prepare_batch_hook(tmp_path, monkeypatch):
     from qwen3_data import prepare_qwen_fineweb_cache
     from qwen3_ppl_experiment import QwenTrialConfig, run_qwen_trial

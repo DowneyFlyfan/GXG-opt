@@ -130,9 +130,31 @@ metric.  This is deliberately separate from baseline-only rendering so a
 candidate is never mislabeled as a baseline.  Unit coverage writes synthetic
 traces for all four curves and verifies both candidate output files.
 
+## Long-run checkpoint durability
+
+The Qwen runner now writes an atomic checkpoint after each periodic validation
+record and otherwise writes the final checkpoint.  Each checkpoint contains
+the model, all optimizer states, completed-update count, completed-epoch count,
+the active epoch, peak allocated memory, and the token-cache manifest digest.
+The write first targets a sibling `.partial` file and then atomically replaces
+the cached checkpoint, so an interruption cannot leave a half-written final
+checkpoint.  Both the final and partial files remain exclusively under
+`.cache/qwen3_0p6b/checkpoints`; metrics and compact result evidence remain in
+their normal `metrics/nlp` and `results/nlp` locations.  The existing formal
+AdamW and Muon processes predate this source change and are intentionally not
+restarted.
+
+The regression test runs a two-update CPU trial with validation every update
+and confirms the checkpoint writer is invoked exactly at updates 1 and 2.
+The complete focused Qwen suite after this change passed: 36 tests.
+
 ## Remaining before a Qwen proposal screen
 
-1. Add a Qwen attention replay/probe for the routing-resistance factors using separate Q/K projections and grouped-query heads.
-2. Add a temporary split-leaf tied-embedding forward for the paired-path sketch.
-3. Route the notch and feature-remap controllers through the proposal adapter, with their required Qwen activation/gradient probes.
-4. Screen each candidate only after the matched AdamW, Muon, and Muown baseline artifacts are complete.
+1. Let the active formal AdamW and Muon runs complete, then launch the exact
+   matched Muown run with its independently tuned direction, gain, and
+   auxiliary learning rates.
+2. Render the three formal baseline perplexity-versus-step and
+   perplexity-versus-time PNG artifacts.
+3. Screen routing resistance, tied-path curvature, and proposal notch one at a
+   time against those three artifacts; run the feature-remap preflight before
+   authorizing its controller.

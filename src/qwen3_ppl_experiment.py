@@ -180,6 +180,35 @@ def _manifest_sha256(manifest: dict) -> str:
     ).hexdigest()
 
 
+def _write_qwen_checkpoint(
+    *,
+    paths: QwenTrialPaths,
+    model: torch.nn.Module,
+    optimizers: dict[str, torch.optim.Optimizer],
+    completed_epochs: int,
+    active_epoch: int,
+    completed_updates: int,
+    manifest_digest: str,
+    peak_memory_mib: float | None,
+    config: QwenTrialConfig,
+) -> None:
+    """Atomically preserve a progress checkpoint below the cache root."""
+    checkpoint = {
+        "model": model.state_dict(),
+        "optimizers": {name: optimizer.state_dict() for name, optimizer in optimizers.items()},
+        "completed_epochs": completed_epochs,
+        "active_epoch": active_epoch,
+        "completed_updates": completed_updates,
+        "data_manifest_sha256": manifest_digest,
+        "peak_memory_mib": peak_memory_mib,
+        "config": asdict(config),
+    }
+    paths.checkpoint.parent.mkdir(parents=True, exist_ok=True)
+    partial = paths.checkpoint.with_suffix(paths.checkpoint.suffix + ".partial")
+    torch.save(checkpoint, partial)
+    partial.replace(paths.checkpoint)
+
+
 @torch.no_grad()
 def _validation_perplexity(
     model: torch.nn.Module,
@@ -268,6 +297,8 @@ def run_qwen_trial(config: QwenTrialConfig) -> dict:
     started = time.perf_counter()
     completed_updates = 0
     completed_epochs = 0
+    active_epoch = 0
+    checkpoint_written_at = -1
     stopped_early = False
     final_perplexity: float | None = None
     autocast = (
@@ -276,6 +307,7 @@ def run_qwen_trial(config: QwenTrialConfig) -> dict:
         else nullcontext()
     )
     for epoch in range(1, config.maximum_epochs + 1):
+        active_epoch = epoch
         model.train()
         for batch_index, (input_ids, labels) in enumerate(train_loader):
             if batch_index % config.gradient_accumulation == 0:
@@ -325,6 +357,18 @@ def run_qwen_trial(config: QwenTrialConfig) -> dict:
                 }
                 with paths.metric.open("a") as handle:
                     handle.write(json.dumps(record, sort_keys=True) + "\n")
+                _write_qwen_checkpoint(
+                    paths=paths,
+                    model=model,
+                    optimizers=optimizers,
+                    completed_epochs=completed_epochs,
+                    active_epoch=active_epoch,
+                    completed_updates=completed_updates,
+                    manifest_digest=manifest_digest,
+                    peak_memory_mib=peak_memory_mib,
+                    config=config,
+                )
+                checkpoint_written_at = completed_updates
                 model.train()
             if config.maximum_updates is not None and completed_updates >= config.maximum_updates:
                 stopped_early = True
@@ -359,17 +403,18 @@ def run_qwen_trial(config: QwenTrialConfig) -> dict:
         torch.cuda.max_memory_allocated(device) / 2**20 if device.type == "cuda" else None
     )
     token_exposure = completed_updates * config.micro_batch_size * config.gradient_accumulation * cache.sequence_length
-    checkpoint = {
-        "model": model.state_dict(),
-        "optimizers": {name: optimizer.state_dict() for name, optimizer in optimizers.items()},
-        "completed_epochs": completed_epochs,
-        "completed_updates": completed_updates,
-        "data_manifest_sha256": manifest_digest,
-        "peak_memory_mib": peak_memory_mib,
-        "config": asdict(config),
-    }
-    paths.checkpoint.parent.mkdir(parents=True, exist_ok=True)
-    torch.save(checkpoint, paths.checkpoint)
+    if checkpoint_written_at != completed_updates:
+        _write_qwen_checkpoint(
+            paths=paths,
+            model=model,
+            optimizers=optimizers,
+            completed_epochs=completed_epochs,
+            active_epoch=active_epoch,
+            completed_updates=completed_updates,
+            manifest_digest=manifest_digest,
+            peak_memory_mib=peak_memory_mib,
+            config=config,
+        )
     result = {
         "optimizer": config.optimizer,
         "run_label": config.run_label,
