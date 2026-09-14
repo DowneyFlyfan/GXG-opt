@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import math
+
 import torch
 from torch.func import functional_call
 
@@ -34,3 +36,48 @@ def split_qwen_tied_forward(
     if not isinstance(logits, torch.Tensor):
         raise TypeError("split Qwen forward did not return logits")
     return logits
+
+
+def qwen_paired_embedding_sketch(
+    model: torch.nn.Module,
+    input_ids: torch.Tensor,
+    *,
+    count: int,
+    generator: torch.Generator,
+) -> tuple[list[torch.Tensor], list[dict[str, float]]]:
+    """Build the paired categorical-probe sketch for Qwen's tied embedding.
+
+    The same probe is differentiated through the input and output paths.  The
+    resulting columns therefore retain the cross terms of the joint output-loss
+    generalized Gauss--Newton metric and are stored in FP32 for the small
+    proximal solve.
+    """
+    if count <= 0 or input_ids.ndim != 2 or input_ids.shape[1] < 2:
+        raise ValueError("a paired sketch needs positive count and two-token sequences")
+    embedding = model.model.embed_tokens.weight
+    input_leaf = embedding.detach().clone().requires_grad_()
+    output_leaf = embedding.detach().clone().requires_grad_()
+    logits = split_qwen_tied_forward(model, input_ids, input_leaf, output_leaf)[:, :-1]
+    probabilities = logits.detach().float().softmax(dim=-1)
+    flat = probabilities.reshape(-1, probabilities.shape[-1])
+    columns: list[torch.Tensor] = []
+    diagnostics: list[dict[str, float]] = []
+    for index in range(count):
+        choices = torch.multinomial(flat.cpu(), 1, generator=generator).to(flat.device)
+        probe = -flat.clone()
+        probe.scatter_add_(1, choices, torch.ones_like(choices, dtype=probe.dtype))
+        probe = (probe / math.sqrt(len(flat))).reshape_as(logits).to(logits.dtype)
+        left, right = torch.autograd.grad(
+            (logits * probe).sum(),
+            (input_leaf, output_leaf),
+            retain_graph=index + 1 < count,
+        )
+        columns.append((left.detach().float() + right.detach().float()) / math.sqrt(count))
+        diagnostics.append(
+            {
+                "input_norm": float(left.norm()),
+                "output_norm": float(right.norm()),
+                "paired_inner_product": float((left * right).sum()),
+            }
+        )
+    return columns, diagnostics

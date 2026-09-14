@@ -46,3 +46,19 @@ def test_split_tied_paths_produce_two_gradients_that_sum_to_tied_gradient():
     (model(input_ids=ids).logits * probe).sum().backward()
 
     assert torch.allclose(left + right, model.model.embed_tokens.weight.grad)
+
+
+def test_paired_tied_sketch_uses_one_column_per_shared_categorical_probe():
+    from qwen3_tied import qwen_paired_embedding_sketch
+
+    torch.manual_seed(8)
+    model = _TinyTiedQwen()
+    ids = torch.tensor([[1, 2, 3]])
+
+    columns, diagnostics = qwen_paired_embedding_sketch(
+        model, ids, count=2, generator=torch.Generator().manual_seed(9)
+    )
+
+    assert len(columns) == len(diagnostics) == 2
+    assert all(column.shape == model.model.embed_tokens.weight.shape for column in columns)
+    assert all(item["input_norm"] > 0 and item["output_norm"] > 0 for item in diagnostics)
