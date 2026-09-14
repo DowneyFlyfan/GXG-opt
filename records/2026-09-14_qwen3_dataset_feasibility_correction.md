@@ -549,3 +549,15 @@ it recorded `17.9021746667` perplexity after `1,634.6057` seconds with
 formal Muon value `16.5312007434`, so matrix `1e-4` with auxiliary `5e-5` is
 rejected.  The next Muon bracket is matrix `7.5e-5` and auxiliary `4e-5`,
 using batch eight on the released A100 GPU.
+
+## ABA Muon `7.5e-5` / `4e-5` matched point
+
+The batch-eight ABA bracket completed update 1,000 at perplexity
+`16.8568076835`, after `936.3392` training seconds and with
+`67,445.61MiB` peak allocation.  It shares the fixed token manifest, seed,
+effective batch, and 64-batch validation protocol with the formal curve.
+It is `0.3256069401` worse than formal Muon at matrix `5e-5` / auxiliary
+`3e-5` (`16.5312007434`), so this higher-rate point is rejected.  GPU 0 is
+immediately reused for the remaining intermediate `6e-5` / `3.5e-5` bracket;
+only that point can determine whether the formal Muon rate remains the best
+tested curve.
