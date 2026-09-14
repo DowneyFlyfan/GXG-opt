@@ -69,3 +69,16 @@ Thus the 3,663-update, three-epoch run is expected to take on the order of 51
 minutes before evaluation/checkpoint overhead, rather than the previously
 misreported multi-day lower bound.  The corrected 20M/5M protocol is feasible
 for the three baselines and sequential proposal study on ABA A100 capacity.
+
+## Matched first-interval evidence
+
+Both formal runs reached step 1,000 on the same manifest and token exposure
+(16,384,000 tokens) during epoch 1.  AdamW recorded validation perplexity
+16.5583577720 in 836.0116 seconds; Muon recorded 16.5312007434 in 945.4358
+seconds.  Muon is therefore 109.42 seconds slower (13.1%) at this first
+interval while its perplexity is 0.0271570 lower.  This is an early matched
+observation, not a final comparison.
+
+The AdamW and Muon atomic checkpoints are respectively 3,576,770,295 bytes
+and 2,758,759,049 bytes, both below `.cache/qwen3_0p6b/checkpoints/` and bound
+to manifest `97a4ad1da6bbc128a2161a276c2d093821783133e50b27587fa20c9dd45f672c`.
