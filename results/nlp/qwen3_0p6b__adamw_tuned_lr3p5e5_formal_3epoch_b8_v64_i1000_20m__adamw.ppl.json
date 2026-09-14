@@ -1,0 +1,10 @@
+{
+  "completed_epochs": 3,
+  "completed_updates": 3663,
+  "data_manifest_sha256": "97a4ad1da6bbc128a2161a276c2d093821783133e50b27587fa20c9dd45f672c",
+  "elapsed_seconds": 3172.864011410624,
+  "final_perplexity": 16.628844575229913,
+  "optimizer": "adamw",
+  "peak_memory_mib": 68225.60595703125,
+  "run_label": "adamw_tuned_lr3p5e5_formal_3epoch_b8_v64_i1000_20m"
+}

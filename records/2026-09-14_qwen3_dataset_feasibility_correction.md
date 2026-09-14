@@ -619,3 +619,16 @@ and `1.1268328388` worse than the ABA `6e-5` independent-rate screen.
 Accordingly, both tested higher independent-rate points are rejected and the
 formal direction `5e-5`, gain `3e-6`, and auxiliary `3e-5` setting is the
 best tested Muown curve.
+
+## Full three-epoch confirmation of AdamW `3.5e-5`
+
+The selected-from-screen AdamW rate was rerun for the exact three-epoch,
+batch-eight formal protocol. Its checkpoints at updates 1,000/2,000/3,000/
+3,663 were perplexity `16.5320924353`, `16.4559294914`, `16.6783493787`, and
+`16.6288445752`, respectively. The completed run took `3,172.8640` seconds
+and used `68,225.61MiB` peak allocation. Although `3.5e-5` was better at the
+one-thousand-step screen, its final value is `0.1408399912` worse than the
+formal AdamW `3e-5` result (`16.4880045840`) under the same manifest, seed,
+batch, validation, and three-epoch schedule. Consequently the screen result
+does not justify a final-rate change: formal AdamW `3e-5` remains the best
+tested full curve. The tested larger-rate branch is rejected at full horizon.
