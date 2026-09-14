@@ -116,6 +116,17 @@ Muown was screened with independent tangent-direction and row-gain learning rate
 
 This initial pair is within 0.00005 perplexity of the retained Muon screen, so gain-rate tuning is warranted.  The checkpoint, metric trace, result, and log are removed after recording.
 
+## Muown gain-rate bracket
+
+The Muown direction rate remained `5e-5` and the AdamW auxiliary rate remained `3e-5`; the two available A100 devices screened the gain rate concurrently.
+
+| Optimizer | Direction rate | Gain rate | Validation perplexity after 50 updates | Time for 50 updates | Decision |
+| --- | ---: | ---: | ---: | ---: | --- |
+| Muown | `5e-5` | `3e-6` | 17.687 | 50.922 s | retain provisionally |
+| Muown | `5e-5` | `3e-5` | 17.690 | 51.217 s | 0.003 worse than `3e-6`; reject |
+
+Both values improve from the 22.720 initialization reference.  The gain effect is small at this horizon, but the evidence supports `3e-6` for the next independent direction bracket.  The two checkpoints, metric traces, results, and logs are removed after recording.
+
 ## Initial screen protocol
 
 1. Verify cache digests and remove temporary FineWeb download state after packing.
