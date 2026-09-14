@@ -176,6 +176,15 @@ incomplete baseline from authorizing a proposal screen.  The unit test first
 observed the missing gate, then creates three matching completed synthetic
 results and verifies admission.
 
+Candidate tuning uses its own run label while passing
+`--baseline-run-label formal_3epoch_b8_v64_i1000`.  The runner applies the
+completion/manifest gate to that formal label, then writes the candidate trace
+under its separate screen or final label.  Likewise, `render-candidate` accepts
+the candidate run label together with the baseline label, so a 50-update
+tuning trace cannot overwrite or masquerade as the final candidate comparison.
+Tests cover both the command-line label split and rendering a separately
+labelled proposal alongside three formally labelled baseline traces.
+
 ## Remaining before a Qwen proposal screen
 
 1. Let the active formal AdamW and Muon runs complete, then launch the exact

@@ -55,6 +55,22 @@ def test_proposal_notch_is_a_valid_trial_but_not_a_baseline_render_requirement(t
     assert tied_paths.checkpoint.parent == tmp_path / ".cache" / "qwen3_0p6b" / "checkpoints"
     assert tied_arguments.optimizer == "tied_path_curvature_v1"
 
+    screen_arguments = parse_args(
+        [
+            "run",
+            "--optimizer",
+            "proposal_notch_v1",
+            "--run-label",
+            "notch_lr1e4_screen",
+            "--baseline-run-label",
+            "formal_3epoch_b8_v64_i1000",
+            "--learning-rate",
+            "1e-4",
+        ]
+    )
+    assert screen_arguments.run_label == "notch_lr1e4_screen"
+    assert screen_arguments.baseline_run_label == "formal_3epoch_b8_v64_i1000"
+
 
 def test_renderer_uses_perplexity_and_completed_optimizer_steps(tmp_path):
     from qwen3_ppl_experiment import qwen_trial_paths, render_qwen_comparison
@@ -94,6 +110,31 @@ def test_candidate_renderer_includes_the_three_matched_baselines(tmp_path):
     assert step_png.is_file()
     assert time_png.is_file()
     assert "routing_resistance_v1" in step_png.name
+
+
+def test_candidate_renderer_accepts_a_separate_formal_baseline_label(tmp_path):
+    from qwen3_ppl_experiment import qwen_trial_paths, render_qwen_candidate_comparison
+
+    for optimizer in ("adamw", "muon", "muown"):
+        paths = qwen_trial_paths(tmp_path, optimizer, "formal")
+        paths.metric.parent.mkdir(parents=True, exist_ok=True)
+        paths.metric.write_text(
+            json.dumps({"step": 7, "elapsed_seconds": 2.0, "perplexity": 2.0}) + "\n"
+        )
+    candidate_paths = qwen_trial_paths(tmp_path, "proposal_notch_v1", "notch_lr1e4_screen")
+    candidate_paths.metric.write_text(
+        json.dumps({"step": 7, "elapsed_seconds": 2.0, "perplexity": 1.9}) + "\n"
+    )
+
+    step_png, time_png = render_qwen_candidate_comparison(
+        tmp_path,
+        run_label="notch_lr1e4_screen",
+        candidate="proposal_notch_v1",
+        baseline_run_label="formal",
+    )
+
+    assert step_png.is_file()
+    assert time_png.is_file()
 
 
 def test_proposal_admission_requires_completed_manifest_matched_formal_baselines(tmp_path):

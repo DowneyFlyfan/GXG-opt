@@ -38,6 +38,10 @@ def parse_args(arguments: list[str] | None = None) -> argparse.Namespace:
     run = commands.add_parser("run", help="run one baseline screen or formal trial")
     run.add_argument("--optimizer", choices=tuple(TRIAL_DISPLAY_NAMES), required=True)
     run.add_argument("--run-label", required=True)
+    run.add_argument(
+        "--baseline-run-label",
+        help="completed formal baseline label required for a proposal trial",
+    )
     run.add_argument("--learning-rate", type=float)
     run.add_argument("--direction-lr", type=float)
     run.add_argument("--gain-lr", type=float)
@@ -66,6 +70,10 @@ def parse_args(arguments: list[str] | None = None) -> argparse.Namespace:
     render.add_argument("--run-label", required=True)
     candidate_render = commands.add_parser("render-candidate", help="render one proposal against matched baselines")
     candidate_render.add_argument("--run-label", required=True)
+    candidate_render.add_argument(
+        "--baseline-run-label",
+        help="formal baseline label to render with a separately labelled candidate",
+    )
     candidate_render.add_argument(
         "--candidate", choices=tuple(name for name in TRIAL_DISPLAY_NAMES if name not in BASELINE_DISPLAY_NAMES), required=True
     )
@@ -112,6 +120,7 @@ def main(arguments: list[str] | None = None) -> None:
                 root=root,
                 optimizer=parsed.optimizer,
                 run_label=parsed.run_label,
+                baseline_run_label=parsed.baseline_run_label,
                 learning_rate=parsed.learning_rate,
                 direction_lr=parsed.direction_lr,
                 gain_lr=parsed.gain_lr,
@@ -145,7 +154,10 @@ def main(arguments: list[str] | None = None) -> None:
             "outputs": [
                 str(path)
                 for path in render_qwen_candidate_comparison(
-                    root, run_label=parsed.run_label, candidate=parsed.candidate
+                    root,
+                    run_label=parsed.run_label,
+                    candidate=parsed.candidate,
+                    baseline_run_label=parsed.baseline_run_label,
                 )
             ]
         }

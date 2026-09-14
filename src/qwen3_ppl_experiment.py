@@ -39,6 +39,7 @@ class QwenTrialConfig:
     root: Path
     optimizer: str
     run_label: str
+    baseline_run_label: str | None = None
     learning_rate: float | None = None
     direction_lr: float | None = None
     gain_lr: float | None = None
@@ -160,13 +161,14 @@ def render_qwen_comparison(root: Path, *, run_label: str) -> tuple[Path, Path]:
 
 
 def render_qwen_candidate_comparison(
-    root: Path, *, run_label: str, candidate: str
+    root: Path, *, run_label: str, candidate: str, baseline_run_label: str | None = None
 ) -> tuple[Path, Path]:
     """Render one proposal against the three required matched baselines."""
     if candidate not in TRIAL_DISPLAY_NAMES or candidate in BASELINE_DISPLAY_NAMES:
         raise ValueError("candidate renderer requires a non-baseline Qwen trial optimizer")
+    baseline_label = baseline_run_label or run_label
     traces = {
-        BASELINE_DISPLAY_NAMES[optimizer]: _metric_records(qwen_trial_paths(root, optimizer, run_label).metric)
+        BASELINE_DISPLAY_NAMES[optimizer]: _metric_records(qwen_trial_paths(root, optimizer, baseline_label).metric)
         for optimizer in BASELINE_DISPLAY_NAMES
     }
     traces[TRIAL_DISPLAY_NAMES[candidate]] = _metric_records(qwen_trial_paths(root, candidate, run_label).metric)
@@ -417,7 +419,7 @@ def run_qwen_trial(config: QwenTrialConfig) -> dict:
     if config.optimizer not in BASELINE_DISPLAY_NAMES:
         _require_completed_qwen_baselines(
             config.root,
-            run_label=config.run_label,
+            run_label=config.baseline_run_label or config.run_label,
             manifest_digest=manifest_digest,
             expected_epochs=config.maximum_epochs,
         )
