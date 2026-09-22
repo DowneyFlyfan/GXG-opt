@@ -14,6 +14,31 @@ from qwen3_tied import QwenTiedPathOptimizer
 
 
 QWEN3_MODEL_ID = "Qwen/Qwen3-0.6B"
+
+
+def qwen_chunked_loss(model: nn.Module, input_ids: torch.Tensor, labels: torch.Tensor,
+                      *, chunk_size: int = 128) -> torch.Tensor:
+    """Exact token-mean loss with checkpointed vocabulary projections.
+
+    Input/labels: (batch, sequence); hidden: (batch * sequence, width).
+    Only (chunk_size, vocabulary) logits are materialized per recomputation.
+    """
+    from torch.utils.checkpoint import checkpoint
+    hidden = model.model(input_ids=input_ids, use_cache=False).last_hidden_state
+    hidden = hidden.reshape(-1, hidden.shape[-1])
+    targets = labels.reshape(-1)
+
+    def loss_part(features, target):
+        return torch.nn.functional.cross_entropy(model.lm_head(features).float(), target, reduction="sum")
+
+    loss = hidden.new_zeros((), dtype=torch.float32)
+    for start in range(0, targets.numel(), chunk_size):
+        features, target = hidden[start:start + chunk_size], targets[start:start + chunk_size]
+        loss = loss + (checkpoint(loss_part, features, target, use_reentrant=False)
+                       if torch.is_grad_enabled() else loss_part(features, target))
+    return loss / targets.numel()
+
+
 _MATRIX_SUFFIXES = (
     "self_attn.q_proj.weight",
     "self_attn.k_proj.weight",
@@ -29,15 +54,24 @@ def qwen_checkpoint_path(root: Path) -> Path:
     return root / ".cache" / "huggingface" / "models" / "Qwen3-0.6B"
 
 
-def load_qwen3_model(root: Path) -> nn.Module:
+def load_qwen3_model(root: Path, *, initialization: str = "pretrained") -> nn.Module:
     """Load the requested Qwen model only from the project cache."""
-    from transformers import AutoModelForCausalLM
+    from transformers import AutoConfig, AutoModelForCausalLM
 
     checkpoint = qwen_checkpoint_path(root)
     if not checkpoint.is_dir():
         raise FileNotFoundError(
             f"missing {QWEN3_MODEL_ID} below {checkpoint}; download it into the project cache first"
         )
+    if initialization == "scratch":
+        config = AutoConfig.from_pretrained(checkpoint, local_files_only=True)
+        config.use_cache = False
+        # Float32 master parameters preserve small updates; forwards use autocast.
+        model = AutoModelForCausalLM.from_config(config, torch_dtype=torch.float32)
+        model._qwen_chunked_loss = True
+        return model
+    if initialization != "pretrained":
+        raise ValueError(f"unknown Qwen initialization: {initialization}")
     return AutoModelForCausalLM.from_pretrained(
         checkpoint,
         local_files_only=True,

@@ -1,0 +1,2 @@
+{"epoch": 0, "step": 0, "elapsed_seconds": 1.2322523460024968, "perplexity": 182914.62582854228, "token_exposure": 0, "initialization": "scratch", "initial_model_sha256": "23fdeb32ff39547b21b0330aed45e4deeeb7673925d6af2f08babaecdc89f1d6", "data_manifest_sha256": "97a4ad1da6bbc128a2161a276c2d093821783133e50b27587fa20c9dd45f672c"}
+{"data_manifest_sha256": "97a4ad1da6bbc128a2161a276c2d093821783133e50b27587fa20c9dd45f672c", "elapsed_seconds": 8.431339514965657, "epoch": 1, "peak_memory_mib": 11441.2666015625, "perplexity": 162949.664092414, "step": 2, "token_exposure": 32768}

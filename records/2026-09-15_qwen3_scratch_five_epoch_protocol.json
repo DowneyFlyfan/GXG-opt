@@ -1,0 +1,67 @@
+{
+  "status": "superseded_by_user_effective_batch_64",
+  "run_label": "scratch_2b_5ep_tuned_v1_mb12a4",
+  "data_manifest_sha256": "ced8d55d8e0849b22e5c6678194d0ca31fe42998b0760fea8c6d99ab00090649",
+  "initial_model_sha256": "23fdeb32ff39547b21b0330aed45e4deeeb7673925d6af2f08babaecdc89f1d6",
+  "common_run_arguments": [
+    "--initialization",
+    "scratch",
+    "--run-label",
+    "scratch_2b_5ep_tuned_v1_mb12a4",
+    "--data-directory",
+    "/home/yufan/New_Optimizer/.cache/Fineweb_Edu_2B",
+    "--micro-batch-size",
+    "12",
+    "--gradient-accumulation",
+    "4",
+    "--maximum-epochs",
+    "5",
+    "--validation-batches",
+    "8",
+    "--evaluation-interval-updates",
+    "500",
+    "--warmup-updates",
+    "100",
+    "--schedule-updates",
+    "101725",
+    "--minimum-lr-ratio",
+    "0.1",
+    "--gradient-clip",
+    "1",
+    "--weight-decay",
+    "0.1",
+    "--seed",
+    "1337"
+  ],
+  "expected_updates_per_epoch": 20345,
+  "expected_total_updates": 101725,
+  "expected_training_token_exposure": 9999974400,
+  "selected_rate_arguments": {
+    "adamw": null,
+    "muon": [
+      "--learning-rate",
+      "0.003",
+      "--auxiliary-lr",
+      "0.003"
+    ],
+    "muown": null
+  },
+  "selection_requirement": "Use completed longer within-optimizer comparisons; preserve all trial traces and describe uncertainty. No global optimality claim.",
+  "launch_requirement": "Verify device ownership and free memory before starting each formal run. Use the training CLI directly, not the tuning dispatcher that deletes successful checkpoints. Start from scratch, not from a tuning checkpoint.",
+  "retention": "Keep final checkpoints and full traces. Run full-heldout checkpoint evaluation and create matched perplexity-versus-steps and perplexity-versus-time PNGs after all three formal runs.",
+  "schedule_rationale": "Keep tested 100-update warmup; replace the 2000-update tuning decay horizon with the full 101725-update horizon. Full-run behavior remains to be measured.",
+  "formal_runs": {
+    "muon": {
+      "status": "stopped_for_batch64_requirement",
+      "pid": 520877,
+      "gpu_index": 0
+    },
+    "adamw": {
+      "status": "tuning"
+    },
+    "muown": {
+      "status": "tuning"
+    }
+  },
+  "superseded_by": "records/2026-09-15_qwen3_batch64_transition.md"
+}

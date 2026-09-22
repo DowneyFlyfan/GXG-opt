@@ -1,0 +1,26 @@
+{
+  "status": "stopped_without_valid_trials",
+  "campaign": "matrix_tune16m_v1",
+  "attempted_at": "2026-09-15",
+  "requested_device": "CUDA_VISIBLE_DEVICES=1",
+  "requested_optimizers": ["muon", "muown"],
+  "protocol": {
+    "updates_per_candidate": 300,
+    "micro_batch_size": 8,
+    "gradient_accumulation": 8,
+    "effective_batch_size": 64,
+    "train_tokens_per_epoch": 16000000,
+    "schedule_updates": 610
+  },
+  "attempted_muon_candidates": [
+    "lr0.003_aux0.001",
+    "lr0.003_aux0.003"
+  ],
+  "failure": {
+    "error": "CUDA-capable device(s) is/are busy or unavailable",
+    "cause_verified": "GPU 1 was in Exclusive_Process mode and held by external PID 1658497 (kylehu).",
+    "result": "Neither Muon candidate initialized, so neither contributes to parameter selection."
+  },
+  "cleanup": "Terminated only dispatcher PID 1659867 and its child processes. External PID 1658497 was preserved.",
+  "next_action": "Run matrix optimizer screens after a verified one-A100 slot is free."
+}

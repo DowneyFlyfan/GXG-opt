@@ -1,0 +1,34 @@
+{
+  "status": "screening_in_progress",
+  "optimizer": "muown",
+  "protocol": {
+    "initialization": "scratch",
+    "updates": 300,
+    "micro_batch_size": 8,
+    "gradient_accumulation": 8,
+    "effective_batch_size": 64,
+    "requested_tokens_per_epoch": 16000000
+  },
+  "completed_candidates": [
+    {
+      "auxiliary_lr": 0.001,
+      "heldout_perplexity": 89.15093703762078,
+      "elapsed_seconds": 2959.8925245609134
+    },
+    {
+      "auxiliary_lr": 0.003,
+      "heldout_perplexity": 85.73000741230604,
+      "elapsed_seconds": 2955.9682879559696
+    }
+  ],
+  "provisional_winner": {
+    "auxiliary_lr": 0.003,
+    "heldout_perplexity": 85.73000741230604,
+    "five_epoch_linear_projection_seconds": 6010.468852177138
+  },
+  "remaining_candidate": {
+    "auxiliary_lr": 0.01,
+    "status": "running"
+  },
+  "within_two_hour_limit": true
+}

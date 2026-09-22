@@ -1,0 +1,27 @@
+{
+  "campaign": "adamw_tune16m_v1",
+  "run_label": "scratch_16mep_adamw_tune16m_v1_s300_mb8a8_lr0.001",
+  "status": "completed_candidate_not_selected",
+  "initialization": "scratch",
+  "optimizer": "AdamW",
+  "learning_rate": 0.001,
+  "effective_batch_size": 64,
+  "requested_tokens_per_epoch": 16000000,
+  "schedule_updates": 610,
+  "completed_updates": 300,
+  "completed_epochs": 2,
+  "token_exposure": 39321600,
+  "elapsed_seconds": 3041.0761556010693,
+  "peak_memory_mib": 47053.9091796875,
+  "heldout_perplexity_by_step": {
+    "0": 183646.3682184198,
+    "100": 789.3829899234863,
+    "200": 360.01201504970624,
+    "300": 213.8029605559181
+  },
+  "conclusion": "Perplexity decreased at every observed checkpoint. This is a valid completed candidate, but rate selection remains pending the 0.003 and 0.006 candidates.",
+  "provenance": {
+    "initial_model_sha256": "23fdeb32ff39547b21b0330aed45e4deeeb7673925d6af2f08babaecdc89f1d6",
+    "data_manifest_sha256": "ced8d55d8e0849b22e5c6678194d0ca31fe42998b0760fea8c6d99ab00090649"
+  }
+}

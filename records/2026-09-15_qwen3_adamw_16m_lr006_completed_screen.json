@@ -1,0 +1,21 @@
+{
+  "status": "completed_screen",
+  "candidate": {
+    "optimizer": "adamw",
+    "learning_rate": 0.006
+  },
+  "candidate_result": {
+    "final_perplexity": 266.511223381902,
+    "elapsed_seconds": 3041.518859591335,
+    "completed_updates": 300,
+    "initialization": "scratch"
+  },
+  "matched_final_perplexity": {
+    "0.001": 213.8029605559181,
+    "0.003": 215.33022774046407,
+    "0.006": 266.511223381902
+  },
+  "selected_rate": 0.001,
+  "selection_rule": "minimum completed 300-update held-out perplexity",
+  "conclusion": "AdamW 0.001 is selected for the five-epoch final run."
+}

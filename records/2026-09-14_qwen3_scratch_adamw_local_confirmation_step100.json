@@ -1,0 +1,31 @@
+{
+  "status": "longer_tuning_in_progress",
+  "hardware": "NVIDIA GeForce RTX 5070 Ti",
+  "micro_batch_size": 8,
+  "gradient_accumulation": 6,
+  "activation_checkpointing": true,
+  "initial_model_sha256": "23fdeb32ff39547b21b0330aed45e4deeeb7673925d6af2f08babaecdc89f1d6",
+  "metric": {
+    "data_manifest_sha256": "ced8d55d8e0849b22e5c6678194d0ca31fe42998b0760fea8c6d99ab00090649",
+    "elapsed_seconds": 2177.908414253965,
+    "epoch": 1,
+    "last_microbatch_loss": 6.788110733032227,
+    "learning_rate_scale": 1.0,
+    "peak_memory_mib": 13271.767578125,
+    "perplexity": 851.9673653720714,
+    "step": 100,
+    "token_exposure": 9830400
+  },
+  "a100_reference_step100": {
+    "data_manifest_sha256": "ced8d55d8e0849b22e5c6678194d0ca31fe42998b0760fea8c6d99ab00090649",
+    "elapsed_seconds": 727.0881635863334,
+    "epoch": 1,
+    "last_microbatch_loss": 6.690559387207031,
+    "learning_rate_scale": 1.0,
+    "peak_memory_mib": 65175.2841796875,
+    "perplexity": 831.1093649161544,
+    "step": 100,
+    "token_exposure": 9830400
+  },
+  "comparison_limit": "Different hardware, micro-batches, and activation checkpointing; select rates within the local confirmation cohort, not by pooled elapsed time."
+}

@@ -1,0 +1,15 @@
+{
+  "status": "five_epoch_training_in_progress",
+  "initial_model_sha256": "23fdeb32ff39547b21b0330aed45e4deeeb7673925d6af2f08babaecdc89f1d6",
+  "metric": {
+    "data_manifest_sha256": "ced8d55d8e0849b22e5c6678194d0ca31fe42998b0760fea8c6d99ab00090649",
+    "elapsed_seconds": 3669.5961545389146,
+    "epoch": 1,
+    "last_microbatch_loss": 4.094318866729736,
+    "learning_rate_scale": 0.999965597057057,
+    "peak_memory_mib": 63615.9716796875,
+    "perplexity": 64.2761839302308,
+    "step": 500,
+    "token_exposure": 49152000
+  }
+}

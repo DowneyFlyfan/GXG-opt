@@ -1,0 +1,43 @@
+{
+  "captured_at": "2026-09-14T23:43:57.034888+00:00",
+  "python": "3.12.3",
+  "packages": {
+    "torch": "2.6.0+cu124",
+    "transformers": "5.16.1",
+    "numpy": "2.5.2",
+    "safetensors": "0.8.0"
+  },
+  "source_sha256": {
+    "src/qwen3_model.py": "7be3e2fed46d1c22036a960a1f35e88f96cdf7928e3c91cf6b73f1aae2ea692b",
+    "src/qwen3_data.py": "6fb0d49f4eea19cbbad5025a1219cffb28dd67e56c2c1b72a230f3e0798b221a",
+    "src/qwen3_ppl_experiment.py": "1ad1f010fb7d2b82c744461b4b66abbdfe1b0143b3295ed3386617d26da7acbc",
+    "src/run_qwen3_ppl.py": "e6218417a9f9bb41d34a70e357cf8573b1531d058bc65f7188088b3559b45ead",
+    "src/optimizers.py": "ad0b62e7d9f32c0bf87eeb95e69cf27b3f394bfdd515a35567a218c0b65ec696",
+    "scripts/run_qwen3_scratch_screen.py": "86957c7f3bff0123b979c335b0b0922f24009adeedfb37f80f12d9de83b3f0f1",
+    ".cache/huggingface/models/Qwen3-0.6B/config.json": "660db3b73d788119c04535e48cf9be5f55bc3100841a718637ae695b442f27dd"
+  },
+  "gpu": [
+    "NVIDIA A100 80GB PCIe, 560.35.03, 81920 MiB",
+    "NVIDIA A100 80GB PCIe, 560.35.03, 81920 MiB"
+  ],
+  "screen_protocol": {
+    "initialization": "scratch",
+    "seed": 1337,
+    "train_tokens": 2000000000,
+    "effective_batch": 48,
+    "sequence_length": 2048,
+    "validation_tokens": 196608,
+    "updates": 300,
+    "warmup_updates": 100,
+    "schedule_updates": 2000,
+    "gradient_clip": 1.0,
+    "weight_decay": 0.1
+  },
+  "local_data_copy_verified": {
+    "train_tokens": 2000000000,
+    "validation_tokens": 100000000,
+    "directory": "/home/downeyflyfan/Research_Projects/AI/Optimizers/New_Optimizer/.cache/Fineweb_Edu_2B",
+    "train_sha256": "8d019ccb133a030652f7bea00b4205d28ce8f7d5fe7a04be67dab0840505a866",
+    "validation_sha256": "2971d4b2c7418e841516f8ddca6cc42f0d858294772b488533f1ede7875dc917"
+  }
+}

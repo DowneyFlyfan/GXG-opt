@@ -1,0 +1,16 @@
+{
+  "status": "longer_tuning_in_progress",
+  "initial_model_sha256": "23fdeb32ff39547b21b0330aed45e4deeeb7673925d6af2f08babaecdc89f1d6",
+  "metric": {
+    "data_manifest_sha256": "ced8d55d8e0849b22e5c6678194d0ca31fe42998b0760fea8c6d99ab00090649",
+    "elapsed_seconds": 15276.099090120988,
+    "epoch": 1,
+    "last_microbatch_loss": 4.143866539001465,
+    "learning_rate_scale": 0.7961266711550922,
+    "peak_memory_mib": 13271.767578125,
+    "perplexity": 80.35127909661215,
+    "step": 700,
+    "token_exposure": 68812800
+  },
+  "comparison_limit": "Local hardware, microbatch 8 with accumulation 6 and activation checkpointing. Compare rates within this cohort; do not combine elapsed time with A100 results."
+}

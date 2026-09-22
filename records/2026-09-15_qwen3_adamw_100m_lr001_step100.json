@@ -1,0 +1,19 @@
+{
+  "status": "tuning_in_progress",
+  "optimizer": "adamw",
+  "run_label": "scratch_100mep_adamw_tune100m_v1_s762_mb8a8_lr0.001",
+  "effective_batch_size": 64,
+  "requested_tokens_per_epoch": 100000000,
+  "initial_model_sha256": "23fdeb32ff39547b21b0330aed45e4deeeb7673925d6af2f08babaecdc89f1d6",
+  "metric": {
+    "data_manifest_sha256": "ced8d55d8e0849b22e5c6678194d0ca31fe42998b0760fea8c6d99ab00090649",
+    "elapsed_seconds": 978.3089818991721,
+    "epoch": 1,
+    "last_microbatch_loss": 6.645265102386475,
+    "learning_rate_scale": 1.0,
+    "peak_memory_mib": 47053.9091796875,
+    "perplexity": 795.7033797885914,
+    "step": 100,
+    "token_exposure": 13107200
+  }
+}

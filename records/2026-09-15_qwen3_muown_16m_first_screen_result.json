@@ -1,0 +1,16 @@
+{
+  "status": "completed_screen_candidate",
+  "optimizer": "muown",
+  "initialization": "scratch",
+  "run_label": "scratch_16mep_matrix_tune16m_v3_s300_mb8a8_lr0.01_gain0.0003_aux0.001",
+  "updates": 300,
+  "micro_batch_size": 8,
+  "gradient_accumulation": 8,
+  "effective_batch_size": 64,
+  "requested_tokens_per_epoch": 16000000,
+  "heldout_perplexity": 89.15093703762078,
+  "elapsed_seconds": 2959.8925245609134,
+  "five_epoch_linear_projection_seconds": 6018.448133273858,
+  "within_two_hour_limit": true,
+  "selection_status": "provisional; auxiliary learning-rate candidates 0.003 and 0.01 remain queued"
+}

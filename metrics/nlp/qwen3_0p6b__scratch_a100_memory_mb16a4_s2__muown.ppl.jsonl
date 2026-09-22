@@ -1,0 +1,1 @@
+{"epoch": 0, "step": 0, "elapsed_seconds": 3.1898888666182756, "perplexity": 183705.6768802888, "token_exposure": 0, "initialization": "scratch", "initial_model_sha256": "23fdeb32ff39547b21b0330aed45e4deeeb7673925d6af2f08babaecdc89f1d6", "data_manifest_sha256": "ced8d55d8e0849b22e5c6678194d0ca31fe42998b0760fea8c6d99ab00090649"}

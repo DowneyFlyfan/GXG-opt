@@ -1,0 +1,27 @@
+{
+  "date": "2026-09-15",
+  "event": "formal_scheduler_gate_repair",
+  "cause": "remote wrapper inferred optimizer from a label that did not include the optimizer name, so it waited for Muown results with Muon suffixes",
+  "repair": "synchronized the explicit optimizer:label mapping, shell-validated it, terminated only the confirmed waiting wrapper PID 1940748, and restarted it",
+  "verification": {
+    "old_wrapper_exited": true,
+    "new_formal_scheduler_pid": 2320174,
+    "formal_adamw_worker_pid": 2320210,
+    "formal_command": {
+      "initialization": "scratch",
+      "optimizer": "adamw",
+      "maximum_epochs": 5,
+      "maximum_updates": 610,
+      "micro_batch_size": 8,
+      "gradient_accumulation": 8,
+      "train_tokens_per_epoch": 16000000,
+      "learning_rate": 0.001
+    }
+  },
+  "muown_screen_selection": {
+    "auxiliary_lr_0.001": 89.15093703762078,
+    "auxiliary_lr_0.003": 85.73000741230604,
+    "auxiliary_lr_0.01": 89.51044487006918,
+    "winner_auxiliary_lr": 0.003
+  }
+}

@@ -145,7 +145,7 @@ def test_proposal_admission_requires_completed_manifest_matched_formal_baselines
             tmp_path,
             run_label="formal",
             manifest_digest="manifest-a",
-            expected_epochs=3,
+            expected_epochs=5,
         )
 
     for optimizer in ("adamw", "muon", "muown"):
@@ -156,7 +156,7 @@ def test_proposal_admission_requires_completed_manifest_matched_formal_baselines
                 {
                     "optimizer": optimizer,
                     "run_label": "formal",
-                    "completed_epochs": 3,
+                    "completed_epochs": 5,
                     "completed_updates": 9,
                     "final_perplexity": 2.0,
                     "data_manifest_sha256": "manifest-a",
@@ -168,7 +168,7 @@ def test_proposal_admission_requires_completed_manifest_matched_formal_baselines
         tmp_path,
         run_label="formal",
         manifest_digest="manifest-a",
-        expected_epochs=3,
+        expected_epochs=5,
     )
 
 
@@ -193,7 +193,7 @@ def test_proposal_trial_uses_a_separate_completed_baseline_label(tmp_path, monke
                 {
                     "optimizer": optimizer,
                     "run_label": "formal",
-                    "completed_epochs": 3,
+                    "completed_epochs": 5,
                     "completed_updates": 1,
                     "final_perplexity": 2.0,
                     "data_manifest_sha256": manifest_digest,
@@ -266,6 +266,38 @@ def test_trial_writes_a_checkpoint_bound_to_the_cache_manifest(tmp_path, monkeyp
     assert result["completed_updates"] == 1
     assert checkpoint["data_manifest_sha256"] == result["data_manifest_sha256"]
     assert result["peak_memory_mib"] is None
+
+
+def test_trial_uses_the_configured_training_token_budget_for_each_epoch(tmp_path, monkeypatch):
+    from qwen3_data import prepare_qwen_fineweb_cache
+    from qwen3_ppl_experiment import QwenTrialConfig, run_qwen_trial
+
+    prepare_qwen_fineweb_cache(
+        tmp_path,
+        train_tokens=17,
+        validation_tokens=9,
+        sequence_length=4,
+        eos_token_id=31,
+        source=[("train", "a", list(range(17))), ("validation", "b", list(range(9)))],
+    )
+    monkeypatch.setattr("qwen3_ppl_experiment.load_qwen3_model", lambda _, **__: _TinyCausalLM())
+
+    result = run_qwen_trial(
+        QwenTrialConfig(
+            root=tmp_path,
+            optimizer="adamw",
+            run_label="token_budget",
+            learning_rate=0.001,
+            micro_batch_size=1,
+            gradient_accumulation=1,
+            maximum_epochs=1,
+            validation_batches=1,
+            train_tokens_per_epoch=9,
+            device="cpu",
+        )
+    )
+
+    assert result["completed_updates"] == 2
 
 
 def test_opt_in_activation_checkpointing_is_enabled_before_optimizer_build(tmp_path, monkeypatch):
@@ -422,6 +454,50 @@ def test_trial_checkpoints_every_evaluation_interval(tmp_path, monkeypatch):
     )
 
     assert calls == [1, 2]
+
+
+def test_trial_can_keep_every_curve_point_but_checkpoint_only_at_completion(tmp_path, monkeypatch):
+    from qwen3_data import prepare_qwen_fineweb_cache
+    from qwen3_ppl_experiment import QwenTrialConfig, qwen_trial_paths, run_qwen_trial
+
+    prepare_qwen_fineweb_cache(
+        tmp_path,
+        train_tokens=17,
+        validation_tokens=9,
+        sequence_length=4,
+        eos_token_id=31,
+        source=[("train", "a", list(range(17))), ("validation", "b", list(range(9)))],
+    )
+    calls: list[int] = []
+    monkeypatch.setattr("qwen3_ppl_experiment.load_qwen3_model", lambda _: _TinyCausalLM())
+    monkeypatch.setattr(
+        "qwen3_ppl_experiment._write_qwen_checkpoint",
+        lambda **payload: calls.append(payload["completed_updates"]),
+    )
+
+    run_qwen_trial(
+        QwenTrialConfig(
+            root=tmp_path,
+            optimizer="adamw",
+            run_label="final-only-checkpoint",
+            learning_rate=0.001,
+            micro_batch_size=1,
+            maximum_updates=2,
+            validation_batches=1,
+            evaluation_interval_updates=1,
+            checkpoint_interval_updates=3,
+            device="cpu",
+        )
+    )
+
+    records = [
+        json.loads(line)
+        for line in qwen_trial_paths(
+            tmp_path, "adamw", "final-only-checkpoint"
+        ).metric.read_text().splitlines()
+    ]
+    assert [record["step"] for record in records] == [1, 2]
+    assert calls == [2]
 
 
 def test_trial_resumes_from_periodic_checkpoint_without_duplicate_metric_steps(tmp_path, monkeypatch):
@@ -634,3 +710,10 @@ def test_cli_parses_a_full_checkpoint_evaluation_request():
     assert arguments.command == "evaluate-checkpoint"
     assert arguments.optimizer == "muon"
     assert arguments.device == "cpu"
+
+
+def test_scratch_schedule_warms_up_and_decays_all_independent_rates():
+    from qwen3_ppl_experiment import qwen_learning_rate_scale
+    assert qwen_learning_rate_scale(1, warmup=10, total=100, minimum=0.1) == 0.1
+    assert qwen_learning_rate_scale(10, warmup=10, total=100, minimum=0.1) == 1.0
+    assert abs(qwen_learning_rate_scale(100, warmup=10, total=100, minimum=0.1) - 0.1) < 1e-8

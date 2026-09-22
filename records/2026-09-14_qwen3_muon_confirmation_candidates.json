@@ -1,0 +1,22 @@
+[
+  [
+    "muon",
+    "lr0.003_aux0.001",
+    [
+      "--learning-rate",
+      "0.003",
+      "--auxiliary-lr",
+      "0.001"
+    ]
+  ],
+  [
+    "muon",
+    "lr0.003_aux0.003",
+    [
+      "--learning-rate",
+      "0.003",
+      "--auxiliary-lr",
+      "0.003"
+    ]
+  ]
+]

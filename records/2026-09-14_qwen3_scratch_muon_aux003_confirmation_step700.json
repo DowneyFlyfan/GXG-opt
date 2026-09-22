@@ -1,0 +1,15 @@
+{
+  "status": "longer_tuning_in_progress",
+  "initial_model_sha256": "23fdeb32ff39547b21b0330aed45e4deeeb7673925d6af2f08babaecdc89f1d6",
+  "metric": {
+    "data_manifest_sha256": "ced8d55d8e0849b22e5c6678194d0ca31fe42998b0760fea8c6d99ab00090649",
+    "elapsed_seconds": 5326.861089399084,
+    "epoch": 1,
+    "last_microbatch_loss": 3.8846395015716553,
+    "learning_rate_scale": 0.7961266711550922,
+    "peak_memory_mib": 63615.9716796875,
+    "perplexity": 51.51095557492074,
+    "step": 700,
+    "token_exposure": 68812800
+  }
+}

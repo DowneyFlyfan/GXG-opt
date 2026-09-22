@@ -1,0 +1,37 @@
+{
+  "status": "repeat_variation_observed",
+  "comparison": [
+    {
+      "campaign": "muon_refine",
+      "initial_model_sha256": "23fdeb32ff39547b21b0330aed45e4deeeb7673925d6af2f08babaecdc89f1d6",
+      "data_manifest_sha256": "ced8d55d8e0849b22e5c6678194d0ca31fe42998b0760fea8c6d99ab00090649",
+      "elapsed_seconds": 741.164647359401,
+      "epoch": 1,
+      "last_microbatch_loss": 6.311304092407227,
+      "learning_rate_scale": 1.0,
+      "peak_memory_mib": 63615.9716796875,
+      "perplexity": 559.2786998018397,
+      "step": 100,
+      "token_exposure": 9830400
+    },
+    {
+      "campaign": "muon_confirm",
+      "initial_model_sha256": "23fdeb32ff39547b21b0330aed45e4deeeb7673925d6af2f08babaecdc89f1d6",
+      "data_manifest_sha256": "ced8d55d8e0849b22e5c6678194d0ca31fe42998b0760fea8c6d99ab00090649",
+      "elapsed_seconds": 739.8457227349281,
+      "epoch": 1,
+      "last_microbatch_loss": 6.2953081130981445,
+      "learning_rate_scale": 1.0,
+      "peak_memory_mib": 63615.9716796875,
+      "perplexity": 539.4957731979822,
+      "step": 100,
+      "token_exposure": 9830400
+    }
+  ],
+  "verified_config_differences": [
+    "maximum_updates: 300 versus 1000",
+    "run_label"
+  ],
+  "core_source_model_config_and_package_versions_match_original_record": true,
+  "cause": "not isolated; do not claim deterministic replay or rank close settings from a single early point"
+}

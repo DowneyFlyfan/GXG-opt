@@ -127,3 +127,46 @@ def test_feature_remap_uses_the_muon_matrix_and_adamw_auxiliary_split():
 
     assert isinstance(optimizers["feature_remap_cohort_v1"], QwenFeatureCohortOptimizer)
     assert optimizers["adamw_aux"].param_groups[0]["lr"] == 0.0003
+
+
+def test_scratch_loading_never_reads_pretrained_weights(tmp_path, monkeypatch):
+    from transformers import AutoModelForCausalLM, Qwen3Config
+    from qwen3_model import load_qwen3_model, qwen_checkpoint_path
+
+    config = Qwen3Config(vocab_size=32, hidden_size=16, intermediate_size=32,
+                         num_hidden_layers=3, num_attention_heads=2,
+                         num_key_value_heads=1, head_dim=8, tie_word_embeddings=True)
+    config.save_pretrained(qwen_checkpoint_path(tmp_path))
+    def forbidden(*args, **kwargs):
+        raise AssertionError('scratch initialization attempted to load pretrained weights')
+    monkeypatch.setattr(AutoModelForCausalLM, 'from_pretrained', forbidden)
+    torch.manual_seed(1337)
+    first = load_qwen3_model(tmp_path, initialization='scratch')
+    torch.manual_seed(1337)
+    second = load_qwen3_model(tmp_path, initialization='scratch')
+    assert first.model.embed_tokens.weight is first.lm_head.weight
+    assert first.model.embed_tokens.weight.dtype == torch.float32
+    assert torch.equal(first.model.embed_tokens.weight, second.model.embed_tokens.weight)
+    torch.manual_seed(1338)
+    third = load_qwen3_model(tmp_path, initialization='scratch')
+    assert not torch.equal(first.model.embed_tokens.weight, third.model.embed_tokens.weight)
+
+
+def test_chunked_loss_matches_dense_loss_and_gradients():
+    from transformers import Qwen3Config, Qwen3ForCausalLM
+    from qwen3_model import qwen_chunked_loss
+    config = Qwen3Config(vocab_size=32, hidden_size=16, intermediate_size=32,
+                         num_hidden_layers=3, num_attention_heads=2,
+                         num_key_value_heads=1, head_dim=8, tie_word_embeddings=True)
+    model = Qwen3ForCausalLM(config)
+    inputs = torch.tensor([[1, 2, 3, 4, 5]])
+    labels = torch.tensor([[2, 3, 4, 5, 6]])
+    dense = torch.nn.functional.cross_entropy(model(inputs).logits.reshape(-1, 32), labels.reshape(-1))
+    dense.backward()
+    expected = {name: p.grad.clone() for name, p in model.named_parameters()}
+    model.zero_grad(set_to_none=True)
+    chunked = qwen_chunked_loss(model, inputs, labels, chunk_size=2)
+    chunked.backward()
+    torch.testing.assert_close(chunked, dense)
+    for name, p in model.named_parameters():
+        torch.testing.assert_close(p.grad, expected[name], atol=2e-6, rtol=2e-5)

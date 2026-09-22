@@ -1,0 +1,25 @@
+{
+  "status": "running_initialization_verified",
+  "dispatcher_pid": 1576413,
+  "worker_pid": 1576415,
+  "gpu": 0,
+  "optimizer": "adamw",
+  "campaign": "adamw_tune16m_v1",
+  "candidates": "records/2026-09-15_qwen3_adamw_16m_epoch_candidates.json",
+  "effective_batch_size": 64,
+  "requested_tokens_per_epoch": 16000000,
+  "updates_per_candidate": 300,
+  "schedule_updates": 610,
+  "validation_batches": 12,
+  "device_note": "GPU 0 had 81,916 MiB free before launch. GPU 1 remained assigned to an active external Chemprop process and was not touched.",
+  "initial_metric": {
+    "epoch": 0,
+    "step": 0,
+    "elapsed_seconds": 4.4391312170773745,
+    "perplexity": 183646.3682184198,
+    "token_exposure": 0,
+    "initialization": "scratch",
+    "initial_model_sha256": "23fdeb32ff39547b21b0330aed45e4deeeb7673925d6af2f08babaecdc89f1d6",
+    "data_manifest_sha256": "ced8d55d8e0849b22e5c6678194d0ca31fe42998b0760fea8c6d99ab00090649"
+  }
+}

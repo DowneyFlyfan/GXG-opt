@@ -1,0 +1,24 @@
+{
+  "status": "screening_in_progress",
+  "candidate": {
+    "optimizer": "adamw",
+    "learning_rate": 0.006
+  },
+  "step_100": {
+    "data_manifest_sha256": "ced8d55d8e0849b22e5c6678194d0ca31fe42998b0760fea8c6d99ab00090649",
+    "elapsed_seconds": 979.5136478915811,
+    "epoch": 1,
+    "last_microbatch_loss": 6.658254146575928,
+    "learning_rate_scale": 1.0,
+    "peak_memory_mib": 47053.9091796875,
+    "perplexity": 959.2010979649466,
+    "step": 100,
+    "token_exposure": 13107200
+  },
+  "matched_step_100_perplexity": {
+    "0.001": 789.3829899234863,
+    "0.003": 780.0697173962033,
+    "0.006": 959.2010979649466
+  },
+  "conclusion": "The 0.006 candidate is improving from scratch but is not selected until all 300-update results are complete."
+}

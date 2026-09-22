@@ -1,0 +1,7 @@
+[
+  ["muon", "lr0.003_aux0.001", ["--learning-rate", "0.003", "--auxiliary-lr", "0.001"]],
+  ["muon", "lr0.003_aux0.003", ["--learning-rate", "0.003", "--auxiliary-lr", "0.003"]],
+  ["muown", "lr0.01_gain0.0003_aux0.001", ["--direction-lr", "0.01", "--gain-lr", "0.0003", "--auxiliary-lr", "0.001"]],
+  ["muown", "lr0.01_gain0.0003_aux0.003", ["--direction-lr", "0.01", "--gain-lr", "0.0003", "--auxiliary-lr", "0.003"]],
+  ["muown", "lr0.01_gain0.0003_aux0.01", ["--direction-lr", "0.01", "--gain-lr", "0.0003", "--auxiliary-lr", "0.01"]]
+]

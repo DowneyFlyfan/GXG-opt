@@ -1,0 +1,67 @@
+{
+  "status": "16m_epoch_tuning_in_progress",
+  "run_label": "scratch_16mep_5ep_tuned_batch64_v4_mb8a8",
+  "data_manifest_sha256": "ced8d55d8e0849b22e5c6678194d0ca31fe42998b0760fea8c6d99ab00090649",
+  "initial_model_sha256": "23fdeb32ff39547b21b0330aed45e4deeeb7673925d6af2f08babaecdc89f1d6",
+  "common_run_arguments": [
+    "--initialization",
+    "scratch",
+    "--run-label",
+    "scratch_16mep_5ep_tuned_batch64_v4_mb8a8",
+    "--data-directory",
+    "/home/yufan/New_Optimizer/.cache/Fineweb_Edu_2B",
+    "--micro-batch-size",
+    "8",
+    "--gradient-accumulation",
+    "8",
+    "--maximum-epochs",
+    "5",
+    "--train-tokens-per-epoch",
+    "16000000",
+    "--validation-batches",
+    "12",
+    "--evaluation-interval-updates",
+    "100",
+    "--checkpoint-interval-updates",
+    "610",
+    "--warmup-updates",
+    "100",
+    "--schedule-updates",
+    "610",
+    "--minimum-lr-ratio",
+    "0.1",
+    "--gradient-clip",
+    "1",
+    "--weight-decay",
+    "0.1",
+    "--seed",
+    "1337"
+  ],
+  "requested_tokens_per_epoch": 16000000,
+  "effective_training_token_exposure_per_epoch": 15990784,
+  "expected_updates_per_epoch": 122,
+  "expected_total_updates": 610,
+  "expected_training_token_exposure": 79953920,
+  "selected_rate_arguments": {
+    "adamw": null,
+    "muon": null,
+    "muown": null
+  },
+  "selection_requirement": "Use completed longer within-optimizer comparisons; preserve all trial traces and describe uncertainty. No global optimality claim.",
+  "launch_requirement": "Verify device ownership and free memory before starting each formal run. Use the training CLI directly, not the tuning dispatcher that deletes successful checkpoints. Start from scratch, not from a tuning checkpoint.",
+  "retention": "Keep final checkpoints and full traces. Run full-heldout checkpoint evaluation and create matched perplexity-versus-steps and perplexity-versus-time PNGs after all three formal runs.",
+  "schedule_rationale": "100 warmup updates; cosine decay over 610 formal updates. Each 16,000,000-token epoch has 7,812 complete 2,048-token blocks; full batch-64 updates retain 7,808 blocks, or 15,990,784 trained tokens per epoch. Metrics are still evaluated every 100 updates for required plots, while the formal run checkpoints only at the final update to avoid repeated 6.7-GiB checkpoint writes. The completed 300-update AdamW candidate took 3,041.076 seconds including three checkpoint writes; linear scaling predicts 6,183.521 seconds (1.718 h) for 610 updates, conservatively below two hours. Earlier matrix-optimizer calibrations project 1.70 h for Muon and 1.73 h for Muown; final completion must verify each actual duration.",
+  "formal_runs": {
+    "adamw": {
+      "status": "stopped_for_user_two_hour_requirement"
+    },
+    "muon": {
+      "status": "stopped_for_user_two_hour_requirement"
+    },
+    "muown": {
+      "status": "stopped_for_user_two_hour_requirement"
+    }
+  },
+  "effective_batch_size": 64,
+  "micro_batch_status": "Verified two updates for Muon and Muown at micro-batch 8, accumulation 8, without activation checkpointing; largest known safe divisor of 64 without checkpointing. Micro-batch 16 previously exceeded memory."
+}

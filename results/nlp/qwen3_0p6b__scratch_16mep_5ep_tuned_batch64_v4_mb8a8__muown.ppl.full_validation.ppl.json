@@ -1,0 +1,10 @@
+{
+  "checkpoint": "/home/yufan/New_Optimizer/.cache/qwen3_0p6b/checkpoints/qwen3_0p6b__scratch_16mep_5ep_tuned_batch64_v4_mb8a8__muown.checkpoint.pt",
+  "data_manifest_sha256": "ced8d55d8e0849b22e5c6678194d0ca31fe42998b0760fea8c6d99ab00090649",
+  "full_validation": true,
+  "optimizer": "muown",
+  "perplexity": 91.48458833339382,
+  "run_label": "scratch_16mep_5ep_tuned_batch64_v4_mb8a8",
+  "validation_batches": 6104,
+  "validation_tokens": 99999744
+}

@@ -1,0 +1,36 @@
+{
+  "run_label": "scratch_16mep_matrix_tune16m_v3_s300_mb8a8_lr0.003_aux0.001",
+  "optimizer": "muon",
+  "initialization": "scratch",
+  "observations": [
+    {
+      "step": 100,
+      "elapsed_seconds": 986.0936782676727,
+      "perplexity": 525.4959831700787,
+      "token_exposure": 13107200
+    },
+    {
+      "step": 200,
+      "elapsed_seconds": 1965.7123062405735,
+      "perplexity": 183.03923063824794,
+      "token_exposure": 26214400
+    }
+  ],
+  "trend": {
+    "perplexity_change_step_100_to_200": -342.45675253183055,
+    "perplexity_decreased": true,
+    "observed_seconds_per_update_through_step_200": 9.828561531202867
+  },
+  "formal_protocol": {
+    "epochs": 5,
+    "updates": 610,
+    "effective_batch_size": 64,
+    "tokens_per_epoch_requested": 16000000
+  },
+  "linear_time_projection": {
+    "seconds": 5995.42253403375,
+    "hours": 1.6653951483427083,
+    "under_two_hours": true
+  },
+  "conclusion": "The scratch Muon screen decreases held-out perplexity over its first 200 steps and maintains a cadence compatible with the two-hour five-epoch requirement. Final acceptance still requires an actual formal five-epoch result under two hours."
+}

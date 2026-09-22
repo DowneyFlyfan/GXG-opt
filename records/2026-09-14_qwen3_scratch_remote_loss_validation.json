@@ -1,0 +1,8 @@
+{
+  "target_runtime": "ABA",
+  "test_device": "cpu",
+  "dense_loss": 3.5177531242370605,
+  "chunked_loss": 3.5177536010742188,
+  "all_parameter_gradients_match": true,
+  "parameter_tensors_checked": 35
+}

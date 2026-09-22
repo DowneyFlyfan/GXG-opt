@@ -12,6 +12,7 @@ from typing import Iterable, Iterator, Sequence
 import numpy as np
 import torch
 from torch.utils.data import DataLoader, Dataset
+from torch.utils.data.distributed import DistributedSampler
 
 
 FINEWEB_EDU_DATASET = "HuggingFaceFW/fineweb-edu"
@@ -187,10 +188,20 @@ def qwen_block_loaders(
     micro_batch_size: int,
     workers: int,
     seed: int,
+    train_tokens_per_epoch: int | None = None,
+    world_size: int = 1,
+    rank: int = 0,
 ) -> tuple[DataLoader, DataLoader]:
     """Return deterministic train and validation loaders over fixed blocks."""
-    if micro_batch_size <= 0 or workers < 0:
-        raise ValueError("micro_batch_size must be positive and workers non-negative")
+    if micro_batch_size <= 0 or workers < 0 or world_size <= 0 or not 0 <= rank < world_size:
+        raise ValueError("invalid loader batch, worker, or distributed rank settings")
+    available_train_tokens = int(cache.manifest["written_tokens"]["train"])
+    if train_tokens_per_epoch is None:
+        train_token_count = available_train_tokens
+    else:
+        if not cache.sequence_length < train_tokens_per_epoch <= available_train_tokens:
+            raise ValueError("train_tokens_per_epoch must contain at least one full sequence and fit the cache")
+        train_token_count = train_tokens_per_epoch
     options = {
         "batch_size": micro_batch_size,
         "num_workers": workers,
@@ -198,15 +209,27 @@ def qwen_block_loaders(
         "persistent_workers": workers > 0,
     }
     train = _PackedTokenDataset(
-        cache.train_path, int(cache.manifest["written_tokens"]["train"]), cache.sequence_length
+        cache.train_path, train_token_count, cache.sequence_length
     )
     validation = _PackedTokenDataset(
         cache.validation_path,
         int(cache.manifest["written_tokens"]["validation"]),
         cache.sequence_length,
     )
+    train_sampler = (
+        DistributedSampler(train, num_replicas=world_size, rank=rank, shuffle=True, seed=seed, drop_last=True)
+        if world_size > 1
+        else None
+    )
     return (
-        DataLoader(train, shuffle=True, generator=torch.Generator().manual_seed(seed), **options),
+        DataLoader(
+            train,
+            shuffle=train_sampler is None,
+            sampler=train_sampler,
+            drop_last=train_sampler is not None,
+            generator=torch.Generator().manual_seed(seed),
+            **options,
+        ),
         DataLoader(
             validation,
             shuffle=False,
@@ -224,9 +247,12 @@ def _file_sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def load_qwen_token_cache(root: Path) -> QwenTokenCache:
+def load_qwen_token_cache(root: Path, *, directory: str | None = None) -> QwenTokenCache:
     """Load a packed cache only after verifying both files against its manifest."""
     cache_root, train_path, validation_path, manifest_path = _cache_paths(root)
+    if directory is not None:
+        cache_root = Path(directory)
+        train_path, validation_path, manifest_path = (cache_root / name for name in ("train.uint32", "validation.uint32", "manifest.json"))
     if not manifest_path.is_file():
         raise FileNotFoundError(f"missing Qwen token manifest: {manifest_path}")
     manifest = json.loads(manifest_path.read_text())

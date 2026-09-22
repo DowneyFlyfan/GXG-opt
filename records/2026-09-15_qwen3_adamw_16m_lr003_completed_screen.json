@@ -1,0 +1,32 @@
+{
+  "campaign": "adamw_tune16m_v1",
+  "run_label": "scratch_16mep_adamw_tune16m_v1_s300_mb8a8_lr0.003",
+  "status": "completed_candidate_not_selected",
+  "initialization": "scratch",
+  "optimizer": "AdamW",
+  "learning_rate": 0.003,
+  "effective_batch_size": 64,
+  "requested_tokens_per_epoch": 16000000,
+  "schedule_updates": 610,
+  "completed_updates": 300,
+  "completed_epochs": 2,
+  "token_exposure": 39321600,
+  "elapsed_seconds": 3031.3109176531434,
+  "peak_memory_mib": 47053.9091796875,
+  "heldout_perplexity_by_step": {
+    "0": 183646.3682184198,
+    "100": 780.0697173962033,
+    "200": 349.8708935608537,
+    "300": 215.33022774046407
+  },
+  "matched_completed_comparison": {
+    "adamw_lr0.001_final_perplexity": 213.8029605559181,
+    "adamw_lr0.003_final_perplexity": 215.33022774046407,
+    "difference_lr003_minus_lr001": 1.5272671845459608,
+    "interpretation": "0.003 is lower at updates 100 and 200 but 0.001 has the lower 300-update endpoint. The 0.006 candidate is still required before selecting the rate."
+  },
+  "provenance": {
+    "initial_model_sha256": "23fdeb32ff39547b21b0330aed45e4deeeb7673925d6af2f08babaecdc89f1d6",
+    "data_manifest_sha256": "ced8d55d8e0849b22e5c6678194d0ca31fe42998b0760fea8c6d99ab00090649"
+  }
+}

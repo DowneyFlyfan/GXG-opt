@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import hashlib
 import math
+import os
 import time
 from contextlib import nullcontext
 from dataclasses import asdict, dataclass
@@ -13,9 +14,12 @@ from pathlib import Path
 import matplotlib.pyplot as plot
 import torch
 import torch.nn.functional as functional
+import torch.distributed as distributed
+from torch.nn.parallel import DistributedDataParallel
+from torch.utils.data.distributed import DistributedSampler
 
 from qwen3_data import load_qwen_token_cache, qwen_block_loaders
-from qwen3_model import build_qwen_optimizers, load_qwen3_model
+from qwen3_model import build_qwen_optimizers, load_qwen3_model, qwen_chunked_loss
 
 
 BASELINE_DISPLAY_NAMES = {"adamw": "AdamW", "muon": "Muon", "muown": "Muown"}
@@ -58,15 +62,87 @@ class QwenTrialConfig:
     tied_max_age: int = 16
     micro_batch_size: int = 1
     gradient_accumulation: int = 1
-    maximum_epochs: int = 3
+    maximum_epochs: int = 5
     maximum_updates: int | None = None
     validation_batches: int = 1
     evaluation_interval_updates: int = 1_000
+    checkpoint_interval_updates: int | None = None
     workers: int = 0
     seed: int = 1337
     device: str = "cuda"
     activation_checkpointing: bool = False
     resume: bool = False
+    initialization: str = "pretrained"
+    warmup_updates: int = 0
+    schedule_updates: int = 0
+    minimum_lr_ratio: float = 0.1
+    gradient_clip: float = 0.0
+    data_directory: str | None = None
+    train_tokens_per_epoch: int | None = None
+
+
+@dataclass(frozen=True)
+class _DistributedRuntime:
+    """The process-group details derived by ``torchrun`` for one trial."""
+
+    rank: int
+    world_size: int
+    local_rank: int
+    device: torch.device
+
+    @property
+    def primary(self) -> bool:
+        return self.rank == 0
+
+
+def _distributed_runtime(requested_device: str) -> _DistributedRuntime:
+    """Initialize a CUDA process group only when ``torchrun`` requested one."""
+    world_size = int(os.environ.get("WORLD_SIZE", "1"))
+    rank = int(os.environ.get("RANK", "0"))
+    local_rank = int(os.environ.get("LOCAL_RANK", "0"))
+    if world_size == 1:
+        return _DistributedRuntime(rank=0, world_size=1, local_rank=0, device=torch.device(requested_device))
+    if not requested_device.startswith("cuda") or not torch.cuda.is_available():
+        raise RuntimeError("multi-process Qwen training requires CUDA")
+    torch.cuda.set_device(local_rank)
+    distributed.init_process_group(backend="nccl")
+    return _DistributedRuntime(rank=rank, world_size=world_size, local_rank=local_rank, device=torch.device("cuda", local_rank))
+
+
+def _broadcast_float(value: float | None, runtime: _DistributedRuntime) -> float:
+    """Return rank zero's scalar validation result to every data-parallel rank."""
+    if runtime.world_size == 1:
+        if value is None:
+            raise RuntimeError("single-process validation did not produce a value")
+        return value
+    payload = torch.tensor(
+        [math.nan if value is None else value], dtype=torch.float64, device=runtime.device
+    )
+    distributed.broadcast(payload, src=0)
+    return float(payload.item())
+
+
+def _distributed_validation_perplexity(
+    model: torch.nn.Module,
+    loader,
+    device: torch.device,
+    maximum_batches: int,
+    runtime: _DistributedRuntime,
+) -> float:
+    """Evaluate once on rank zero, then publish the matched metric to all ranks."""
+    module = model.module if isinstance(model, DistributedDataParallel) else model
+    value = _validation_perplexity(module, loader, device, maximum_batches) if runtime.primary else None
+    return _broadcast_float(value, runtime)
+
+
+def qwen_learning_rate_scale(step: int, *, warmup: int, total: int, minimum: float) -> float:
+    """Linear warmup followed by cosine decay, indexed by committed update."""
+    if warmup and step <= warmup:
+        return step / warmup
+    if total <= 0:
+        return 1.0
+    progress = min(1.0, max(0.0, (step - warmup) / max(1, total - warmup)))
+    return minimum + (1 - minimum) * (1 + math.cos(math.pi * progress)) / 2
 
 
 def qwen_trial_paths(root: Path, optimizer: str, run_label: str) -> QwenTrialPaths:
@@ -132,6 +208,7 @@ def render_qwen_comparison(root: Path, *, run_label: str) -> tuple[Path, Path]:
         BASELINE_DISPLAY_NAMES[optimizer]: _metric_records(qwen_trial_paths(root, optimizer, run_label).metric)
         for optimizer in BASELINE_DISPLAY_NAMES
     }
+    from_scratch = all(records[0].get("initialization") == "scratch" for records in traces.values())
     output_root = root / "results" / "nlp"
     output_root.mkdir(parents=True, exist_ok=True)
     outputs = (
@@ -152,7 +229,9 @@ def render_qwen_comparison(root: Path, *, run_label: str) -> tuple[Path, Path]:
             )
         axis.set(
             xlabel=x_label,
-            ylabel="Validation perplexity (lower is better)",
+            ylabel=("Validation perplexity (log scale; lower is better)" if from_scratch
+                    else "Validation perplexity (lower is better)"),
+            yscale="log" if from_scratch else "linear",
             title="Qwen3-0.6B matched optimizer baselines",
         )
         axis.grid(alpha=0.2)
@@ -275,7 +354,7 @@ def _resume_checkpoint(
     """Load a compatible periodic checkpoint before continuing a trial."""
     if not paths.checkpoint.is_file():
         raise FileNotFoundError(f"missing checkpoint for Qwen resume: {paths.checkpoint}")
-    checkpoint = torch.load(paths.checkpoint, map_location=device, weights_only=False)
+    checkpoint = torch.load(paths.checkpoint, map_location="cpu", weights_only=False)
     saved_config = checkpoint.get("config")
     expected_config = asdict(config)
     expected_config.pop("resume")
@@ -334,12 +413,14 @@ def _validation_perplexity(
         if batch_index >= maximum_batches:
             break
         with autocast:
-            logits = _logits(model(input_ids=input_ids.to(device), use_cache=False))
-        loss = functional.cross_entropy(
-            logits.float().reshape(-1, logits.size(-1)),
-            labels.to(device).reshape(-1),
-            reduction="sum",
-        )
+            if getattr(model, "_qwen_chunked_loss", False):
+                loss = qwen_chunked_loss(model, input_ids.to(device), labels.to(device)) * labels.numel()
+            else:
+                logits = _logits(model(input_ids=input_ids.to(device), use_cache=False))
+                loss = functional.cross_entropy(
+                    logits.float().reshape(-1, logits.size(-1)),
+                    labels.to(device).reshape(-1), reduction="sum",
+                )
         total_loss += float(loss)
         total_tokens += labels.numel()
     if total_tokens == 0:
@@ -364,9 +445,9 @@ def evaluate_qwen_checkpoint(
         raise FileExistsError(f"refusing to overwrite Qwen full validation: {output}")
     if not paths.checkpoint.is_file():
         raise FileNotFoundError(f"missing Qwen checkpoint: {paths.checkpoint}")
-    cache = load_qwen_token_cache(root)
+    checkpoint = torch.load(paths.checkpoint, map_location="cpu", weights_only=False)
+    cache = load_qwen_token_cache(root, directory=checkpoint.get("config", {}).get("data_directory"))
     manifest_digest = _manifest_sha256(cache.manifest)
-    checkpoint = torch.load(paths.checkpoint, map_location=selected_device, weights_only=False)
     if checkpoint.get("data_manifest_sha256") != manifest_digest:
         raise RuntimeError("Qwen checkpoint is bound to a different token-cache manifest")
     checkpoint_config = checkpoint.get("config")
@@ -380,7 +461,8 @@ def evaluate_qwen_checkpoint(
         workers=0,
         seed=seed,
     )
-    model = load_qwen3_model(root).to(selected_device)
+    model = (load_qwen3_model(root, initialization="scratch")
+             if checkpoint_config.get("initialization") == "scratch" else load_qwen3_model(root)).to(selected_device)
     model.load_state_dict(checkpoint["model"])
     validation_batches = len(validation_loader)
     perplexity = _validation_perplexity(model, validation_loader, selected_device, validation_batches)
@@ -413,15 +495,22 @@ def run_qwen_trial(config: QwenTrialConfig) -> dict:
         raise ValueError("epoch, validation, and evaluation interval values must be positive")
     if config.maximum_updates is not None and config.maximum_updates <= 0:
         raise ValueError("maximum_updates must be positive when provided")
-    device = torch.device(config.device)
+    if config.initialization not in {"scratch", "pretrained"}:
+        raise ValueError("invalid initialization")
+    if config.warmup_updates < 0 or config.schedule_updates < 0 or config.gradient_clip < 0 or not 0 <= config.minimum_lr_ratio <= 1:
+        raise ValueError("invalid learning-rate schedule or gradient clipping")
+    runtime = _distributed_runtime(config.device)
+    device = runtime.device
     if device.type == "cuda" and not torch.cuda.is_available():
         raise RuntimeError("CUDA was requested but is unavailable")
     if device.type == "cuda":
         torch.cuda.reset_peak_memory_stats(device)
     torch.manual_seed(config.seed)
-    cache = load_qwen_token_cache(config.root)
+    cache = load_qwen_token_cache(config.root, directory=config.data_directory)
     manifest_digest = _manifest_sha256(cache.manifest)
     paths = qwen_trial_paths(config.root, config.optimizer, config.run_label)
+    if runtime.world_size > 1 and config.resume:
+        raise RuntimeError("distributed Qwen trials do not support checkpoint resume")
     if config.resume and paths.result.exists():
         completed_result = json.loads(paths.result.read_text())
         completed_updates = int(completed_result.get("completed_updates", -1))
@@ -443,8 +532,18 @@ def run_qwen_trial(config: QwenTrialConfig) -> dict:
         micro_batch_size=config.micro_batch_size,
         workers=config.workers,
         seed=config.seed,
+        train_tokens_per_epoch=config.train_tokens_per_epoch,
+        world_size=runtime.world_size,
+        rank=runtime.rank,
     )
-    model = load_qwen3_model(config.root).to(device)
+    model = (load_qwen3_model(config.root, initialization="scratch")
+             if config.initialization == "scratch" else load_qwen3_model(config.root)).to(device)
+    initial_digest = hashlib.sha256()
+    for name, parameter in model.named_parameters():
+        initial_digest.update(name.encode())
+        initial_digest.update(parameter.detach().cpu().contiguous().view(torch.uint8).numpy().tobytes())
+    initial_sha256 = initial_digest.hexdigest()
+
     if config.activation_checkpointing:
         enable_checkpointing = getattr(model, "gradient_checkpointing_enable", None)
         if not callable(enable_checkpointing):
@@ -468,6 +567,8 @@ def run_qwen_trial(config: QwenTrialConfig) -> dict:
         tied_interval=config.tied_interval,
         tied_max_age=config.tied_max_age,
     )
+    base_rates = [(group, {key: group[key] for key in ("lr", "direction_lr", "gain_lr") if key in group})
+                  for optimizer in optimizers.values() for group in getattr(optimizer, "param_groups", [])]
     feature_optimizer = optimizers.get("feature_remap_cohort_v1") or optimizers.get("feature_scalar_cohort_v1")
     if feature_optimizer is not None:
         fit_ids, _ = train_loader.dataset[0]
@@ -481,6 +582,16 @@ def run_qwen_trial(config: QwenTrialConfig) -> dict:
             model, fit_ids.unsqueeze(0), check_ids.unsqueeze(0), target_modules, interval=8,
             mode="scalar" if config.optimizer == "feature_scalar_cohort_v1" else "map",
         )
+    training_model: torch.nn.Module = (
+        DistributedDataParallel(
+            model,
+            device_ids=[runtime.local_rank],
+            output_device=runtime.local_rank,
+            broadcast_buffers=False,
+        )
+        if runtime.world_size > 1
+        else model
+    )
     paths.metric.parent.mkdir(parents=True, exist_ok=True)
     started = time.perf_counter()
     elapsed_offset = 0.0
@@ -517,12 +628,28 @@ def run_qwen_trial(config: QwenTrialConfig) -> dict:
         if device.type == "cuda"
         else nullcontext()
     )
+    if config.initialization == "scratch" and not config.resume:
+        initial_perplexity = _distributed_validation_perplexity(
+            training_model, validation_loader, device, config.validation_batches, runtime
+        )
+        if runtime.primary:
+            with paths.metric.open("a") as handle:
+                handle.write(json.dumps({"epoch": 0, "step": 0, "elapsed_seconds": time.perf_counter() - started,
+                                         "perplexity": initial_perplexity, "token_exposure": 0,
+                                         "initialization": config.initialization, "initial_model_sha256": initial_sha256,
+                                         "data_manifest_sha256": manifest_digest,
+                                         "world_size": runtime.world_size}) + "\n")
     first_epoch = active_epoch if config.resume else 1
     for epoch in range(first_epoch, config.maximum_epochs + 1):
         if stopped_early:
+            if completed_batches_in_active_epoch >= full_microbatches:
+                completed_epochs = epoch
             break
         active_epoch = epoch
-        model.train()
+        training_model.train()
+        sampler = getattr(train_loader, "sampler", None)
+        if isinstance(sampler, DistributedSampler):
+            sampler.set_epoch(epoch)
         if config.resume and epoch == first_epoch:
             if active_epoch_generator_state is None:
                 raise RuntimeError("Qwen checkpoint lacks the active epoch sampler state")
@@ -532,7 +659,11 @@ def run_qwen_trial(config: QwenTrialConfig) -> dict:
             skip_batches = 0
             completed_batches_in_active_epoch = 0
             active_epoch_generator_state = train_loader.generator.get_state().clone()
+        full_microbatches = (len(train_loader) // config.gradient_accumulation) * config.gradient_accumulation
         for batch_index, (input_ids, labels) in enumerate(train_loader):
+            # Scratch comparisons commit only full effective batches, including epoch tails.
+            if config.initialization == "scratch" and batch_index >= full_microbatches:
+                break
             if batch_index < skip_batches:
                 continue
             if batch_index % config.gradient_accumulation == 0:
@@ -546,21 +677,31 @@ def run_qwen_trial(config: QwenTrialConfig) -> dict:
                 if prepare_batch is not None:
                     prepare_batch(input_ids)
             with autocast:
-                logits = _logits(model(input_ids=input_ids.to(device), use_cache=False))
-                loss = functional.cross_entropy(
-                    logits.float().reshape(-1, logits.size(-1)), labels.to(device).reshape(-1)
-                )
+                if config.initialization == "scratch" and runtime.world_size == 1:
+                    loss = qwen_chunked_loss(training_model, input_ids.to(device), labels.to(device))
+                else:
+                    logits = _logits(training_model(input_ids=input_ids.to(device), use_cache=False))
+                    loss = functional.cross_entropy(
+                        logits.float().reshape(-1, logits.size(-1)), labels.to(device).reshape(-1)
+                    )
             (loss / config.gradient_accumulation).backward()
             if (batch_index + 1) % config.gradient_accumulation:
                 continue
+            if config.gradient_clip > 0:
+                torch.nn.utils.clip_grad_norm_(model.parameters(), config.gradient_clip, error_if_nonfinite=True)
+            scale = qwen_learning_rate_scale(completed_updates + 1, warmup=config.warmup_updates,
+                                             total=config.schedule_updates, minimum=config.minimum_lr_ratio)
+            for group, rates in base_rates:
+                for key, value in rates.items():
+                    group[key] = value * scale
             for optimizer in optimizers.values():
                 optimizer.step()
             completed_updates += 1
             completed_batches_in_active_epoch = batch_index + 1
             if completed_updates % config.evaluation_interval_updates == 0:
                 elapsed_seconds = elapsed_offset + time.perf_counter() - started
-                final_perplexity = _validation_perplexity(
-                    model, validation_loader, device, config.validation_batches
+                final_perplexity = _distributed_validation_perplexity(
+                    training_model, validation_loader, device, config.validation_batches, runtime
                 )
                 peak_memory_mib = (
                     torch.cuda.max_memory_allocated(device) / 2**20
@@ -569,6 +710,8 @@ def run_qwen_trial(config: QwenTrialConfig) -> dict:
                 )
                 record = {
                     "epoch": epoch,
+                    "last_microbatch_loss": float(loss.detach()),
+                    "learning_rate_scale": scale,
                     "step": completed_updates,
                     "elapsed_seconds": elapsed_seconds,
                     "token_exposure": (
@@ -576,30 +719,42 @@ def run_qwen_trial(config: QwenTrialConfig) -> dict:
                         * config.micro_batch_size
                         * config.gradient_accumulation
                         * cache.sequence_length
+                        * runtime.world_size
                     ),
                     "perplexity": final_perplexity,
                     "data_manifest_sha256": manifest_digest,
                     "peak_memory_mib": peak_memory_mib,
                 }
-                with paths.metric.open("a") as handle:
-                    handle.write(json.dumps(record, sort_keys=True) + "\n")
-                _write_qwen_checkpoint(
-                    paths=paths,
-                    model=model,
-                    optimizers=optimizers,
-                    completed_epochs=completed_epochs,
-                    active_epoch=active_epoch,
-                    completed_batches_in_active_epoch=completed_batches_in_active_epoch,
-                    active_epoch_generator_state=active_epoch_generator_state,
-                    completed_updates=completed_updates,
-                    elapsed_seconds=elapsed_seconds,
-                    final_perplexity=final_perplexity,
-                    manifest_digest=manifest_digest,
-                    peak_memory_mib=peak_memory_mib,
-                    config=config,
+                if runtime.primary:
+                    with paths.metric.open("a") as handle:
+                        handle.write(json.dumps(record, sort_keys=True) + "\n")
+                checkpoint_interval = (
+                    config.evaluation_interval_updates
+                    if config.checkpoint_interval_updates is None
+                    else config.checkpoint_interval_updates
                 )
-                checkpoint_written_at = completed_updates
-                model.train()
+                if (
+                    runtime.primary
+                    and checkpoint_interval > 0
+                    and completed_updates % checkpoint_interval == 0
+                ):
+                    _write_qwen_checkpoint(
+                        paths=paths,
+                        model=model,
+                        optimizers=optimizers,
+                        completed_epochs=completed_epochs,
+                        active_epoch=active_epoch,
+                        completed_batches_in_active_epoch=completed_batches_in_active_epoch,
+                        active_epoch_generator_state=active_epoch_generator_state,
+                        completed_updates=completed_updates,
+                        elapsed_seconds=elapsed_seconds,
+                        final_perplexity=final_perplexity,
+                        manifest_digest=manifest_digest,
+                        peak_memory_mib=peak_memory_mib,
+                        config=config,
+                    )
+                    checkpoint_written_at = completed_updates
+                training_model.train()
             if config.maximum_updates is not None and completed_updates >= config.maximum_updates:
                 stopped_early = True
                 break
@@ -608,8 +763,8 @@ def run_qwen_trial(config: QwenTrialConfig) -> dict:
         completed_epochs = epoch
     elapsed_seconds = elapsed_offset + time.perf_counter() - started
     if final_perplexity is None or completed_updates % config.evaluation_interval_updates:
-        final_perplexity = _validation_perplexity(
-            model, validation_loader, device, config.validation_batches
+        final_perplexity = _distributed_validation_perplexity(
+            training_model, validation_loader, device, config.validation_batches, runtime
         )
         record = {
             "epoch": completed_epochs,
@@ -620,6 +775,7 @@ def run_qwen_trial(config: QwenTrialConfig) -> dict:
                 * config.micro_batch_size
                 * config.gradient_accumulation
                 * cache.sequence_length
+                * runtime.world_size
             ),
             "perplexity": final_perplexity,
             "data_manifest_sha256": manifest_digest,
@@ -627,13 +783,19 @@ def run_qwen_trial(config: QwenTrialConfig) -> dict:
                 torch.cuda.max_memory_allocated(device) / 2**20 if device.type == "cuda" else None
             ),
         }
-        with paths.metric.open("a") as handle:
-            handle.write(json.dumps(record, sort_keys=True) + "\n")
+        if runtime.primary:
+            with paths.metric.open("a") as handle:
+                handle.write(json.dumps(record, sort_keys=True) + "\n")
     peak_memory_mib = (
         torch.cuda.max_memory_allocated(device) / 2**20 if device.type == "cuda" else None
     )
-    token_exposure = completed_updates * config.micro_batch_size * config.gradient_accumulation * cache.sequence_length
-    if checkpoint_written_at != completed_updates:
+    token_exposure = (completed_updates * config.micro_batch_size * config.gradient_accumulation
+                      * cache.sequence_length * runtime.world_size)
+    if (
+        runtime.primary
+        and checkpoint_interval > 0
+        and checkpoint_written_at != completed_updates
+    ):
         _write_qwen_checkpoint(
             paths=paths,
             model=model,
@@ -652,6 +814,9 @@ def run_qwen_trial(config: QwenTrialConfig) -> dict:
     result = {
         "optimizer": config.optimizer,
         "run_label": config.run_label,
+        "initialization": config.initialization,
+        "initial_model_sha256": initial_sha256,
+        "config": {**asdict(config), "root": str(config.root)},
         "completed_epochs": completed_epochs,
         "completed_updates": completed_updates,
         "final_perplexity": final_perplexity,
@@ -659,6 +824,11 @@ def run_qwen_trial(config: QwenTrialConfig) -> dict:
         "data_manifest_sha256": manifest_digest,
         "peak_memory_mib": peak_memory_mib,
     }
-    paths.result.parent.mkdir(parents=True, exist_ok=True)
-    paths.result.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n")
+    result["world_size"] = runtime.world_size
+    if runtime.primary:
+        paths.result.parent.mkdir(parents=True, exist_ok=True)
+        paths.result.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n")
+    if runtime.world_size > 1:
+        distributed.barrier()
+        distributed.destroy_process_group()
     return result

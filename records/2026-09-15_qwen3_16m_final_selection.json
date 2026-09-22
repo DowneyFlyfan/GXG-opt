@@ -1,0 +1,35 @@
+{
+  "status": "formal_runs_completed",
+  "formal_run_label": "scratch_16mep_5ep_tuned_batch64_v4_mb8a8",
+  "selection_rule": "minimum completed 300-update held-out perplexity within each optimizer",
+  "winners": {
+    "adamw": "scratch_16mep_adamw_tune16m_v1_s300_mb8a8_lr0.001",
+    "muon": "scratch_16mep_matrix_tune16m_v3_s300_mb8a8_lr0.003_aux0.001",
+    "muown": "scratch_16mep_matrix_tune16m_v3_s300_mb8a8_lr0.01_gain0.0003_aux0.003"
+  },
+  "formal_results": {
+    "adamw": {
+      "final_perplexity": 105.98992321797975,
+      "elapsed_seconds": 5910.210598314181,
+      "completed_epochs": 4,
+      "completed_updates": 610
+    },
+    "muon": {
+      "final_perplexity": 96.17172987402738,
+      "elapsed_seconds": 5959.50629918091,
+      "completed_epochs": 4,
+      "completed_updates": 610
+    },
+    "muown": {
+      "final_perplexity": 99.26106954696458,
+      "elapsed_seconds": 5972.814700182527,
+      "completed_epochs": 4,
+      "completed_updates": 610
+    }
+  },
+  "checkpoints_removed_after_full_validation_bytes": {
+    "adamw": 7153169717,
+    "muon": 5517239687,
+    "muown": 7158516227
+  }
+}

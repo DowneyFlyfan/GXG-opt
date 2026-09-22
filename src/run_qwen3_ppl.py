@@ -58,14 +58,26 @@ def parse_args(arguments: list[str] | None = None) -> argparse.Namespace:
     run.add_argument("--tied-max-age", type=int, default=16)
     run.add_argument("--micro-batch-size", type=int, default=1)
     run.add_argument("--gradient-accumulation", type=int, default=1)
-    run.add_argument("--maximum-epochs", type=int, default=3)
+    run.add_argument("--maximum-epochs", type=int, default=5)
     run.add_argument("--maximum-updates", type=int)
     run.add_argument("--validation-batches", type=int, default=1)
     run.add_argument("--evaluation-interval-updates", type=int, default=1_000)
+    run.add_argument(
+        "--checkpoint-interval-updates",
+        type=int,
+        help="persist state every N updates; defaults to the evaluation interval",
+    )
     run.add_argument("--workers", type=int, default=0)
     run.add_argument("--seed", type=int, default=1337)
     run.add_argument("--device", default="cuda")
     run.add_argument("--activation-checkpointing", action="store_true")
+    run.add_argument("--initialization", choices=("scratch", "pretrained"), default="scratch")
+    run.add_argument("--warmup-updates", type=int, default=0)
+    run.add_argument("--schedule-updates", type=int, default=0)
+    run.add_argument("--minimum-lr-ratio", type=float, default=0.1)
+    run.add_argument("--gradient-clip", type=float, default=0.0)
+    run.add_argument("--data-directory")
+    run.add_argument("--train-tokens-per-epoch", type=int)
     run.add_argument("--resume", action="store_true", help="continue a compatible periodic checkpoint")
     render = commands.add_parser("render", help="render the three baseline comparison curves")
     render.add_argument("--run-label", required=True)
@@ -142,11 +154,19 @@ def main(arguments: list[str] | None = None) -> None:
                 maximum_updates=parsed.maximum_updates,
                 validation_batches=parsed.validation_batches,
                 evaluation_interval_updates=parsed.evaluation_interval_updates,
+                checkpoint_interval_updates=parsed.checkpoint_interval_updates,
                 workers=parsed.workers,
                 seed=parsed.seed,
                 device=parsed.device,
                 activation_checkpointing=parsed.activation_checkpointing,
                 resume=parsed.resume,
+                initialization=parsed.initialization,
+                warmup_updates=parsed.warmup_updates,
+                schedule_updates=parsed.schedule_updates,
+                minimum_lr_ratio=parsed.minimum_lr_ratio,
+                gradient_clip=parsed.gradient_clip,
+                data_directory=parsed.data_directory,
+                train_tokens_per_epoch=parsed.train_tokens_per_epoch,
             )
         )
     elif parsed.command == "render":

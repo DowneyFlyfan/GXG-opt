@@ -1,0 +1,45 @@
+{
+  "status": "stopped_for_user_100m_epoch_revision",
+  "pid": 1073989,
+  "command": [
+    "nohup",
+    "/home/downeyflyfan/Research_Projects/AI/Optimizers/New_Optimizer/.venv/bin/python",
+    "-u",
+    "scripts/run_qwen3_scratch_screen.py",
+    "--data-directory",
+    "/home/downeyflyfan/Research_Projects/AI/Optimizers/New_Optimizer/.cache/Fineweb_Edu_2B",
+    "--optimizers",
+    "adamw",
+    "--updates",
+    "1000",
+    "--micro-batch-size",
+    "8",
+    "--gradient-accumulation",
+    "8",
+    "--activation-checkpointing",
+    "--candidates",
+    "records/2026-09-15_qwen3_adamw_batch64_candidates.json",
+    "--campaign",
+    "adamw_confirm_local_batch64_v1"
+  ],
+  "launched_at": 1789504769.829376,
+  "effective_batch_size": 64,
+  "worker_pid": 1073992,
+  "initial_metric": {
+    "epoch": 0,
+    "step": 0,
+    "elapsed_seconds": 9.974420825950801,
+    "perplexity": 183646.63092684472,
+    "token_exposure": 0,
+    "initialization": "scratch",
+    "initial_model_sha256": "23fdeb32ff39547b21b0330aed45e4deeeb7673925d6af2f08babaecdc89f1d6",
+    "data_manifest_sha256": "ced8d55d8e0849b22e5c6678194d0ca31fe42998b0760fea8c6d99ab00090649"
+  },
+  "stop_request": "user requested immediate stop and a 100,000,000-token epoch",
+  "last_verified_metric": {
+    "step": 100,
+    "perplexity": 810.9224043754937,
+    "elapsed_seconds": 2898.9589987759828,
+    "token_exposure": 13107200
+  }
+}

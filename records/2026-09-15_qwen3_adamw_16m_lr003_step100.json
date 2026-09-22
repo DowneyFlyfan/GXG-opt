@@ -1,0 +1,30 @@
+{
+  "campaign": "adamw_tune16m_v1",
+  "run_label": "scratch_16mep_adamw_tune16m_v1_s300_mb8a8_lr0.003",
+  "status": "running",
+  "initialization": "scratch",
+  "optimizer": "AdamW",
+  "learning_rate": 0.003,
+  "effective_batch_size": 64,
+  "requested_tokens_per_epoch": 16000000,
+  "schedule_updates": 610,
+  "checkpoint": {
+    "step": 100,
+    "epoch": 1,
+    "token_exposure": 13107200,
+    "heldout_perplexity": 780.0697173962033,
+    "last_microbatch_loss": 6.431369304656982,
+    "elapsed_seconds": 978.9510342441499,
+    "peak_memory_mib": 47053.9091796875
+  },
+  "matched_candidate_comparison": {
+    "adamw_lr0.001_step100_perplexity": 789.3829899234863,
+    "adamw_lr0.003_step100_perplexity": 780.0697173962033,
+    "difference": -9.313272527283005,
+    "interpretation": "At this matched interim point, 0.003 has lower held-out perplexity. Selection remains pending full 300-update screens."
+  },
+  "provenance": {
+    "initial_model_sha256": "23fdeb32ff39547b21b0330aed45e4deeeb7673925d6af2f08babaecdc89f1d6",
+    "data_manifest_sha256": "ced8d55d8e0849b22e5c6678194d0ca31fe42998b0760fea8c6d99ab00090649"
+  }
+}

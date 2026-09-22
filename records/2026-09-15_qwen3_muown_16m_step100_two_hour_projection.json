@@ -1,0 +1,22 @@
+{
+  "run_label": "scratch_16mep_matrix_tune16m_v3_s300_mb8a8_lr0.01_gain0.0003_aux0.001",
+  "optimizer": "muown",
+  "initialization": "scratch",
+  "observed_checkpoint": {
+    "step": 100,
+    "elapsed_seconds": 985.6377699039876,
+    "perplexity": 482.81393535466964
+  },
+  "formal_protocol": {
+    "epochs": 5,
+    "updates": 610,
+    "effective_batch_size": 64,
+    "tokens_per_epoch_requested": 16000000
+  },
+  "linear_projection": {
+    "seconds_for_610_updates": 6012.390396414325,
+    "hours_for_610_updates": 1.6701084434484235,
+    "under_two_hours": true
+  },
+  "conclusion": "The first scratch Muown candidate has a measured cadence compatible with the two-hour formal-run constraint; the actual formal wall time remains the acceptance criterion."
+}

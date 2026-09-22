@@ -1,0 +1,18 @@
+{
+  "status": "tuning_in_progress",
+  "effective_batch_size": 64,
+  "optimizer": "muon",
+  "run_label": "scratch_2b_muon_confirm_batch64_v1_s1000_mb8a8_lr0.003_aux0.001",
+  "initial_model_sha256": "23fdeb32ff39547b21b0330aed45e4deeeb7673925d6af2f08babaecdc89f1d6",
+  "metric": {
+    "data_manifest_sha256": "ced8d55d8e0849b22e5c6678194d0ca31fe42998b0760fea8c6d99ab00090649",
+    "elapsed_seconds": 2968.874586161226,
+    "epoch": 1,
+    "last_microbatch_loss": 4.435620307922363,
+    "learning_rate_scale": 0.9756177587652856,
+    "peak_memory_mib": 45493.8154296875,
+    "perplexity": 89.96317831193515,
+    "step": 300,
+    "token_exposure": 39321600
+  }
+}

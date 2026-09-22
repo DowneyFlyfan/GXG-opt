@@ -1,0 +1,5 @@
+[
+  ["adamw", "lr0.001", ["--learning-rate", "0.001"]],
+  ["adamw", "lr0.003", ["--learning-rate", "0.003"]],
+  ["adamw", "lr0.006", ["--learning-rate", "0.006"]]
+]

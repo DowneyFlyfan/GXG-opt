@@ -1,0 +1,23 @@
+{
+  "status": "queued",
+  "remote_handoff_pid": 1940748,
+  "purpose": "Run selected scratch AdamW, Muon, and Muown five-epoch baselines after all matrix screens complete.",
+  "gpu": "GPU-d5c984dc-a988-2e9a-219f-df1577167aaf",
+  "safety": [
+    "Waits for verified 300-update scratch matrix results.",
+    "Waits for GPU 0 to have no compute owner.",
+    "Uses CUDA_VISIBLE_DEVICES=0 only.",
+    "Enforces a 7,190-second training timeout for every five-epoch run.",
+    "Removes each final checkpoint only after full held-out validation succeeds, preventing checkpoint accumulation."
+  ],
+  "final_protocol": {
+    "initialization": "scratch",
+    "epochs": 5,
+    "tokens_per_epoch": 16000000,
+    "micro_batch_size": 8,
+    "gradient_accumulation": 8,
+    "effective_batch_size": 64,
+    "updates": 610,
+    "maximum_training_seconds": 7190
+  }
+}

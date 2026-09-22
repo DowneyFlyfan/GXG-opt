@@ -1,0 +1,13 @@
+{
+  "basis": "first 100 completed scratch updates; approximate extrapolation, not a completion ETA",
+  "train_blocks": 976562,
+  "effective_batch": 48,
+  "updates_per_epoch": 20345,
+  "formal_epochs": 5,
+  "formal_updates": 101725,
+  "formal_token_exposure": 9999974400,
+  "projected_days_per_formal_run": {
+    "adamw": 8.543183112721254,
+    "muon": 8.759606218641204
+  }
+}

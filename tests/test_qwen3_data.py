@@ -39,6 +39,30 @@ def test_block_loader_returns_shifted_fixed_width_tokens(tmp_path):
     assert labels.tolist() == [[1, 2, 3, 4]]
 
 
+def test_block_loader_limits_each_training_epoch_to_the_requested_token_prefix(tmp_path):
+    from qwen3_data import prepare_qwen_fineweb_cache, qwen_block_loaders
+
+    cache = prepare_qwen_fineweb_cache(
+        tmp_path,
+        train_tokens=25,
+        validation_tokens=9,
+        sequence_length=4,
+        eos_token_id=99,
+        source=[("train", "a", list(range(25))), ("validation", "b", list(range(9)))],
+    )
+
+    train_loader, validation_loader = qwen_block_loaders(
+        cache,
+        micro_batch_size=1,
+        workers=0,
+        seed=1,
+        train_tokens_per_epoch=13,
+    )
+
+    assert len(train_loader.dataset) == 3
+    assert len(validation_loader.dataset) == 2
+
+
 def test_preparation_stops_streaming_once_both_targets_are_full(tmp_path):
     from qwen3_data import prepare_qwen_fineweb_cache
 

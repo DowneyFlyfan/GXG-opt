@@ -1,0 +1,14 @@
+{
+  "reason": "The ABA root filesystem had 16 GiB free while the active Qwen3 checkpoint was 6.7 GiB and future final checkpoints must be retained.",
+  "preserved": [
+    ".cache/qwen3_0p6b/checkpoints/qwen3_0p6b__scratch_16mep_adamw_tune16m_v1_s300_mb8a8_lr0.001__adamw.checkpoint.pt"
+  ],
+  "eligible_for_removal": [
+    ".cache/qwen3_0p6b/checkpoints/qwen3_0p6b__scratch_2b_muown_confirm_batch64_v1_s1000_mb8a8_lr0.01_gain0.0003_aux0.001__muown.checkpoint.pt",
+    ".cache/qwen3_0p6b/checkpoints/qwen3_0p6b__scratch_100mep_adamw_a100_timecheck_s100_mb8a8_lr0.001__adamw.checkpoint.pt",
+    ".cache/qwen3_0p6b/checkpoints/qwen3_0p6b__scratch_100mep_adamw_tune100m_v1_s762_mb8a8_lr0.001__adamw.checkpoint.pt",
+    ".cache/qwen3_0p6b/checkpoints/qwen3_0p6b__scratch_2b_muon_confirm_batch64_v1_s1000_mb8a8_lr0.003_aux0.001__muon.checkpoint.pt",
+    ".cache/qwen3_0p6b/checkpoints/qwen3_0p6b__scratch_2b_5ep_tuned_v1_mb12a4__muon.checkpoint.pt"
+  ],
+  "verification_before_removal": "The only live Qwen worker was PID 1576415 and used the preserved 16M AdamW checkpoint. Results, metrics, logs, and records remain retained."
+}

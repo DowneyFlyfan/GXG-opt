@@ -1,0 +1,17 @@
+{
+  "status": "tuning_in_progress",
+  "effective_batch_size": 64,
+  "run_label": "scratch_2b_adamw_confirm_local_batch64_v1_s1000_mb8a8_lr0.001",
+  "initial_model_sha256": "23fdeb32ff39547b21b0330aed45e4deeeb7673925d6af2f08babaecdc89f1d6",
+  "metric": {
+    "data_manifest_sha256": "ced8d55d8e0849b22e5c6678194d0ca31fe42998b0760fea8c6d99ab00090649",
+    "elapsed_seconds": 2898.9589987759828,
+    "epoch": 1,
+    "last_microbatch_loss": 6.4577741622924805,
+    "learning_rate_scale": 1.0,
+    "peak_memory_mib": 13271.767578125,
+    "perplexity": 810.9224043754937,
+    "step": 100,
+    "token_exposure": 13107200
+  }
+}

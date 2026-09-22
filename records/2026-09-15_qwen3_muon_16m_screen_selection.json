@@ -1,0 +1,39 @@
+{
+  "optimizer": "muon",
+  "selection_rule": "lowest completed 300-update held-out perplexity",
+  "shared_protocol": {
+    "initialization": "scratch",
+    "effective_batch_size": 64,
+    "schedule_updates": 610,
+    "train_tokens_per_epoch": 16000000
+  },
+  "candidates": [
+    {
+      "auxiliary_lr": 0.001,
+      "run_label": "scratch_16mep_matrix_tune16m_v3_s300_mb8a8_lr0.003_aux0.001",
+      "final_perplexity": 95.52051045251085,
+      "elapsed_seconds": 2953.732888299972,
+      "completed_updates": 300,
+      "initialization": "scratch",
+      "data_manifest_sha256": "ced8d55d8e0849b22e5c6678194d0ca31fe42998b0760fea8c6d99ab00090649"
+    },
+    {
+      "auxiliary_lr": 0.003,
+      "run_label": "scratch_16mep_matrix_tune16m_v3_s300_mb8a8_lr0.003_aux0.003",
+      "final_perplexity": 101.87521276886535,
+      "elapsed_seconds": 2946.5755245685577,
+      "completed_updates": 300,
+      "initialization": "scratch",
+      "data_manifest_sha256": "ced8d55d8e0849b22e5c6678194d0ca31fe42998b0760fea8c6d99ab00090649"
+    }
+  ],
+  "winner": {
+    "auxiliary_lr": 0.001,
+    "run_label": "scratch_16mep_matrix_tune16m_v3_s300_mb8a8_lr0.003_aux0.001",
+    "final_perplexity": 95.52051045251085,
+    "elapsed_seconds": 2953.732888299972,
+    "completed_updates": 300,
+    "initialization": "scratch",
+    "data_manifest_sha256": "ced8d55d8e0849b22e5c6678194d0ca31fe42998b0760fea8c6d99ab00090649"
+  }
+}

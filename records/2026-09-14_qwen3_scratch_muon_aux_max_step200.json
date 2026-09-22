@@ -1,0 +1,50 @@
+{
+  "status": "intermediate_screening_only",
+  "comparison": [
+    {
+      "optimizer": "muon",
+      "campaign": "muon_refine",
+      "rate_label": "lr0.003_aux0.001",
+      "initial_model_sha256": "23fdeb32ff39547b21b0330aed45e4deeeb7673925d6af2f08babaecdc89f1d6",
+      "data_manifest_sha256": "ced8d55d8e0849b22e5c6678194d0ca31fe42998b0760fea8c6d99ab00090649",
+      "elapsed_seconds": 1483.9869499839842,
+      "epoch": 1,
+      "last_microbatch_loss": 5.349739074707031,
+      "learning_rate_scale": 0.9938625865312251,
+      "peak_memory_mib": 63615.9716796875,
+      "perplexity": 204.15193672525328,
+      "step": 200,
+      "token_exposure": 19660800
+    },
+    {
+      "optimizer": "muon",
+      "campaign": "muon_aux_upper",
+      "rate_label": "lr0.003_aux0.003",
+      "initial_model_sha256": "23fdeb32ff39547b21b0330aed45e4deeeb7673925d6af2f08babaecdc89f1d6",
+      "data_manifest_sha256": "ced8d55d8e0849b22e5c6678194d0ca31fe42998b0760fea8c6d99ab00090649",
+      "elapsed_seconds": 1480.5946896467358,
+      "epoch": 1,
+      "last_microbatch_loss": 5.345766067504883,
+      "learning_rate_scale": 0.9938625865312251,
+      "peak_memory_mib": 63615.9716796875,
+      "perplexity": 207.67742159925842,
+      "step": 200,
+      "token_exposure": 19660800
+    },
+    {
+      "optimizer": "muon",
+      "campaign": "muon_aux_upper",
+      "rate_label": "lr0.003_aux0.01",
+      "initial_model_sha256": "23fdeb32ff39547b21b0330aed45e4deeeb7673925d6af2f08babaecdc89f1d6",
+      "data_manifest_sha256": "ced8d55d8e0849b22e5c6678194d0ca31fe42998b0760fea8c6d99ab00090649",
+      "elapsed_seconds": 1482.1980968043208,
+      "epoch": 1,
+      "last_microbatch_loss": 5.497313976287842,
+      "learning_rate_scale": 0.9938625865312251,
+      "peak_memory_mib": 63615.9716796875,
+      "perplexity": 242.2285433362309,
+      "step": 200,
+      "token_exposure": 19660800
+    }
+  ]
+}

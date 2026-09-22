@@ -1,0 +1,17 @@
+{
+  "status": "stopped_without_valid_trials",
+  "campaign": "matrix_tune16m_v2",
+  "requested_device": "CUDA_VISIBLE_DEVICES=1",
+  "protocol": {
+    "updates_per_candidate": 300,
+    "effective_batch_size": 64,
+    "train_tokens_per_epoch": 16000000,
+    "schedule_updates": 610,
+    "checkpoint_interval_updates": 300
+  },
+  "prelaunch_observation": "GPU 1 showed zero memory and no listed compute application.",
+  "race_observation": "At launch, external PID 1724512 then PID 1725381 for user kylehu acquired GPU 1 in Exclusive_Process mode.",
+  "result": "The first Muon candidate failed while moving the scratch model to CUDA with CUDA-capable device(s) busy or unavailable. No candidate trained and its partial result is excluded.",
+  "cleanup": "Terminated only dispatcher PID 1724598 and its active child PID 1726731. The external process was preserved.",
+  "next_action": "Use GPU 0 after the AdamW screen completes, unless GPU 1 is verified free immediately before a new launch and remains unclaimed."
+}

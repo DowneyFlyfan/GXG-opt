@@ -1,0 +1,19 @@
+{
+  "status": "running_guarded_handoff",
+  "handoff_pid": 1886574,
+  "purpose": "Keep the verified ABA GPU 0 workflow moving after AdamW tuning without using the externally owned GPU 1.",
+  "prerequisites": [
+    "Scratch AdamW 0.001, 0.003, and 0.006 results all exist and each completed exactly 300 updates.",
+    "GPU 0 UUID GPU-d5c984dc-a988-2e9a-219f-df1577167aaf has no listed compute owner."
+  ],
+  "matrix_screen": {
+    "optimizers": ["muon", "muown"],
+    "updates_per_candidate": 300,
+    "effective_batch_size": 64,
+    "train_tokens_per_epoch": 16000000,
+    "schedule_updates": 610,
+    "checkpoint_interval_updates": 300,
+    "campaign": "matrix_tune16m_v3"
+  },
+  "safety": "The handoff never terminates or shares GPU 1. It waits for GPU 0 to be unowned before launching."
+}

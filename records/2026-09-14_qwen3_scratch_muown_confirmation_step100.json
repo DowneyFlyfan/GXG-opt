@@ -1,0 +1,31 @@
+{
+  "status": "longer_tuning_in_progress",
+  "comparison": [
+    {
+      "campaign": "muown_gain_aux",
+      "initial_model_sha256": "23fdeb32ff39547b21b0330aed45e4deeeb7673925d6af2f08babaecdc89f1d6",
+      "data_manifest_sha256": "ced8d55d8e0849b22e5c6678194d0ca31fe42998b0760fea8c6d99ab00090649",
+      "elapsed_seconds": 748.4074588119984,
+      "epoch": 1,
+      "last_microbatch_loss": 6.234054088592529,
+      "learning_rate_scale": 1.0,
+      "peak_memory_mib": 65175.6591796875,
+      "perplexity": 511.1353831954887,
+      "step": 100,
+      "token_exposure": 9830400
+    },
+    {
+      "campaign": "muown_confirm",
+      "initial_model_sha256": "23fdeb32ff39547b21b0330aed45e4deeeb7673925d6af2f08babaecdc89f1d6",
+      "data_manifest_sha256": "ced8d55d8e0849b22e5c6678194d0ca31fe42998b0760fea8c6d99ab00090649",
+      "elapsed_seconds": 746.8696779645979,
+      "epoch": 1,
+      "last_microbatch_loss": 6.21185302734375,
+      "learning_rate_scale": 1.0,
+      "peak_memory_mib": 65175.6591796875,
+      "perplexity": 498.7203860412366,
+      "step": 100,
+      "token_exposure": 9830400
+    }
+  ]
+}
